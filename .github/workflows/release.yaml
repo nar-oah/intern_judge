@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  BINARY_NAME: intern_judge
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - platform: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2.9.2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install Bevy Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            g++ \
+            pkg-config \
+            libx11-dev \
+            libasound2-dev \
+            libudev-dev \
+            libxkbcommon-x11-0 \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p package dist
+          cp "target/${{ matrix.target }}/release/${BINARY_NAME}" package/
+          if [ -d assets ]; then cp -r assets package/; fi
+          (cd package && zip -q -r "../dist/${BINARY_NAME}-linux-x86_64.zip" .)
+
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package, dist | Out-Null
+          $exe = "$($env:BINARY_NAME).exe"
+          Copy-Item "target/${{ matrix.target }}/release/$exe" package/
+          if (Test-Path assets) {
+            Copy-Item assets package/ -Recurse
+          }
+          Compress-Archive -Path 'package/*' -DestinationPath "dist/$($env:BINARY_NAME)-windows-x86_64.zip"
+
+      - name: Upload game package
+        uses: actions/upload-artifact@v7
+        with:
+          name: game-${{ matrix.platform }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download game packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: game-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" dist/*.zip --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          fi
