@@ -47,7 +47,6 @@ fn spawn_player(mut commands: Commands) {
         LockedAxes::ROTATION_LOCKED,
         Friction::ZERO,
         Restitution::ZERO,
-        // The slightly smaller shape probes downward for a walkable surface.
         ShapeCaster::new(
             Collider::rectangle(PLAYER_SIZE.x - 2.0, PLAYER_SIZE.y - 2.0),
             Vec2::ZERO,
@@ -71,12 +70,8 @@ fn player_movement(
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
         let direction = i8::from(right) - i8::from(left);
-
         velocity.x = f32::from(direction) * player.move_speed;
-
-        // Avian updates ShapeHits during physics; this reads the last step's results.
         let grounded = hits.iter().any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7);
-
         if grounded && actions.just_pressed(&PlayerAction::Jump) {
             velocity.y = player.jump_speed;
         }

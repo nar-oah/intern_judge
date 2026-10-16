@@ -1,9 +1,7 @@
 mod level;
 mod player;
-
 use avian2d::prelude::*;
 use bevy::prelude::*;
-
 use level::LevelPlugin;
 use player::PlayerPlugin;
 
