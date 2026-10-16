@@ -10,8 +10,16 @@ impl Plugin for LevelPlugin {
 }
 
 fn spawn_test_platforms(mut commands: Commands) {
-    spawn_platform(&mut commands, Vec2::new(0.0, -180.0), Vec2::new(700.0, 35.0));
-    spawn_platform(&mut commands, Vec2::new(170.0, -90.0), Vec2::new(150.0, 20.0));
+    spawn_platform(
+        &mut commands,
+        Vec2::new(0.0, -180.0),
+        Vec2::new(700.0, 35.0),
+    );
+    spawn_platform(
+        &mut commands,
+        Vec2::new(170.0, -90.0),
+        Vec2::new(150.0, 20.0),
+    );
 }
 
 fn spawn_platform(commands: &mut Commands, position: Vec2, size: Vec2) {

@@ -75,9 +75,7 @@ fn player_movement(
         velocity.x = f32::from(direction) * player.move_speed;
 
         // Avian updates ShapeHits during physics; this reads the last step's results.
-        let grounded = hits
-            .iter()
-            .any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7);
+        let grounded = hits.iter().any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7);
 
         if grounded && actions.just_pressed(&PlayerAction::Jump) {
             velocity.y = player.jump_speed;
