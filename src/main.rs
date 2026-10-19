@@ -18,8 +18,8 @@ fn main() {
             DefaultPlugins,
             PhysicsPlugins::default().with_length_unit(20.0),
             // Different RON asset types must have distinct file suffixes.
-            RonAssetPlugin::<PlayerConfig>::new(&["player.ron"]),
-            RonAssetPlugin::<InputConfig>::new(&["input.ron"]),
+            RonAssetPlugin::<PlayerConfig>::new(&["config.ron"]),
+            RonAssetPlugin::<InputConfig>::new(&["bindings.ron"]),
             PlayerPlugin,
             LevelPlugin,
         ))

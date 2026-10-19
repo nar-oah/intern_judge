@@ -29,9 +29,26 @@ pub struct InputConfig {
 /// Keeps strong handles and waits for both RON assets during Loading.
 #[derive(AssetCollection, Resource)]
 pub struct GameAssets {
-    #[asset(path = "config/player.ron")]
+    #[asset(path = "config/player.config.ron")]
     pub player: Handle<PlayerConfig>,
 
-    #[asset(path = "config/input.ron")]
+    #[asset(path = "config/input.bindings.ron")]
     pub input: Handle<InputConfig>,
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::asset::AssetPath;
+
+    #[test]
+    fn config_paths_have_distinct_registered_extensions() {
+        assert_eq!(
+            AssetPath::parse("config/player.config.ron").get_full_extension(),
+            Some("config.ron")
+        );
+        assert_eq!(
+            AssetPath::parse("config/input.bindings.ron").get_full_extension(),
+            Some("bindings.ron")
+        );
+    }
 }
