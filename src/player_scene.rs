@@ -10,10 +10,7 @@ use crate::player::{Player, PlayerAction};
 /// Numbers come from player.ron, while BSN describes which ECS components
 /// the player has. Avian components without a BSN default are constructed
 /// using ad-hoc templates.
-pub(crate) fn player_scene(
-    config: &PlayerConfig,
-    input_map: InputMap<PlayerAction>,
-) -> impl Scene {
+pub(crate) fn player_scene(config: &PlayerConfig, input_map: InputMap<PlayerAction>) -> impl Scene {
     let size = Vec2::new(config.size[0], config.size[1]);
     let move_speed = config.move_speed;
     let jump_speed = config.jump_speed;
