@@ -5,5 +5,8 @@ edition = "2024"
 
 [dependencies]
 avian2d = "0.7"
-bevy = "0.19"
+bevy = { version = "0.19", features = ["serialize"] }
 leafwing-input-manager = "0.21"
+bevy_common_assets = { version = "0.17", features = ["ron"] }
+bevy_asset_loader = "0.27"
+serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,6 @@
+// Multiple keys can map to the same gameplay action.
+(
+    left: [KeyA, ArrowLeft],
+    right: [KeyD, ArrowRight],
+    jump: [Space],
+)

@@ -1,0 +1,6 @@
+// Static player tuning. Runtime position and velocity are not saved here.
+(
+    move_speed: 220.0,
+    jump_speed: 420.0,
+    size: [30.0, 50.0],
+)
