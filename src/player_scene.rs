@@ -32,12 +32,12 @@ pub(crate) fn player_scene(
             translation: {Vec3::new(0.0, -80.0, 0.0)},
         }
         template(|_| Ok(RigidBody::Dynamic))
-        template(|_| Ok(Collider::rectangle(size.x, size.y)))
+        template(move |_| Ok(Collider::rectangle(size.x, size.y)))
         template(|_| Ok(LinearVelocity::ZERO))
         template(|_| Ok(LockedAxes::ROTATION_LOCKED))
         template(|_| Ok(Friction::ZERO))
         template(|_| Ok(Restitution::ZERO))
-        template(|_| {
+        template(move |_| {
             Ok(
                 ShapeCaster::new(
                     Collider::rectangle(size.x - 2.0, size.y - 2.0),
