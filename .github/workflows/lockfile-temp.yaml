@@ -1,0 +1,22 @@
+name: Temporary lockfile generator
+
+on:
+  push:
+    branches: [refactor/ron-config-bsn-player]
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve dependencies and export Cargo.lock
+        run: |
+          cargo generate-lockfile
+          echo "LOCK_B64_BEGIN"
+          base64 -w0 Cargo.lock
+          echo
+          echo "LOCK_B64_END"
