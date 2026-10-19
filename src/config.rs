@@ -41,6 +41,21 @@ mod tests {
     use bevy::asset::AssetPath;
 
     #[test]
+    fn bundled_ron_configs_deserialize() {
+        // Catch invalid config syntax before launching the game.
+        let player: super::PlayerConfig =
+            ron::from_str(include_str!("../assets/config/player.config.ron"))
+                .expect("player.config.ron must deserialize");
+        assert_eq!(player.size, [30.0, 50.0]);
+
+        let input: super::InputConfig =
+            ron::from_str(include_str!("../assets/config/input.bindings.ron"))
+                .expect("input.bindings.ron must deserialize");
+        assert!(input.left.contains(&bevy::prelude::KeyCode::KeyA));
+        assert!(input.jump.contains(&bevy::prelude::KeyCode::Space));
+    }
+
+    #[test]
     fn config_paths_have_distinct_registered_extensions() {
         assert_eq!(
             AssetPath::parse("config/player.config.ron").get_full_extension(),

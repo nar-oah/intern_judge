@@ -13,6 +13,8 @@
 | `src/player.rs` | 动作类型、从资产构建 InputMap、移动与跳跃 System | 玩家脚本 |
 | `src/level.rs` | 两个临时测试平台（暂不改为 BSN） | 测试关卡 |
 
+RON 语法提示：`PlayerConfig.size` 是 Rust 固定长度数组 `[f32; 2]`，在 RON 中须写成 `size: (30.0, 50.0)`。`InputConfig` 的键位列表是 `Vec<KeyCode>`，使用 `[...]`。
+
 ## 运行
 
 ```sh
