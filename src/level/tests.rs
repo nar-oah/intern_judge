@@ -9,6 +9,7 @@ use bevy::{
     asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
+use leafwing_input_manager::user_input::Buttonlike;
 use std::time::Duration;
 
 fn test_app() -> App {

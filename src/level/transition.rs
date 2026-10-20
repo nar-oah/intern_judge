@@ -7,6 +7,9 @@ pub(super) fn transition_point() -> impl Scene {
     bsn! {
         #TransitionPoint
         Interactable::TransitionPoint
-        Sprite::from_color(Color::srgb(0.94, 0.79, 0.25), Vec2::new(20.0, 60.0))
+        Sprite {
+            color: Color::srgb(0.94, 0.79, 0.25),
+            custom_size: Option::Some(Vec2::new(20.0, 60.0)),
+        }
     }
 }
