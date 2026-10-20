@@ -49,8 +49,8 @@ fn startup_spawns_the_player_scene_with_input_and_physics() {
         Vec3::new(0.0, -80.0, 0.0)
     );
     assert_eq!(
-        entity.get::<Sprite>().unwrap().custom_size,
-        Some(Vec2::new(30.0, 50.0))
+        entity.get::<Sprite>().unwrap(),
+        &Sprite::from_color(Color::srgb(0.3, 0.7, 0.9), Vec2::new(30.0, 50.0))
     );
     assert_eq!(entity.get::<RigidBody>(), Some(&RigidBody::Dynamic));
     assert!(entity.contains::<Collider>());
