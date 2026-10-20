@@ -45,15 +45,15 @@ fn tick_speed_boost(
     }
 }
 
-fn player_movement(
-    mut players: Query<(
-        &Player,
-        &ActionState<PlayerAction>,
-        &ShapeHits,
-        Option<&SpeedBoost>,
-        &mut LinearVelocity,
-    )>,
-) {
+type PlayerMovementComponents<'a> = (
+    &'a Player,
+    &'a ActionState<PlayerAction>,
+    &'a ShapeHits,
+    Option<&'a SpeedBoost>,
+    &'a mut LinearVelocity,
+);
+
+fn player_movement(mut players: Query<PlayerMovementComponents<'_>>) {
     for (player, actions, hits, speed_boost, mut velocity) in &mut players {
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
