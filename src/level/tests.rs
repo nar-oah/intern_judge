@@ -47,7 +47,10 @@ fn bsn_road_spawns_platforms_and_interactions() {
     let world = app.world_mut();
 
     let mut roads = world.query::<&RoadId>();
-    assert_eq!(roads.iter(world).map(|id| id.0).collect::<Vec<_>>(), vec![1]);
+    assert_eq!(
+        roads.iter(world).map(|id| id.0).collect::<Vec<_>>(),
+        vec![1]
+    );
 
     let mut platforms = world.query_filtered::<Entity, With<Platform>>();
     assert_eq!(platforms.iter(world).count(), 2);
