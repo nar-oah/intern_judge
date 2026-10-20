@@ -55,7 +55,7 @@ fn road_scene_groups_all_parts_and_preserves_platform_dimensions() {
     let mut app = headless_app();
     let root = road_entity(&mut app);
     assert_eq!(app.world().get::<RoadId>(root), Some(&RoadId("example_road")));
-    let children: Vec<_> = app.world().get::<Children>(root).unwrap().iter().collect();
+    let children = app.world().get::<Children>(root).unwrap().to_vec();
     assert_eq!(children.len(), 10);
     for child in &children {
         assert_eq!(app.world().get::<ChildOf>(*child).unwrap().parent(), root);
@@ -109,7 +109,7 @@ fn road_scene_groups_all_parts_and_preserves_platform_dimensions() {
 fn despawning_the_road_removes_all_its_parts_and_keeps_the_player() {
     let mut app = headless_app();
     let root = road_entity(&mut app);
-    let children: Vec<_> = app.world().get::<Children>(root).unwrap().iter().collect();
+    let children = app.world().get::<Children>(root).unwrap().to_vec();
     assert!(app.world_mut().despawn(root));
     assert!(app.world().get_entity(root).is_err());
     for child in children {
