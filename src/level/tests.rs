@@ -49,12 +49,17 @@ fn press_interact(app: &mut App) {
         .press(KeyCode::KeyE);
     eprintln!(
         "E pressed: {}",
-        app.world().resource::<ButtonInput<KeyCode>>().just_pressed(KeyCode::KeyE)
+        app.world()
+            .resource::<ButtonInput<KeyCode>>()
+            .just_pressed(KeyCode::KeyE)
     );
     {
         let world = app.world_mut();
         let mut player_positions = world.query_filtered::<&GlobalTransform, With<Player>>();
-        eprintln!("player position: {:?}", player_positions.single(world).unwrap().translation());
+        eprintln!(
+            "player position: {:?}",
+            player_positions.single(world).unwrap().translation()
+        );
         let mut target_positions = world.query::<(&GlobalTransform, &Interactable)>();
         for (transform, interaction) in target_positions.iter(world) {
             eprintln!(
