@@ -6,7 +6,10 @@ pub(super) fn platform_scene(position: Vec2, size: Vec2) -> impl Scene {
     let platform = Platform { size };
     bsn! {
         platform
-        Sprite::from_color(Color::srgb(0.65, 0.68, 0.75), platform.size)
+        Sprite {
+            color: Color::srgb(0.65, 0.68, 0.75),
+            custom_size: Option::Some(platform.size),
+        }
         Transform::from_xyz(position.x, position.y, 0.0)
         RigidBody::Static
         Collider::rectangle(platform.size.x, platform.size.y)
@@ -16,7 +19,10 @@ pub(super) fn platform_scene(position: Vec2, size: Vec2) -> impl Scene {
 fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
     bsn! {
         Interactable { radius: 75.0 }
-        Sprite::from_color(color, size)
+        Sprite {
+            color,
+            custom_size: Option::Some(size),
+        }
         // Walk in front of the placeholder; buildings do not block the road.
         Transform::from_xyz(position.x, position.y, -1.0)
     }
@@ -47,7 +53,10 @@ pub(super) fn switch_point_scene(id: &'static str, position: Vec2) -> impl Scene
     bsn! {
         SwitchPoint { id }
         Interactable { radius: 60.0 }
-        Sprite::from_color(Color::srgb(0.3, 0.85, 0.85), Vec2::new(24.0, 50.0))
+        Sprite {
+            color: Color::srgb(0.3, 0.85, 0.85),
+            custom_size: Option::Some(Vec2::new(24.0, 50.0)),
+        }
         Transform::from_xyz(position.x, position.y, -1.0)
     }
 }
