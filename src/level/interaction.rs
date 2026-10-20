@@ -20,7 +20,8 @@ pub(super) fn interact(
             .iter()
             .filter_map(|(entity, transform, interactable)| {
                 let distance = player_position.distance_squared(transform.translation().truncate());
-                (distance <= interactable.radius * interactable.radius).then_some((entity, distance))
+                (distance <= interactable.radius * interactable.radius)
+                    .then_some((entity, distance))
             })
             .min_by(|(_, a), (_, b)| a.total_cmp(b));
 
