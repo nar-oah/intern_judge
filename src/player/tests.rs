@@ -1,7 +1,5 @@
 use super::*;
-use bevy::{
-    asset::AssetPlugin, input::InputPlugin, scene::ScenePlugin, time::TimeUpdateStrategy,
-};
+use bevy::{asset::AssetPlugin, input::InputPlugin, scene::ScenePlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
 
 fn headless_app(gravity: Vec2) -> App {
@@ -151,18 +149,17 @@ fn wall_and_ceiling_hits_do_not_allow_jumping() {
 
     // Isolate the controller's normal filtering from the physics simulation.
     // These represent both wall directions and a ceiling, never a floor.
-    app.world_mut().get_mut::<ShapeHits>(player).unwrap().0 =
-        [Vec2::X, Vec2::NEG_X, Vec2::Y]
-            .into_iter()
-            .map(|normal2| ShapeHitData {
-                entity: Entity::PLACEHOLDER,
-                distance: 0.0,
-                point1: Vec2::ZERO,
-                point2: Vec2::ZERO,
-                normal1: -normal2,
-                normal2,
-            })
-            .collect();
+    app.world_mut().get_mut::<ShapeHits>(player).unwrap().0 = [Vec2::X, Vec2::NEG_X, Vec2::Y]
+        .into_iter()
+        .map(|normal2| ShapeHitData {
+            entity: Entity::PLACEHOLDER,
+            distance: 0.0,
+            point1: Vec2::ZERO,
+            point2: Vec2::ZERO,
+            normal1: -normal2,
+            normal2,
+        })
+        .collect();
     app.world_mut().run_schedule(FixedUpdate);
 
     assert_eq!(velocity(&app, player).y, -100.0);
