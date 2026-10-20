@@ -6,16 +6,17 @@ use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 #[derive(Component, Clone, Default)]
-struct Player {
+pub(crate) struct Player {
     move_speed: f32,
     jump_speed: f32,
 }
 
 #[derive(Actionlike, Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
-enum PlayerAction {
+pub(crate) enum PlayerAction {
     Left,
     Right,
     Jump,
+    Interact,
 }
 
 pub struct PlayerPlugin;

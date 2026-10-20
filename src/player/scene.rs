@@ -10,6 +10,7 @@ pub(super) fn player_scene() -> impl Scene {
         (PlayerAction::Left, KeyCode::KeyA),
         (PlayerAction::Right, KeyCode::KeyD),
         (PlayerAction::Jump, KeyCode::Space),
+        (PlayerAction::Interact, KeyCode::KeyE),
     ]);
 
     bsn! {
