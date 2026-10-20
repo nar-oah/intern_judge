@@ -54,7 +54,10 @@ fn road_entity(app: &mut App) -> Entity {
 fn road_scene_groups_all_parts_and_preserves_platform_dimensions() {
     let mut app = headless_app();
     let root = road_entity(&mut app);
-    assert_eq!(app.world().get::<RoadId>(root), Some(&RoadId("example_road")));
+    assert_eq!(
+        app.world().get::<RoadId>(root),
+        Some(&RoadId("example_road"))
+    );
     let children = app.world().get::<Children>(root).unwrap().to_vec();
     assert_eq!(children.len(), 10);
     for child in &children {
@@ -73,7 +76,11 @@ fn road_scene_groups_all_parts_and_preserves_platform_dimensions() {
         );
         assert_eq!(*rigid_body, RigidBody::Static);
     }
-    let buildings: Vec<_> = world.query::<&BuildingType>().iter(world).copied().collect();
+    let buildings: Vec<_> = world
+        .query::<&BuildingType>()
+        .iter(world)
+        .copied()
+        .collect();
     assert_eq!(buildings.len(), 3);
     for kind in [
         BuildingType::Residential,
@@ -92,7 +99,10 @@ fn road_scene_groups_all_parts_and_preserves_platform_dimensions() {
 
     // Road offsets must move both the sprites and their physical colliders.
     let offset = Vec3::new(1000.0, 200.0, 0.0);
-    app.world_mut().get_mut::<Transform>(root).unwrap().translation = offset;
+    app.world_mut()
+        .get_mut::<Transform>(root)
+        .unwrap()
+        .translation = offset;
     app.update();
     let world = app.world_mut();
     for (local, global, position) in world
@@ -116,7 +126,13 @@ fn despawning_the_road_removes_all_its_parts_and_keeps_the_player() {
         assert!(app.world().get_entity(child).is_err());
     }
     let world = app.world_mut();
-    assert_eq!(world.query_filtered::<Entity, With<Player>>().iter(world).count(), 1);
+    assert_eq!(
+        world
+            .query_filtered::<Entity, With<Player>>()
+            .iter(world)
+            .count(),
+        1
+    );
     assert_eq!(world.query::<&Interactable>().iter(world).count(), 0);
 }
 
@@ -161,8 +177,10 @@ fn e_interacts_once_with_the_nearest_target_in_world_space() {
     tracing::subscriber::with_default(subscriber, || {
         let mut app = headless_app();
         let root = road_entity(&mut app);
-        app.world_mut().get_mut::<Transform>(root).unwrap().translation =
-            Vec3::new(1000.0, 200.0, 0.0);
+        app.world_mut()
+            .get_mut::<Transform>(root)
+            .unwrap()
+            .translation = Vec3::new(1000.0, 200.0, 0.0);
         let world = app.world_mut();
         let player = world
             .query_filtered::<Entity, With<Player>>()
@@ -175,12 +193,13 @@ fn e_interacts_once_with_the_nearest_target_in_world_space() {
             .unwrap()
             .0;
         // Deliberately overlap the shop's range and the switch's range.
-        world.get_mut::<Transform>(east_exit).unwrap().translation =
-            Vec3::new(20.0, -127.5, -1.0);
-        world.get_mut::<Transform>(player).unwrap().translation =
-            Vec3::new(1000.0, 72.5, 0.0);
+        world.get_mut::<Transform>(east_exit).unwrap().translation = Vec3::new(20.0, -127.5, -1.0);
+        world.get_mut::<Transform>(player).unwrap().translation = Vec3::new(1000.0, 72.5, 0.0);
         app.update();
-        assert!(output.interactions().is_empty(), "proximity alone is insufficient");
+        assert!(
+            output.interactions().is_empty(),
+            "proximity alone is insufficient"
+        );
 
         KeyCode::KeyE.press(app.world_mut());
         app.update();
@@ -192,8 +211,10 @@ fn e_interacts_once_with_the_nearest_target_in_world_space() {
 
         KeyCode::KeyE.release(app.world_mut());
         app.update();
-        app.world_mut().get_mut::<Transform>(player).unwrap().translation =
-            Vec3::new(1020.0, 72.5, 0.0);
+        app.world_mut()
+            .get_mut::<Transform>(player)
+            .unwrap()
+            .translation = Vec3::new(1020.0, 72.5, 0.0);
         KeyCode::KeyE.press(app.world_mut());
         app.update();
         let interactions = output.interactions();
@@ -202,14 +223,22 @@ fn e_interacts_once_with_the_nearest_target_in_world_space() {
 
         KeyCode::KeyE.release(app.world_mut());
         app.update();
-        app.world_mut().get_mut::<Transform>(player).unwrap().translation =
-            Vec3::new(0.0, 500.0, 0.0);
+        app.world_mut()
+            .get_mut::<Transform>(player)
+            .unwrap()
+            .translation = Vec3::new(0.0, 500.0, 0.0);
         KeyCode::KeyE.press(app.world_mut());
         app.update();
         assert_eq!(output.interactions().len(), 2, "distant E must do nothing");
-        app.world_mut().get_mut::<Transform>(player).unwrap().translation =
-            Vec3::new(1000.0, 72.5, 0.0);
+        app.world_mut()
+            .get_mut::<Transform>(player)
+            .unwrap()
+            .translation = Vec3::new(1000.0, 72.5, 0.0);
         app.update();
-        assert_eq!(output.interactions().len(), 2, "entering range with E held must do nothing");
+        assert_eq!(
+            output.interactions().len(),
+            2,
+            "entering range with E held must do nothing"
+        );
     });
 }
