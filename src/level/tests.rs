@@ -9,7 +9,6 @@ use bevy::{
     asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
-use leafwing_input_manager::user_input::Buttonlike;
 use std::time::Duration;
 
 fn test_app() -> App {
@@ -42,6 +41,15 @@ fn player_entity(app: &mut App) -> Entity {
         .unwrap()
 }
 
+// Unlike Leafwing's Buttonlike helper, the E system reads Bevy's ButtonInput.
+// Run Update directly so the regular input-clearing schedule does not erase it.
+fn press_interact(app: &mut App) {
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::KeyE);
+    app.world_mut().run_schedule(Update);
+}
+
 #[test]
 fn bsn_road_spawns_platforms_and_interactions() {
     let mut app = test_app();
@@ -66,8 +74,7 @@ fn store_interaction_grants_a_temporary_speed_boost() {
     let player = player_entity(&mut app);
 
     // The player starts close enough to the convenience store in road_01.
-    KeyCode::KeyE.press(app.world_mut());
-    app.update();
+    press_interact(&mut app);
 
     assert!(app.world().get::<SpeedBoost>(player).is_some());
 }
@@ -84,13 +91,14 @@ fn restaurant_can_only_pay_once_in_this_prototype() {
         .translation = Vec3::new(-220.0, -100.0, 0.0);
     app.update();
 
-    KeyCode::KeyE.press(app.world_mut());
-    app.update();
+    press_interact(&mut app);
     assert_eq!(app.world().resource::<DemoWallet>().0, 10);
 
-    KeyCode::KeyE.release(app.world_mut());
-    app.update();
-    KeyCode::KeyE.press(app.world_mut());
-    app.update();
+    {
+        let mut input = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
+        input.release(KeyCode::KeyE);
+        input.clear();
+    }
+    press_interact(&mut app);
     assert_eq!(app.world().resource::<DemoWallet>().0, 10);
 }
