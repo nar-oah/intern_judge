@@ -76,7 +76,7 @@ pub(super) fn example_road_scene() -> impl Scene {
             --
             @platform_scene(Vec2::new(425.0, -180.0), Vec2::new(150.0, 35.0))
             --
-            @platform_scene(Vec2::new(-170.0, -105.0), Vec2::new(130.0, 20.0))
+            @platform_scene(Vec2::new(-170.0, -96.0), Vec2::new(130.0, 12.0))
             --
             @platform_scene(Vec2::new(170.0, -90.0), Vec2::new(150.0, 20.0))
             --
