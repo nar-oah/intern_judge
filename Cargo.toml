@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-avian2d = "0.7"
-bevy = "0.19"
-leafwing-input-manager = "0.21"
+avian2d = "0.8"
+bevy = "0.20"
+leafwing-input-manager = "0.22"
