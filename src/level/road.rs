@@ -17,6 +17,8 @@ pub(super) fn road_01() -> impl Scene {
     bsn! {
         #Road01
         RoadId(1)
+        // A parent Transform is required to propagate children's GlobalTransform.
+        Transform
         Children [
             @platform(Vec2::new(700.0, 35.0))
             Transform::from_xyz(0.0, -180.0, 0.0)
