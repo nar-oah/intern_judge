@@ -47,6 +47,23 @@ fn press_interact(app: &mut App) {
     app.world_mut()
         .resource_mut::<ButtonInput<KeyCode>>()
         .press(KeyCode::KeyE);
+    eprintln!(
+        "E pressed: {}",
+        app.world().resource::<ButtonInput<KeyCode>>().just_pressed(KeyCode::KeyE)
+    );
+    {
+        let world = app.world_mut();
+        let mut player_positions = world.query_filtered::<&GlobalTransform, With<Player>>();
+        eprintln!("player position: {:?}", player_positions.single(world).unwrap().translation());
+        let mut target_positions = world.query::<(&GlobalTransform, &Interactable)>();
+        for (transform, interaction) in target_positions.iter(world) {
+            eprintln!(
+                "target {:?}: {:?}",
+                std::mem::discriminant(interaction),
+                transform.translation()
+            );
+        }
+    }
     app.world_mut().run_schedule(Update);
 }
 
