@@ -13,7 +13,7 @@ pub struct Platform {
     pub size: Vec2,
 }
 
-// Placeholder categories until the design document is available in the repository.
+/// Placeholder categories for the example road.
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BuildingType {
     #[default]

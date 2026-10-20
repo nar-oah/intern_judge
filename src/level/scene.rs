@@ -3,12 +3,13 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 pub(super) fn platform_scene(position: Vec2, size: Vec2) -> impl Scene {
+    let platform = Platform { size };
     bsn! {
-        Platform { size }
-        Sprite::from_color(Color::srgb(0.65, 0.68, 0.75), size)
+        platform
+        Sprite::from_color(Color::srgb(0.65, 0.68, 0.75), platform.size)
         Transform::from_xyz(position.x, position.y, 0.0)
         RigidBody::Static
-        Collider::rectangle(size.x, size.y)
+        Collider::rectangle(platform.size.x, platform.size.y)
     }
 }
 
