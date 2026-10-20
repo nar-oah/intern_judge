@@ -7,7 +7,9 @@ use crate::player::{Player, SpeedBoost};
 pub(super) enum Interactable {
     #[default]
     ConvenienceStore,
-    Restaurant { worked: bool },
+    Restaurant {
+        worked: bool,
+    },
     TransitionPoint,
 }
 
