@@ -9,12 +9,21 @@ use super::{Player, PlayerAction};
 const PLAYER_SIZE: Vec2 = Vec2::new(30.0, 50.0);
 
 pub(super) fn player_scene() -> impl Scene {
+    let input_map = InputMap::new([
+        (PlayerAction::Left, KeyCode::KeyA),
+        (PlayerAction::Right, KeyCode::KeyD),
+        (PlayerAction::Jump, KeyCode::Space),
+    ]);
+
     bsn! {
         Player {
             move_speed: 220.0,
             jump_speed: 420.0,
         }
-        Sprite::from_color(Color::srgb(0.3, 0.7, 0.9), PLAYER_SIZE)
+        Sprite {
+            color: Color::srgb(0.3, 0.7, 0.9),
+            custom_size: Some(PLAYER_SIZE),
+        }
         Transform::from_xyz(0.0, -80.0, 0.0)
         RigidBody::Dynamic
         Collider::rectangle(PLAYER_SIZE.x, PLAYER_SIZE.y)
@@ -28,10 +37,6 @@ pub(super) fn player_scene() -> impl Scene {
             0.0,
             Dir2::NEG_Y,
         ).with_max_distance(6.0)
-        InputMap::new([
-            (PlayerAction::Left, KeyCode::KeyA),
-            (PlayerAction::Right, KeyCode::KeyD),
-            (PlayerAction::Jump, KeyCode::Space),
-        ])
+        input_map
     }
 }
