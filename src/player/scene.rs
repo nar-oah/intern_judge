@@ -1,10 +1,7 @@
-//! The player's BSN scene: appearance, physics, ground probe, and input bindings.
-
+use super::{Player, PlayerAction};
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
-
-use super::{Player, PlayerAction};
 
 const PLAYER_SIZE: Vec2 = Vec2::new(30.0, 50.0);
 

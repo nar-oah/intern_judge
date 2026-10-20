@@ -1,8 +1,6 @@
 mod scene;
-
 #[cfg(test)]
 mod tests;
-
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -30,7 +28,6 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-// Avian updates ShapeHits in FixedPostUpdate; use the last completed physics step here.
 fn player_movement(
     mut players: Query<(
         &Player,
