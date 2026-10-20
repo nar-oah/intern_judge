@@ -1,5 +1,7 @@
 mod interaction;
 mod scene;
+#[cfg(test)]
+mod tests;
 
 use bevy::prelude::*;
 
