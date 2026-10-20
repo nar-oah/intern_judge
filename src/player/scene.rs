@@ -22,7 +22,7 @@ pub(super) fn player_scene() -> impl Scene {
         }
         Sprite {
             color: Color::srgb(0.3, 0.7, 0.9),
-            custom_size: Some(PLAYER_SIZE),
+            custom_size: Option::Some(PLAYER_SIZE),
         }
         Transform::from_xyz(0.0, -80.0, 0.0)
         RigidBody::Dynamic
