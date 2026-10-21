@@ -1,4 +1,5 @@
 use super::*;
+use crate::physics::GameLayer;
 use crate::player::{Player, PlayerPlugin};
 use avian2d::prelude::*;
 use bevy::{
@@ -121,6 +122,10 @@ fn road_scene_preserves_its_parts_sensor_dimensions_and_lifecycle() {
         if let Some(platform) = world.get::<Platform>(child) {
             assert_eq!(platform.size, sprite_size);
             assert_eq!(world.get::<RigidBody>(child), Some(&RigidBody::Static));
+            assert_eq!(
+                world.get::<CollisionLayers>(child).unwrap().memberships,
+                GameLayer::Ground.into()
+            );
         } else {
             assert!(world.get::<Interactable>(child).is_some());
             assert!(world.get::<Sensor>(child).is_some());

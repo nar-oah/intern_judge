@@ -1,4 +1,5 @@
 use super::*;
+use crate::physics::GameLayer;
 use bevy::{asset::AssetPlugin, input::InputPlugin, scene::ScenePlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
 
@@ -67,6 +68,10 @@ fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     assert!(entity.contains::<Friction>());
     assert!(entity.contains::<Restitution>());
     assert!(entity.contains::<ShapeCaster>());
+    assert_eq!(
+        entity.get::<ShapeCaster>().unwrap().query_filter.mask,
+        GameLayer::Ground.into()
+    );
     assert!(entity.contains::<ShapeHits>());
     assert!(entity.contains::<InputMap<PlayerAction>>());
 
@@ -152,6 +157,7 @@ fn wall_and_ceiling_probe_hits_do_not_count_as_ground() {
             .spawn((
                 RigidBody::Static,
                 Collider::rectangle(size.x, size.y),
+                CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
                 Transform::from_translation((Vec2::new(1000.0, 0.0) + obstacle_offset).extend(0.0)),
             ))
             .id();
@@ -194,7 +200,7 @@ fn a_sensor_neither_supports_jumping_nor_hides_solid_ground() {
             .get::<ShapeHits>(player)
             .unwrap()
             .iter()
-            .any(|hit| hit.entity == sensor)
+            .all(|hit| hit.entity != sensor)
     );
     KeyCode::Space.press(app.world_mut());
     app.update();
@@ -205,6 +211,7 @@ fn a_sensor_neither_supports_jumping_nor_hides_solid_ground() {
     app.world_mut().spawn((
         RigidBody::Static,
         Collider::rectangle(100.0, 20.0),
+        CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
         Transform::from_xyz(1000.0, -37.0, 0.0),
     ));
     advance(&mut app, 2);

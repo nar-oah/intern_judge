@@ -1,4 +1,5 @@
 mod level;
+mod physics;
 mod player;
 use avian2d::prelude::*;
 use bevy::prelude::*;
