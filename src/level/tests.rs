@@ -36,9 +36,11 @@ fn app() -> App {
         15_625,
     )))
     .init_resource::<Requests>()
-    .add_observer(|event: On<InteractRequested>, mut requests: ResMut<Requests>| {
-        requests.0.push((event.entity, event.player));
-    })
+    .add_observer(
+        |event: On<InteractRequested>, mut requests: ResMut<Requests>| {
+            requests.0.push((event.entity, event.player));
+        },
+    )
     .edit_schedule(PostUpdate, |schedule| {
         schedule.set_executor(SingleThreadedExecutor::new());
     });
@@ -50,7 +52,10 @@ fn app() -> App {
 
 fn single<C: Component>(app: &mut App) -> Entity {
     let world = app.world_mut();
-    world.query_filtered::<Entity, With<C>>().single(world).unwrap()
+    world
+        .query_filtered::<Entity, With<C>>()
+        .single(world)
+        .unwrap()
 }
 
 fn settle(app: &mut App) {
@@ -61,7 +66,10 @@ fn settle(app: &mut App) {
 }
 
 fn teleport(app: &mut App, entity: Entity, position: Vec3) {
-    app.world_mut().get_mut::<Transform>(entity).unwrap().translation = position;
+    app.world_mut()
+        .get_mut::<Transform>(entity)
+        .unwrap()
+        .translation = position;
     settle(app);
 }
 
@@ -83,7 +91,10 @@ fn road_scene_preserves_its_parts_sensor_dimensions_and_lifecycle() {
     let mut app = app();
     let road = single::<RoadId>(&mut app);
     let player = single::<Player>(&mut app);
-    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId("example_road")));
+    assert_eq!(
+        app.world().get::<RoadId>(road),
+        Some(&RoadId("example_road"))
+    );
     let children = app.world().get::<Children>(road).unwrap().to_vec();
     assert_eq!(children.len(), 10);
     let offset = Vec3::new(1000.0, 200.0, 0.0);
@@ -97,8 +108,20 @@ fn road_scene_preserves_its_parts_sensor_dimensions_and_lifecycle() {
         let half_extents = collider.shape().as_cuboid().unwrap().half_extents;
         assert_eq!(Vec2::new(half_extents.x, half_extents.y) * 2.0, sprite_size);
         let expected = world.get::<Transform>(child).unwrap().translation + offset;
-        assert!(world.get::<GlobalTransform>(child).unwrap().translation().abs_diff_eq(expected, 0.001));
-        assert!(world.get::<Position>(child).unwrap().0.abs_diff_eq(expected.truncate(), 0.001));
+        assert!(
+            world
+                .get::<GlobalTransform>(child)
+                .unwrap()
+                .translation()
+                .abs_diff_eq(expected, 0.001)
+        );
+        assert!(
+            world
+                .get::<Position>(child)
+                .unwrap()
+                .0
+                .abs_diff_eq(expected.truncate(), 0.001)
+        );
         if let Some(platform) = world.get::<Platform>(child) {
             assert_eq!(platform.size, sprite_size);
             assert_eq!(world.get::<RigidBody>(child), Some(&RigidBody::Static));
@@ -110,18 +133,34 @@ fn road_scene_preserves_its_parts_sensor_dimensions_and_lifecycle() {
     }
     let world = app.world_mut();
     assert_eq!(world.query::<&Platform>().iter(world).count(), 5);
-    let buildings: Vec<_> = world.query::<&BuildingType>().iter(world).copied().collect();
+    let buildings: Vec<_> = world
+        .query::<&BuildingType>()
+        .iter(world)
+        .copied()
+        .collect();
     assert_eq!(buildings.len(), 3);
-    for kind in [BuildingType::Residential, BuildingType::Shop, BuildingType::Factory] {
+    for kind in [
+        BuildingType::Residential,
+        BuildingType::Shop,
+        BuildingType::Factory,
+    ] {
         assert!(buildings.contains(&kind));
     }
-    let mut switches: Vec<_> = world.query::<&SwitchPoint>().iter(world).map(|point| point.id).collect();
+    let mut switches: Vec<_> = world
+        .query::<&SwitchPoint>()
+        .iter(world)
+        .map(|point| point.id)
+        .collect();
     switches.sort_unstable();
     assert_eq!(switches, ["east_exit", "west_exit"]);
 
     assert!(world.despawn(road));
     assert!(world.get_entity(road).is_err());
-    assert!(children.into_iter().all(|child| world.get_entity(child).is_err()));
+    assert!(
+        children
+            .into_iter()
+            .all(|child| world.get_entity(child).is_err())
+    );
     assert!(world.get::<Player>(player).is_some());
     assert_eq!(world.query::<&Interactable>().iter(world).count(), 0);
 }
@@ -133,10 +172,18 @@ fn e_requests_all_physical_overlaps_only_on_a_new_press() {
     let player = single::<Player>(&mut app);
     teleport(&mut app, road, Vec3::new(1000.0, 200.0, 0.0));
     let world = app.world_mut();
-    let shop = world.query::<(Entity, &BuildingType)>().iter(world)
-        .find(|(_, kind)| **kind == BuildingType::Shop).unwrap().0;
-    let exit = world.query::<(Entity, &SwitchPoint)>().iter(world)
-        .find(|(_, point)| point.id == "east_exit").unwrap().0;
+    let shop = world
+        .query::<(Entity, &BuildingType)>()
+        .iter(world)
+        .find(|(_, kind)| **kind == BuildingType::Shop)
+        .unwrap()
+        .0;
+    let exit = world
+        .query::<(Entity, &SwitchPoint)>()
+        .iter(world)
+        .find(|(_, point)| point.id == "east_exit")
+        .unwrap()
+        .0;
     teleport(&mut app, exit, Vec3::new(20.0, -127.5, -1.0));
 
     // Nearby centers are insufficient when the player's collider does not overlap.
@@ -147,7 +194,12 @@ fn e_requests_all_physical_overlaps_only_on_a_new_press() {
     let overlap = Vec3::new(1000.0, 72.5, 0.0);
     teleport(&mut app, player, overlap);
     for target in [shop, exit] {
-        assert!(app.world().get::<CollidingEntities>(target).unwrap().contains(&player));
+        assert!(
+            app.world()
+                .get::<CollidingEntities>(target)
+                .unwrap()
+                .contains(&player)
+        );
     }
     assert!(requests(&app).is_empty(), "overlap alone does not interact");
 
@@ -157,7 +209,11 @@ fn e_requests_all_physical_overlaps_only_on_a_new_press() {
         assert!(requests(&app).contains(&(target, player)));
     }
     settle(&mut app);
-    assert_eq!(requests(&app).len(), 2, "holding E does not repeat requests");
+    assert_eq!(
+        requests(&app).len(),
+        2,
+        "holding E does not repeat requests"
+    );
 
     interact_key(&mut app, false);
     teleport(&mut app, player, Vec3::new(0.0, 500.0, 0.0));
@@ -195,15 +251,23 @@ fn custom_targets_need_no_building_type_and_ignore_unrelated_collisions() {
     let unmarked = sensor(&mut app, position, false);
     let other_position = Vec3::new(900.0, 500.0, 0.0);
     let other_target = sensor(&mut app, other_position, true);
-    let non_player = app.world_mut().spawn((
-        Transform::from_translation(other_position),
-        RigidBody::Kinematic,
-        Collider::rectangle(30.0, 50.0),
-    )).id();
+    let non_player = app
+        .world_mut()
+        .spawn((
+            Transform::from_translation(other_position),
+            RigidBody::Kinematic,
+            Collider::rectangle(30.0, 50.0),
+        ))
+        .id();
     settle(&mut app);
 
     for entity in [target, unmarked] {
-        assert!(app.world().get::<CollidingEntities>(entity).unwrap().contains(&player));
+        assert!(
+            app.world()
+                .get::<CollidingEntities>(entity)
+                .unwrap()
+                .contains(&player)
+        );
     }
     let other_collisions = app.world().get::<CollidingEntities>(other_target).unwrap();
     assert!(other_collisions.contains(&non_player));
@@ -231,28 +295,50 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
     let output = LogOutput::default();
     let writer = output.clone();
     let subscriber = tracing_subscriber::fmt()
-        .with_ansi(false).without_time().with_target(false)
-        .with_writer(move || writer.clone()).finish();
+        .with_ansi(false)
+        .without_time()
+        .with_target(false)
+        .with_writer(move || writer.clone())
+        .finish();
     tracing::subscriber::with_default(subscriber, || {
         let mut app = app();
         let player = single::<Player>(&mut app);
         let world = app.world_mut();
-        let mut targets: Vec<_> = world.query::<(Entity, &BuildingType)>().iter(world)
-            .map(|(entity, kind)| (entity, format!("Building interaction: {kind:?}"))).collect();
-        targets.extend(world.query::<(Entity, &SwitchPoint)>().iter(world)
-            .map(|(entity, point)| (entity, format!("Switch point triggered: {}", point.id))));
+        let mut targets: Vec<_> = world
+            .query::<(Entity, &BuildingType)>()
+            .iter(world)
+            .map(|(entity, kind)| (entity, format!("Building interaction: {kind:?}")))
+            .collect();
+        targets.extend(
+            world
+                .query::<(Entity, &SwitchPoint)>()
+                .iter(world)
+                .map(|(entity, point)| (entity, format!("Switch point triggered: {}", point.id))),
+        );
         assert_eq!(targets.len(), 5);
 
         for (entity, _) in &targets {
-            app.world_mut().trigger(InteractRequested { entity: *entity, player });
+            app.world_mut().trigger(InteractRequested {
+                entity: *entity,
+                player,
+            });
         }
         let logs = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
-        let interactions: Vec<_> = logs.lines().filter(|line| {
-            line.contains("Building interaction:") || line.contains("Switch point triggered:")
-        }).collect();
+        let interactions: Vec<_> = logs
+            .lines()
+            .filter(|line| {
+                line.contains("Building interaction:") || line.contains("Switch point triggered:")
+            })
+            .collect();
         assert_eq!(interactions.len(), targets.len());
         for (_, expected) in targets {
-            assert_eq!(interactions.iter().filter(|line| line.contains(&expected)).count(), 1);
+            assert_eq!(
+                interactions
+                    .iter()
+                    .filter(|line| line.contains(&expected))
+                    .count(),
+                1
+            );
         }
     });
 }
