@@ -1,40 +1,17 @@
 use super::*;
 use crate::physics::GameLayer;
-use bevy::{asset::AssetPlugin, input::InputPlugin, scene::ScenePlugin, time::TimeUpdateStrategy};
-use std::time::Duration;
+use crate::test_support::{advance, finish_app, headless_app};
 
 fn game(gravity: Vec2) -> (App, Entity) {
-    let mut app = App::new();
-    app.add_plugins((
-        MinimalPlugins,
-        TransformPlugin,
-        AssetPlugin::default(),
-        ScenePlugin,
-        InputPlugin,
-        PhysicsPlugins::default().with_length_unit(20.0),
-        PlayerPlugin,
-        crate::level::LevelPlugin,
-    ))
-    .insert_resource(Gravity(gravity))
-    // One update after startup advances exactly one default fixed timestep.
-    .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_micros(
-        15_625,
-    )));
-    app.finish();
-    app.cleanup();
-    app.update();
+    let mut app = headless_app(gravity);
+    app.add_plugins(PlayerPlugin);
+    finish_app(&mut app);
     let world = app.world_mut();
     let player = world
         .query_filtered::<Entity, With<Player>>()
         .single(world)
         .expect("the player scene should spawn exactly one player");
     (app, player)
-}
-
-fn advance(app: &mut App, frames: usize) {
-    for _ in 0..frames {
-        app.update();
-    }
 }
 
 fn position(app: &App, player: Entity) -> Vec2 {
@@ -45,11 +22,15 @@ fn velocity(app: &App, player: Entity) -> Vec2 {
     app.world().get::<LinearVelocity>(player).unwrap().0
 }
 
-fn move_away_from_level(app: &mut App, player: Entity) {
-    app.world_mut().entity_mut(player).insert((
-        Transform::from_xyz(1000.0, 0.0, 0.0),
-        Position(Vec2::new(1000.0, 0.0)),
-    ));
+fn ground(app: &mut App, center: Vec2, size: Vec2) -> Entity {
+    app.world_mut()
+        .spawn((
+            RigidBody::Static,
+            Collider::rectangle(size.x, size.y),
+            CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
+            Transform::from_translation(center.extend(0.0)),
+        ))
+        .id()
 }
 
 #[test]
@@ -114,10 +95,20 @@ fn a_and_d_move_the_player_and_cancel_when_held_together() {
 #[test]
 fn landing_allows_one_jump_per_grounded_space_press() {
     let (mut app, player) = game(Vec2::NEG_Y * 1000.0);
+    let floor_size = Vec2::new(400.0, 20.0);
+    let floor_center = position(&app, player) + Vec2::new(0.0, -100.0);
+    let player_height = app
+        .world()
+        .get::<Sprite>(player)
+        .unwrap()
+        .custom_size
+        .unwrap()
+        .y;
+    let expected_ground_y = floor_center.y + (floor_size.y + player_height) / 2.0;
+    ground(&mut app, floor_center, floor_size);
     advance(&mut app, 128);
     let ground_y = position(&app, player).y;
-    // The road surface is -162.5 and the player is 50 pixels tall.
-    assert!((ground_y + 137.5).abs() < 2.0);
+    assert!((ground_y - expected_ground_y).abs() < 2.0);
     assert!(velocity(&app, player).y.abs() < 1.0);
 
     KeyCode::Space.press(app.world_mut());
@@ -151,16 +142,8 @@ fn wall_and_ceiling_probe_hits_do_not_count_as_ground() {
         (Vec2::new(0.0, 30.0), Vec2::new(200.0, 10.0), Vec2::Y),
     ] {
         let (mut app, player) = game(Vec2::ZERO);
-        move_away_from_level(&mut app, player);
-        let obstacle = app
-            .world_mut()
-            .spawn((
-                RigidBody::Static,
-                Collider::rectangle(size.x, size.y),
-                CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
-                Transform::from_translation((Vec2::new(1000.0, 0.0) + obstacle_offset).extend(0.0)),
-            ))
-            .id();
+        let obstacle_center = position(&app, player) + obstacle_offset;
+        let obstacle = ground(&mut app, obstacle_center, size);
         // The body touches the obstacle. Shift its inset probe into the surface
         // to obtain real side/ceiling normals without synthesizing ShapeHits.
         app.world_mut()
@@ -183,39 +166,64 @@ fn wall_and_ceiling_probe_hits_do_not_count_as_ground() {
 }
 
 #[test]
-fn a_sensor_neither_supports_jumping_nor_hides_solid_ground() {
-    let (mut app, player) = game(Vec2::ZERO);
-    move_away_from_level(&mut app, player);
-    let sensor = app
-        .world_mut()
-        .spawn((
+fn non_ground_colliders_neither_support_jumping_nor_hide_ground() {
+    for is_sensor in [false, true] {
+        let (mut app, player) = game(Vec2::ZERO);
+        let player_position = position(&app, player);
+        let mut collider = app.world_mut().spawn((
+            RigidBody::Static,
             Collider::rectangle(100.0, 20.0),
-            Sensor,
-            Transform::from_xyz(1000.0, -36.0, 0.0),
-        ))
-        .id();
-    advance(&mut app, 2);
-    assert!(
-        app.world()
-            .get::<ShapeHits>(player)
-            .unwrap()
-            .iter()
-            .all(|hit| hit.entity != sensor)
-    );
-    KeyCode::Space.press(app.world_mut());
-    app.update();
-    assert_eq!(velocity(&app, player).y, 0.0);
+            CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
+            Transform::from_translation((player_position + Vec2::new(0.0, -36.0)).extend(0.0)),
+        ));
+        if is_sensor {
+            collider.insert(Sensor);
+        }
+        let ignored = collider.id();
+        advance(&mut app, 2);
+        assert!(
+            app.world()
+                .get::<ShapeHits>(player)
+                .unwrap()
+                .iter()
+                .all(|hit| hit.entity != ignored)
+        );
+        KeyCode::Space.press(app.world_mut());
+        app.update();
+        assert_eq!(velocity(&app, player).y, 0.0);
 
-    KeyCode::Space.release(app.world_mut());
-    // This platform is one pixel behind the sensor along the downward cast.
-    app.world_mut().spawn((
-        RigidBody::Static,
-        Collider::rectangle(100.0, 20.0),
-        CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
-        Transform::from_xyz(1000.0, -37.0, 0.0),
-    ));
-    advance(&mut app, 2);
+        KeyCode::Space.release(app.world_mut());
+        // The ground is behind the ignored collider along the downward cast.
+        let platform = ground(
+            &mut app,
+            player_position + Vec2::new(0.0, -37.0),
+            Vec2::new(100.0, 20.0),
+        );
+        advance(&mut app, 2);
+        assert!(
+            app.world()
+                .get::<ShapeHits>(player)
+                .unwrap()
+                .iter()
+                .any(|hit| hit.entity == platform)
+        );
+        KeyCode::Space.press(app.world_mut());
+        app.update();
+        assert!(velocity(&app, player).y > 350.0);
+    }
+}
+
+#[test]
+fn airborne_movement_and_jump_input_preserve_vertical_velocity() {
+    let (mut app, player) = game(Vec2::ZERO);
+    app.world_mut().get_mut::<LinearVelocity>(player).unwrap().y = -70.0;
+
+    KeyCode::KeyD.press(app.world_mut());
     KeyCode::Space.press(app.world_mut());
     app.update();
-    assert!(velocity(&app, player).y > 350.0);
+    assert_eq!(velocity(&app, player), Vec2::new(220.0, -70.0));
+
+    KeyCode::KeyD.release(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player), Vec2::new(0.0, -70.0));
 }
