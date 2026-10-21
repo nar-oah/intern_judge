@@ -29,6 +29,7 @@ pub(super) fn player_scene() -> impl Scene {
         LockedAxes::ROTATION_LOCKED
         Friction::ZERO
         Restitution::ZERO
+        // Keep solid ground hits even when an interaction sensor is closer.
         ShapeCaster::new(
             Collider::rectangle(PLAYER_SIZE.x - 2.0, PLAYER_SIZE.y - 2.0),
             Vec2::ZERO,
