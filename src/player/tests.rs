@@ -157,7 +157,10 @@ fn wall_and_ceiling_probe_hits_do_not_count_as_ground() {
             .id();
         // The body touches the obstacle. Shift its inset probe into the surface
         // to obtain real side/ceiling normals without synthesizing ShapeHits.
-        app.world_mut().get_mut::<ShapeCaster>(player).unwrap().origin = probe_offset * 2.0;
+        app.world_mut()
+            .get_mut::<ShapeCaster>(player)
+            .unwrap()
+            .origin = probe_offset * 2.0;
         advance(&mut app, 2);
         assert!(
             app.world()
