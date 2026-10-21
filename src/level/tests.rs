@@ -313,6 +313,16 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
         );
         assert_eq!(targets.len(), 5);
 
+        // Other tests may register these same log callsites concurrently.
+        // Warm them before rebuilding interest for this scoped subscriber.
+        for (entity, _) in &targets {
+            app.world_mut().trigger(InteractRequested {
+                entity: *entity,
+                player,
+            });
+        }
+        output.0.lock().unwrap().clear();
+        tracing::callsite::rebuild_interest_cache();
         for (entity, _) in &targets {
             app.world_mut().trigger(InteractRequested {
                 entity: *entity,
