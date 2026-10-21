@@ -51,7 +51,7 @@ fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     assert!(entity.contains::<ShapeCaster>());
     assert_eq!(
         entity.get::<ShapeCaster>().unwrap().query_filter.mask,
-        GameLayer::Ground.into()
+        LayerMask::from(GameLayer::Ground)
     );
     assert!(entity.contains::<ShapeHits>());
     assert!(entity.contains::<InputMap<PlayerAction>>());
