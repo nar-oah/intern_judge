@@ -3,7 +3,6 @@ use crate::player::{Player, PlayerPlugin};
 use avian2d::prelude::*;
 use bevy::{
     asset::AssetPlugin,
-    ecs::schedule::SingleThreadedExecutor,
     input::InputPlugin,
     log::{tracing, tracing_subscriber},
     scene::ScenePlugin,
@@ -40,10 +39,7 @@ fn app() -> App {
         |event: On<InteractRequested>, mut requests: ResMut<Requests>| {
             requests.0.push((event.entity, event.player));
         },
-    )
-    .edit_schedule(PostUpdate, |schedule| {
-        schedule.set_executor(SingleThreadedExecutor::new());
-    });
+    );
     app.finish();
     app.cleanup();
     settle(&mut app);
