@@ -6,7 +6,6 @@ use super::{
 use crate::level::RoadId;
 use bevy::prelude::*;
 
-/// Positions are local to this root. Despawning it also removes the whole road.
 pub(in crate::level) fn example_road_scene() -> impl Scene {
     bsn! {
         #ExampleRoad

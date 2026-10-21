@@ -9,15 +9,11 @@ pub(super) fn interact(
     players: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
     targets: Query<(Entity, &CollidingEntities), With<Interactable>>,
 ) {
-    for (player, actions) in &players {
-        if !actions.just_pressed(&PlayerAction::Interact) {
-            continue;
-        }
-
-        for (entity, collisions) in &targets {
-            if collisions.contains(&player) {
-                commands.trigger(InteractRequested { entity, player });
-            }
+    let is_interact =
+        |actions: &&ActionState<PlayerAction>| actions.just_pressed(&PlayerAction::Interact);
+    for (player, _) in players.iter().filter(|(_, actions)| is_interact(actions)) {
+        for (entity, _) in targets.iter().filter(|(_, col)| col.contains(&player)) {
+            commands.trigger(InteractRequested { entity, player });
         }
     }
 }
