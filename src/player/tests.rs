@@ -1,166 +1,229 @@
 use super::*;
-use bevy::{asset::AssetPlugin, input::InputPlugin, scene::ScenePlugin, time::TimeUpdateStrategy};
-use std::time::Duration;
+use crate::physics::GameLayer;
+use crate::test_support::{advance, finish_app, headless_app};
 
-fn headless_app(gravity: Vec2) -> App {
-    let mut app = App::new();
-    app.add_plugins((
-        MinimalPlugins,
-        TransformPlugin,
-        AssetPlugin::default(),
-        ScenePlugin,
-        InputPlugin,
-        PhysicsPlugins::default().with_length_unit(20.0),
-        PlayerPlugin,
-        crate::level::LevelPlugin,
-    ))
-    .insert_resource(Gravity(gravity))
-    // Match Bevy's default fixed timestep with an exact duration so each update
-    // after startup advances precisely one physics step.
-    .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_micros(
-        15_625,
-    )));
-    app.finish();
-    app.cleanup();
-    app.update();
-    app
-}
-
-fn player_entity(app: &mut App) -> Entity {
+fn game(gravity: Vec2) -> (App, Entity) {
+    let mut app = headless_app(gravity);
+    app.add_plugins(PlayerPlugin);
+    finish_app(&mut app);
     let world = app.world_mut();
-    world
+    let player = world
         .query_filtered::<Entity, With<Player>>()
         .single(world)
-        .expect("Startup should spawn exactly one player")
+        .expect("the player scene should spawn exactly one player");
+    (app, player)
+}
+
+fn position(app: &App, player: Entity) -> Vec2 {
+    app.world().get::<Position>(player).unwrap().0
 }
 
 fn velocity(app: &App, player: Entity) -> Vec2 {
     app.world().get::<LinearVelocity>(player).unwrap().0
 }
 
-#[test]
-fn startup_spawns_the_player_scene_with_input_and_physics() {
-    let mut app = headless_app(Vec2::ZERO);
-    let player = player_entity(&mut app);
-    let entity = app.world().entity(player);
+fn ground(app: &mut App, center: Vec2, size: Vec2) -> Entity {
+    app.world_mut()
+        .spawn((
+            RigidBody::Static,
+            Collider::rectangle(size.x, size.y),
+            CollisionLayers::new(GameLayer::Ground, LayerMask::ALL),
+            Transform::from_translation(center.extend(0.0)),
+        ))
+        .id()
+}
 
+#[test]
+fn player_scene_initializes_rendering_physics_and_keyboard_input() {
+    let (mut app, player) = game(Vec2::ZERO);
+    let entity = app.world().entity(player);
+    assert_eq!(position(&app, player), Vec2::new(0.0, -80.0));
+    assert_eq!(velocity(&app, player), Vec2::ZERO);
     assert_eq!(
-        entity.get::<Transform>().unwrap().translation,
-        Vec3::new(0.0, -80.0, 0.0)
-    );
-    assert_eq!(
-        entity.get::<Sprite>().unwrap(),
-        &Sprite::from_color(Color::srgb(0.3, 0.7, 0.9), Vec2::new(30.0, 50.0))
+        entity.get::<Sprite>().unwrap().custom_size,
+        Some(Vec2::new(30.0, 50.0))
     );
     assert_eq!(entity.get::<RigidBody>(), Some(&RigidBody::Dynamic));
     assert!(entity.contains::<Collider>());
     assert!(entity.contains::<LockedAxes>());
     assert!(entity.contains::<Friction>());
     assert!(entity.contains::<Restitution>());
+    assert!(entity.contains::<ShapeCaster>());
+    assert_eq!(
+        entity.get::<ShapeCaster>().unwrap().query_filter.mask,
+        LayerMask::from(GameLayer::Ground)
+    );
     assert!(entity.contains::<ShapeHits>());
     assert!(entity.contains::<InputMap<PlayerAction>>());
-    assert!(entity.contains::<ActionState<PlayerAction>>());
-    assert_eq!(entity.get::<ShapeCaster>().unwrap().max_distance, 6.0);
-    assert_eq!(velocity(&app, player), Vec2::ZERO);
-}
 
-#[test]
-fn keyboard_moves_left_and_right_and_opposite_inputs_cancel() {
-    let mut app = headless_app(Vec2::ZERO);
-    let player = player_entity(&mut app);
-
-    KeyCode::KeyA.press(app.world_mut());
+    KeyCode::KeyE.press(app.world_mut());
     app.update();
-    assert_eq!(velocity(&app, player), Vec2::new(-220.0, 0.0));
-    assert!(app.world().get::<Position>(player).unwrap().0.x < 0.0);
-
-    KeyCode::KeyD.press(app.world_mut());
-    app.update();
-    assert_eq!(velocity(&app, player), Vec2::ZERO);
-
-    KeyCode::KeyA.release(app.world_mut());
-    app.update();
-    assert_eq!(velocity(&app, player), Vec2::new(220.0, 0.0));
-
-    KeyCode::KeyD.release(app.world_mut());
-    app.update();
-    assert_eq!(velocity(&app, player), Vec2::ZERO);
-}
-
-#[test]
-fn player_lands_on_the_level_and_jumps_only_on_a_grounded_press() {
-    let mut app = headless_app(Vec2::NEG_Y * 1000.0);
-    let player = player_entity(&mut app);
-
-    for _ in 0..128 {
-        app.update();
-    }
-
-    // The lower platform's top is -162.5 and the player's half-height is 25.
-    let resting_y = app.world().get::<Position>(player).unwrap().0.y;
-    assert!((resting_y - -137.5).abs() < 2.0);
-    assert!(velocity(&app, player).y.abs() < 1.0);
     assert!(
         app.world()
-            .get::<ShapeHits>(player)
+            .get::<ActionState<PlayerAction>>(player)
             .unwrap()
-            .0
-            .iter()
-            .any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7),
-        "the actual physics ground probe should see the platform"
+            .just_pressed(&PlayerAction::Interact)
     );
+}
+
+#[test]
+fn a_and_d_move_the_player_and_cancel_when_held_together() {
+    let (mut app, player) = game(Vec2::ZERO);
+    for (key, pressed, expected_speed) in [
+        (KeyCode::KeyA, true, -220.0),
+        (KeyCode::KeyD, true, 0.0),
+        (KeyCode::KeyA, false, 220.0),
+        (KeyCode::KeyD, false, 0.0),
+    ] {
+        let previous_x = position(&app, player).x;
+        if pressed {
+            key.press(app.world_mut());
+        } else {
+            key.release(app.world_mut());
+        }
+        app.update();
+        assert_eq!(velocity(&app, player), Vec2::new(expected_speed, 0.0));
+        let displacement = position(&app, player).x - previous_x;
+        if expected_speed == 0.0 {
+            assert_eq!(displacement, 0.0);
+        } else {
+            assert!(displacement * expected_speed > 0.0);
+        }
+    }
+}
+
+#[test]
+fn landing_allows_one_jump_per_grounded_space_press() {
+    let (mut app, player) = game(Vec2::NEG_Y * 1000.0);
+    let floor_size = Vec2::new(400.0, 20.0);
+    let floor_center = position(&app, player) + Vec2::new(0.0, -100.0);
+    let player_height = app
+        .world()
+        .get::<Sprite>(player)
+        .unwrap()
+        .custom_size
+        .unwrap()
+        .y;
+    let expected_ground_y = floor_center.y + (floor_size.y + player_height) / 2.0;
+    ground(&mut app, floor_center, floor_size);
+    advance(&mut app, 128);
+    let ground_y = position(&app, player).y;
+    assert!((ground_y - expected_ground_y).abs() < 2.0);
+    assert!(velocity(&app, player).y.abs() < 1.0);
 
     KeyCode::Space.press(app.world_mut());
     app.update();
     assert!(velocity(&app, player).y > 350.0);
-    assert!(app.world().get::<Position>(player).unwrap().0.y > resting_y);
+    assert!(position(&app, player).y > ground_y);
 
     KeyCode::Space.release(app.world_mut());
-    for _ in 0..8 {
-        app.update();
-    }
-    assert!(app.world().get::<ShapeHits>(player).unwrap().0.is_empty());
-
-    let airborne_velocity = velocity(&app, player).y;
+    advance(&mut app, 8);
+    let ascending_speed = velocity(&app, player).y;
     KeyCode::Space.press(app.world_mut());
     app.update();
-    assert!(
-        velocity(&app, player).y < airborne_velocity,
-        "a new press in the air must not reset the jump velocity"
-    );
+    assert!(velocity(&app, player).y < ascending_speed);
 
-    // Keep Space held through landing: it must not trigger another jump.
-    for _ in 0..128 {
-        app.update();
-    }
-    assert!((app.world().get::<Position>(player).unwrap().0.y - resting_y).abs() < 2.0);
+    // Holding the second press through landing must not start another jump.
+    advance(&mut app, 128);
+    assert!((position(&app, player).y - ground_y).abs() < 2.0);
     assert!(velocity(&app, player).y.abs() < 1.0);
+    KeyCode::Space.release(app.world_mut());
+    app.update();
+    KeyCode::Space.press(app.world_mut());
+    app.update();
+    assert!(velocity(&app, player).y > 350.0);
 }
 
 #[test]
-fn wall_and_ceiling_hits_do_not_allow_jumping() {
-    let mut app = headless_app(Vec2::ZERO);
-    let player = player_entity(&mut app);
-    app.world_mut()
-        .get_mut::<ActionState<PlayerAction>>(player)
-        .unwrap()
-        .press(&PlayerAction::Jump);
-    app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(0.0, -100.0);
+fn wall_and_ceiling_probe_hits_do_not_count_as_ground() {
+    for (obstacle_offset, size, probe_offset) in [
+        (Vec2::new(-20.0, 0.0), Vec2::new(10.0, 200.0), Vec2::NEG_X),
+        (Vec2::new(20.0, 0.0), Vec2::new(10.0, 200.0), Vec2::X),
+        (Vec2::new(0.0, 30.0), Vec2::new(200.0, 10.0), Vec2::Y),
+    ] {
+        let (mut app, player) = game(Vec2::ZERO);
+        let obstacle_center = position(&app, player) + obstacle_offset;
+        let obstacle = ground(&mut app, obstacle_center, size);
+        // The body touches the obstacle. Shift its inset probe into the surface
+        // to obtain real side/ceiling normals without synthesizing ShapeHits.
+        app.world_mut()
+            .get_mut::<ShapeCaster>(player)
+            .unwrap()
+            .origin = probe_offset * 2.0;
+        advance(&mut app, 2);
+        assert!(
+            app.world()
+                .get::<ShapeHits>(player)
+                .unwrap()
+                .iter()
+                .any(|hit| hit.entity == obstacle && hit.normal2.dot(probe_offset) > 0.99)
+        );
 
-    // Isolate the controller's normal filtering from the physics simulation.
-    // These represent both wall directions and a ceiling, never a floor.
-    app.world_mut().get_mut::<ShapeHits>(player).unwrap().0 = [Vec2::X, Vec2::NEG_X, Vec2::Y]
-        .into_iter()
-        .map(|normal2| ShapeHitData {
-            entity: Entity::PLACEHOLDER,
-            distance: 0.0,
-            point1: Vec2::ZERO,
-            point2: Vec2::ZERO,
-            normal1: -normal2,
-            normal2,
-        })
-        .collect();
-    app.world_mut().run_schedule(FixedUpdate);
+        KeyCode::Space.press(app.world_mut());
+        app.update();
+        assert_eq!(velocity(&app, player).y, 0.0);
+    }
+}
 
-    assert_eq!(velocity(&app, player).y, -100.0);
+#[test]
+fn non_ground_colliders_neither_support_jumping_nor_hide_ground() {
+    for is_sensor in [false, true] {
+        let (mut app, player) = game(Vec2::ZERO);
+        let player_position = position(&app, player);
+        let mut collider = app.world_mut().spawn((
+            RigidBody::Static,
+            Collider::rectangle(100.0, 20.0),
+            CollisionLayers::new(GameLayer::Default, LayerMask::ALL),
+            Transform::from_translation((player_position + Vec2::new(0.0, -36.0)).extend(0.0)),
+        ));
+        if is_sensor {
+            collider.insert(Sensor);
+        }
+        let ignored = collider.id();
+        advance(&mut app, 2);
+        assert!(
+            app.world()
+                .get::<ShapeHits>(player)
+                .unwrap()
+                .iter()
+                .all(|hit| hit.entity != ignored)
+        );
+        KeyCode::Space.press(app.world_mut());
+        app.update();
+        assert_eq!(velocity(&app, player).y, 0.0);
+
+        KeyCode::Space.release(app.world_mut());
+        // The ground is behind the ignored collider along the downward cast.
+        let platform = ground(
+            &mut app,
+            player_position + Vec2::new(0.0, -37.0),
+            Vec2::new(100.0, 20.0),
+        );
+        advance(&mut app, 2);
+        assert!(
+            app.world()
+                .get::<ShapeHits>(player)
+                .unwrap()
+                .iter()
+                .any(|hit| hit.entity == platform)
+        );
+        KeyCode::Space.press(app.world_mut());
+        app.update();
+        assert!(velocity(&app, player).y > 350.0);
+    }
+}
+
+#[test]
+fn airborne_movement_and_jump_input_preserve_vertical_velocity() {
+    let (mut app, player) = game(Vec2::ZERO);
+    app.world_mut().get_mut::<LinearVelocity>(player).unwrap().y = -70.0;
+
+    KeyCode::KeyD.press(app.world_mut());
+    KeyCode::Space.press(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player), Vec2::new(220.0, -70.0));
+
+    KeyCode::KeyD.release(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player), Vec2::new(0.0, -70.0));
 }

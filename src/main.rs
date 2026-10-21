@@ -1,5 +1,8 @@
 mod level;
+mod physics;
 mod player;
+#[cfg(test)]
+mod test_support;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use level::LevelPlugin;

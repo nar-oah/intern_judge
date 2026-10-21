@@ -1,4 +1,5 @@
 use super::{Player, PlayerAction};
+use crate::physics::GameLayer;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -10,6 +11,7 @@ pub(super) fn player_scene() -> impl Scene {
         (PlayerAction::Left, KeyCode::KeyA),
         (PlayerAction::Right, KeyCode::KeyD),
         (PlayerAction::Jump, KeyCode::Space),
+        (PlayerAction::Interact, KeyCode::KeyE),
     ]);
 
     bsn! {
@@ -33,7 +35,9 @@ pub(super) fn player_scene() -> impl Scene {
             Vec2::ZERO,
             0.0,
             Dir2::NEG_Y,
-        ).with_max_distance(6.0)
+        )
+        .with_max_distance(6.0)
+        .with_query_filter(SpatialQueryFilter::from_mask(GameLayer::Ground))
         input_map
     }
 }
