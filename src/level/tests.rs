@@ -326,7 +326,7 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
                 line.contains("Building interaction:") || line.contains("Switch point triggered:")
             })
             .collect();
-        assert_eq!(interactions.len(), targets.len());
+        assert_eq!(interactions.len(), targets.len(), "captured logs:\n{logs}");
         for (_, expected) in targets {
             assert_eq!(
                 interactions
