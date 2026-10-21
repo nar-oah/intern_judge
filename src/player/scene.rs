@@ -34,7 +34,7 @@ pub(super) fn player_scene() -> impl Scene {
             Vec2::ZERO,
             0.0,
             Dir2::NEG_Y,
-        ).with_max_distance(6.0)
+        ).with_max_distance(6.0).with_max_hits(u32::MAX)
         input_map
     }
 }

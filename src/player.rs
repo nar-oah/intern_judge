@@ -36,13 +36,16 @@ fn player_movement(
         &ShapeHits,
         &mut LinearVelocity,
     )>,
+    sensors: Query<(), With<Sensor>>,
 ) {
     for (player, actions, hits, mut velocity) in &mut players {
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
         let direction = i8::from(right) - i8::from(left);
         velocity.x = f32::from(direction) * player.move_speed;
-        let grounded = hits.iter().any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7);
+        let grounded = hits
+            .iter()
+            .any(|hit| !sensors.contains(hit.entity) && (-hit.normal2).dot(Vec2::Y) > 0.7);
         if grounded && actions.just_pressed(&PlayerAction::Jump) {
             velocity.y = player.jump_speed;
         }
