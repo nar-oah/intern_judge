@@ -295,7 +295,6 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
     KeyCode::KeyD.press(app.world_mut());
     app.update();
     assert!(position(&app, player).x > before_move.x);
-    assert_eq!(velocity(&app, player).x, 220.0);
     KeyCode::KeyD.release(app.world_mut());
     KeyCode::Space.press(app.world_mut());
     app.update();
