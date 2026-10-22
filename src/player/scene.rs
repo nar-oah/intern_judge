@@ -1,4 +1,5 @@
 use super::{Player, PlayerAction};
+use crate::level::ROAD_SPAWN;
 use crate::physics::GameLayer;
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -23,7 +24,7 @@ pub(super) fn player_scene() -> impl Scene {
             color: Color::srgb(0.3, 0.7, 0.9),
             custom_size: Option::Some(PLAYER_SIZE),
         }
-        Transform::from_xyz(0.0, -80.0, 0.0)
+        Transform::from_translation(ROAD_SPAWN.extend(0.0))
         RigidBody::Dynamic
         Collider::rectangle(PLAYER_SIZE.x, PLAYER_SIZE.y)
         LinearVelocity::ZERO

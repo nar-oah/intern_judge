@@ -1,4 +1,4 @@
-use super::{InteractRequested, Interactable};
+use super::{InteractRequested, Interactable, TravelUi};
 use crate::player::{Player, PlayerAction};
 use avian2d::prelude::CollidingEntities;
 use bevy::prelude::*;
@@ -8,7 +8,11 @@ pub(super) fn interact(
     mut commands: Commands,
     players: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
     targets: Query<(Entity, &CollidingEntities), With<Interactable>>,
+    ui: Res<TravelUi>,
 ) {
+    if ui.is_open() {
+        return;
+    }
     let is_interact =
         |actions: &&ActionState<PlayerAction>| actions.just_pressed(&PlayerAction::Interact);
     for (player, _) in players.iter().filter(|(_, actions)| is_interact(actions)) {
