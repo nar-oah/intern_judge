@@ -58,13 +58,11 @@ pub(super) fn select_destination(world: &mut World, destination: RoadId) {
         .query_filtered::<Entity, With<RoadId>>()
         .iter(world)
         .collect();
-    // Resolve and spawn first: an unknown destination must preserve the current road.
     if scene::spawn_road(world, destination).is_none() {
         warn!(?destination, "Unknown road destination");
         return;
     }
     for road in roads {
-        // Children is a linked relationship: despawning the root removes the entire road.
         world.despawn(road);
     }
     for (mut transform, mut position, mut velocity, mut angular_velocity, mut hits) in world

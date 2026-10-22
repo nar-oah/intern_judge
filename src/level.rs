@@ -21,7 +21,6 @@ pub struct RoadId(pub &'static str);
 const EXAMPLE_ROAD: RoadId = RoadId("example_road");
 const NEXT_ROAD: RoadId = RoadId("market_road");
 const COURT: RoadId = RoadId("court");
-// Roads begin at x = -500; leave room for the player's collider at the left edge.
 pub(crate) const ROAD_SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
 
 #[derive(Component, Clone, Copy, Debug, Default)]
