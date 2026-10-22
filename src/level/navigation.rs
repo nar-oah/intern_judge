@@ -8,7 +8,9 @@ use std::time::Duration;
 pub(crate) enum TravelUi {
     #[default]
     Closed,
-    Choosing { destinations: &'static [RoadId] },
+    Choosing {
+        destinations: &'static [RoadId],
+    },
     Court,
 }
 
@@ -74,10 +76,12 @@ pub(super) fn select_destination(world: &mut World, destination: RoadId) {
     };
 
     for (mut transform, mut position, mut velocity, mut hits) in world
-        .query_filtered::<
-            (&mut Transform, &mut Position, &mut LinearVelocity, &mut ShapeHits),
-            With<Player>,
-        >()
+        .query_filtered::<(
+            &mut Transform,
+            &mut Position,
+            &mut LinearVelocity,
+            &mut ShapeHits,
+        ), With<Player>>()
         .iter_mut(world)
     {
         transform.translation = ROAD_SPAWN.extend(transform.translation.z);

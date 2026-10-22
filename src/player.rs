@@ -1,10 +1,10 @@
 mod scene;
 #[cfg(test)]
 mod tests;
+use crate::level::TravelUi;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
-use crate::level::TravelUi;
 
 #[derive(Component, Clone, Default)]
 pub(crate) struct Player {

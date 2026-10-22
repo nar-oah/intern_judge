@@ -1,11 +1,11 @@
 mod interaction;
 mod navigation;
 mod scene;
-mod ui;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod travel_tests;
+mod ui;
 use bevy::prelude::*;
 
 pub(crate) use navigation::TravelUi;
