@@ -57,6 +57,7 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<GamePhase>()
             .init_resource::<navigation::DestinationChoices>()
+            .add_message::<ui::TravelButtonAction>()
             .add_systems(Startup, |world: &mut World| {
                 scene::spawn_road(world, EXAMPLE_ROAD).unwrap();
             })
@@ -70,7 +71,9 @@ impl Plugin for LevelPlugin {
             )
             .add_systems(
                 Update,
-                ui::close_on_escape.run_if(in_state(GamePhase::ChoosingDestination)),
+                (ui::close_on_escape, ui::handle_buttons)
+                    .chain()
+                    .run_if(in_state(GamePhase::ChoosingDestination)),
             )
             .add_systems(
                 PostUpdate,

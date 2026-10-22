@@ -10,7 +10,7 @@ use bevy::{
 #[derive(Component)]
 pub(super) struct TravelUiRoot;
 
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Component, Message, Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TravelButtonAction {
     Destination(RoadId),
     Close,
@@ -108,9 +108,19 @@ fn spawn_button(parent: &mut ChildSpawnerCommands, label: &str, action: TravelBu
 fn activate_button(
     activate: On<Activate>,
     actions: Query<&TravelButtonAction>,
-    mut commands: Commands,
+    mut requests: MessageWriter<TravelButtonAction>,
 ) {
     if let Ok(&action) = actions.get(activate.entity) {
+        // Process during Update, after StateTransition, so E stays blocked on the closing frame.
+        requests.write(action);
+    }
+}
+
+pub(super) fn handle_buttons(
+    mut actions: MessageReader<TravelButtonAction>,
+    mut commands: Commands,
+) {
+    for &action in actions.read() {
         commands.queue(move |world: &mut World| match action {
             TravelButtonAction::Destination(destination) => {
                 navigation::select_destination(world, destination);
