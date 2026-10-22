@@ -244,6 +244,34 @@ fn interactions_request_all_overlaps_only_on_a_fresh_press() {
 }
 
 #[test]
+fn interactions_run_only_while_exploring() {
+    let mut app = interaction_app();
+    let player = player(&mut app);
+    let target = target(&mut app, &[player]);
+    app.world_mut()
+        .resource_mut::<NextState<GamePhase>>()
+        .set(GamePhase::ChoosingDestination);
+    set_interact(&mut app, player, true);
+    interaction_frame(&mut app);
+    assert_eq!(
+        *app.world().resource::<State<GamePhase>>().get(),
+        GamePhase::ChoosingDestination
+    );
+    assert!(requests(&app).is_empty());
+
+    app.world_mut()
+        .resource_mut::<NextState<GamePhase>>()
+        .set(GamePhase::Exploring);
+    interaction_frame(&mut app);
+    assert!(requests(&app).is_empty(), "a held key does not interact");
+    set_interact(&mut app, player, false);
+    interaction_frame(&mut app);
+    set_interact(&mut app, player, true);
+    interaction_frame(&mut app);
+    assert_eq!(requests(&app), [(target, player)]);
+}
+
+#[test]
 fn interactions_filter_each_players_action_and_ignore_unmarked_targets_and_non_players() {
     let mut app = interaction_app();
     let first = player(&mut app);

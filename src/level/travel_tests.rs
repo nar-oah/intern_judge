@@ -163,6 +163,8 @@ fn activate(app: &mut App, button: Entity) {
     assert!(app.world().get::<Node>(button).is_some());
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().flush();
+    // Native button events are handled during Update before the next state transition.
+    app.update();
 }
 
 fn assert_closed(app: &mut App) {
@@ -351,33 +353,25 @@ fn an_open_menu_stops_horizontal_motion_but_keeps_gravity_and_blocks_input() {
 }
 
 #[test]
-fn cancelling_either_menu_preserves_the_current_road() {
-    let (mut app, player, _) = game(Vec2::ZERO);
-    let road = single::<RoadId>(&mut app);
-    let children = descendants(app.world(), road);
-    open_exit(&mut app, player);
-    let before_cancel = position(&app, player);
-    let close = close_button(&mut app);
-    activate(&mut app, close);
-    app.update();
-    assert_closed(&mut app);
-    assert_eq!(single::<RoadId>(&mut app), road);
-    assert_eq!(descendants(app.world(), road), children);
-    assert_eq!(position(&app, player), before_cancel);
-
-    open_exit(&mut app, player);
-    let court = destination_button(&mut app, COURT);
-    activate(&mut app, court);
-    app.update();
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Court
-    ));
-    KeyCode::Escape.press(app.world_mut());
-    advance(&mut app, 2);
-    assert_closed(&mut app);
-    assert_eq!(single::<RoadId>(&mut app), road);
-    assert_eq!(descendants(app.world(), road), children);
+fn cancelling_with_a_button_or_escape_preserves_the_current_road() {
+    for escape in [true, false] {
+        let (mut app, player, _) = game(Vec2::ZERO);
+        let road = single::<RoadId>(&mut app);
+        let children = descendants(app.world(), road);
+        open_exit(&mut app, player);
+        let before_cancel = position(&app, player);
+        if escape {
+            KeyCode::Escape.press(app.world_mut());
+        } else {
+            let close = close_button(&mut app);
+            activate(&mut app, close);
+        }
+        advance(&mut app, 2);
+        assert_closed(&mut app);
+        assert_eq!(single::<RoadId>(&mut app), road);
+        assert_eq!(descendants(app.world(), road), children);
+        assert_eq!(position(&app, player), before_cancel);
+    }
 }
 
 #[test]
@@ -395,7 +389,7 @@ fn closing_a_menu_with_a_fresh_e_press_requires_another_press_to_reopen() {
         } else {
             let close = close_button(&mut app);
             app.add_systems(
-                Update,
+                PreUpdate,
                 (move |mut commands: Commands| {
                     commands.trigger(Activate { entity: close });
                 })
@@ -408,7 +402,7 @@ fn closing_a_menu_with_a_fresh_e_press_requires_another_press_to_reopen() {
 
         KeyCode::Escape.release(app.world_mut());
         press_e(&mut app);
-        assert!(app.world().resource::<TravelUi>().is_open());
+        assert_eq!(phase(&app), GamePhase::ChoosingDestination);
         assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 2);
     }
 }
@@ -419,21 +413,16 @@ fn unavailable_or_unknown_destinations_never_unload_the_current_road() {
     const UNKNOWN_DESTINATIONS: &[RoadId] = &[UNKNOWN];
     let (mut app, player, _) = game(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
+    let children = descendants(app.world(), road);
     select_destination(app.world_mut(), NEXT_ROAD);
     select_destination(app.world_mut(), COURT);
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Closed
-    ));
+    assert_eq!(phase(&app), GamePhase::Exploring);
     assert_eq!(single::<RoadId>(&mut app), road);
 
     let point = open_exit(&mut app, player);
     for destination in [EXAMPLE_ROAD, UNKNOWN] {
         select_destination(app.world_mut(), destination);
-        assert!(matches!(
-            app.world().resource::<TravelUi>(),
-            TravelUi::Choosing { .. }
-        ));
+        assert_eq!(phase(&app), GamePhase::ChoosingDestination);
         assert_eq!(single::<RoadId>(&mut app), road);
     }
     let close = close_button(&mut app);
@@ -452,10 +441,23 @@ fn unavailable_or_unknown_destinations_never_unload_the_current_road() {
     let unknown = destination_button(&mut app, UNKNOWN);
     activate(&mut app, unknown);
     app.update();
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Choosing { .. }
-    ));
+    assert_eq!(phase(&app), GamePhase::ChoosingDestination);
     assert_eq!(single::<RoadId>(&mut app), road);
+    assert_eq!(descendants(app.world(), road), children);
     assert_eq!(count::<RoadId>(&mut app), 1);
+}
+
+#[test]
+fn an_empty_destination_list_leaves_exploration_running() {
+    let (mut app, player, _) = game(Vec2::ZERO);
+    let road = single::<RoadId>(&mut app);
+    let point = overlap_exit(&mut app, player, Vec2::ZERO);
+    app.world_mut()
+        .get_mut::<SwitchPoint>(point)
+        .unwrap()
+        .destinations = &[];
+    press_e(&mut app);
+    assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 1);
+    assert_closed(&mut app);
+    assert_eq!(single::<RoadId>(&mut app), road);
 }
