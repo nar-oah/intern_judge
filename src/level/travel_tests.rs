@@ -337,6 +337,39 @@ fn cancelling_either_menu_preserves_the_current_road() {
 }
 
 #[test]
+fn closing_a_menu_with_a_fresh_e_press_requires_another_press_to_reopen() {
+    use bevy::ecs::schedule::common_conditions::run_once;
+
+    for escape in [true, false] {
+        let (mut app, player, _) = game(Vec2::ZERO);
+        open_exit(&mut app, player);
+        KeyCode::KeyE.release(app.world_mut());
+        app.update();
+        KeyCode::KeyE.press(app.world_mut());
+        if escape {
+            KeyCode::Escape.press(app.world_mut());
+        } else {
+            let close = close_button(&mut app);
+            app.add_systems(
+                Update,
+                (move |mut commands: Commands| {
+                    commands.trigger(Activate { entity: close });
+                })
+                .run_if(run_once),
+            );
+        }
+        advance(&mut app, 3);
+        assert_closed(&mut app);
+        assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 1);
+
+        KeyCode::Escape.release(app.world_mut());
+        press_e(&mut app);
+        assert!(app.world().resource::<TravelUi>().is_open());
+        assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 2);
+    }
+}
+
+#[test]
 fn unavailable_or_unknown_destinations_never_unload_the_current_road() {
     const UNKNOWN: RoadId = RoadId("unknown_road");
     const UNKNOWN_DESTINATIONS: &[RoadId] = &[UNKNOWN];

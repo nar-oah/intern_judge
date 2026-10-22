@@ -1,7 +1,8 @@
 use super::{COURT, EXAMPLE_ROAD, NEXT_ROAD, ROAD_SPAWN, RoadId, scene};
-use crate::player::Player;
+use crate::player::{Player, PlayerAction};
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use leafwing_input_manager::prelude::*;
 use std::time::Duration;
 
 #[derive(Resource, Default)]
@@ -39,6 +40,18 @@ pub(super) fn open_destinations(world: &mut World, destinations: &'static [RoadI
 
 pub(super) fn close_ui(world: &mut World) {
     if world.resource::<TravelUi>().is_open() {
+        // Consume E pressed during the modal, including the frame that closes it.
+        // Keep its held state so reopening still requires releasing and pressing E.
+        for mut actions in world
+            .query_filtered::<&mut ActionState<PlayerAction>, With<Player>>()
+            .iter_mut(world)
+        {
+            if let Some(button) = actions.button_data_mut(&PlayerAction::Interact) {
+                button.state.tick();
+                button.update_state.tick();
+                button.fixed_update_state.tick();
+            }
+        }
         *world.resource_mut::<TravelUi>() = TravelUi::Closed;
         world.resource_mut::<Time<Physics>>().unpause();
     }
