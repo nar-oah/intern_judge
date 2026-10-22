@@ -182,7 +182,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     ] {
         assert!(buildings.contains(&kind));
     }
-    assert_eq!(switches, [&[NEXT_ROAD, COURT][..]]);
+    assert_eq!(switches, [&[scene::MARKET_ROAD, scene::COURT][..]]);
 
     let world = app.world_mut();
     assert!(world.despawn(road));

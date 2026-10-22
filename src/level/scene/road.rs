@@ -3,8 +3,12 @@ use super::{
     platform::platform_scene,
     switch_point::switch_point_scene,
 };
-use crate::level::{COURT, EXAMPLE_ROAD, NEXT_ROAD};
+use crate::level::RoadId;
 use bevy::prelude::*;
+
+pub(in crate::level) const EXAMPLE_ROAD: RoadId = RoadId("example_road");
+pub(in crate::level) const MARKET_ROAD: RoadId = RoadId("market_road");
+pub(in crate::level) const COURT: RoadId = RoadId("court");
 
 pub(super) fn example_road_scene() -> impl Scene {
     bsn! {
@@ -29,7 +33,7 @@ pub(super) fn example_road_scene() -> impl Scene {
             --
             @factory_scene(Vec2::new(310.0, -117.5), Vec2::new(90.0, 90.0))
             --
-            @switch_point_scene(&[NEXT_ROAD, COURT], Vec2::new(460.0, -137.5))
+            @switch_point_scene(&[MARKET_ROAD, COURT], Vec2::new(460.0, -137.5))
         ]
     }
 }
@@ -37,7 +41,7 @@ pub(super) fn example_road_scene() -> impl Scene {
 pub(super) fn market_road_scene() -> impl Scene {
     bsn! {
         #MarketRoad
-        NEXT_ROAD
+        MARKET_ROAD
         Transform::default()
         Visibility::default()
         Children [

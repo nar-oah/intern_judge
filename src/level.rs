@@ -7,6 +7,7 @@ mod tests;
 mod travel_tests;
 mod ui;
 use bevy::prelude::*;
+use scene::EXAMPLE_ROAD;
 
 #[derive(States, Default, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum GamePhase {
@@ -18,9 +19,6 @@ pub(crate) enum GamePhase {
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoadId(pub &'static str);
 
-const EXAMPLE_ROAD: RoadId = RoadId("example_road");
-const NEXT_ROAD: RoadId = RoadId("market_road");
-const COURT: RoadId = RoadId("court");
 pub(crate) const ROAD_SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
 
 #[derive(Component, Clone, Copy, Debug, Default)]

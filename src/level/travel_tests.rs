@@ -1,7 +1,7 @@
 use super::{
-    COURT, EXAMPLE_ROAD, GamePhase, InteractRequested, LevelPlugin, NEXT_ROAD, ROAD_SPAWN, RoadId,
-    SwitchPoint,
+    GamePhase, InteractRequested, LevelPlugin, ROAD_SPAWN, RoadId, SwitchPoint,
     navigation::{DestinationChoices, select_destination},
+    scene::{COURT, EXAMPLE_ROAD, MARKET_ROAD},
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
@@ -191,15 +191,15 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
             .get::<SwitchPoint>(first_exit)
             .unwrap()
             .destinations,
-        &[NEXT_ROAD, COURT]
+        &[MARKET_ROAD, COURT]
     );
     assert_eq!(
         app.world().resource::<DestinationChoices>().0,
-        &[NEXT_ROAD, COURT]
+        &[MARKET_ROAD, COURT]
     );
-    assert_eq!(destinations(&mut app), [COURT, NEXT_ROAD]);
+    assert_eq!(destinations(&mut app), [COURT, MARKET_ROAD]);
     let menu = single::<TravelUiRoot>(&mut app);
-    let button = destination_button(&mut app, NEXT_ROAD);
+    let button = destination_button(&mut app, MARKET_ROAD);
     assert!(descendants(app.world(), menu).contains(&button));
     assert!(!app.world().resource::<Time<Physics>>().is_paused());
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
@@ -211,7 +211,7 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
 
     let next_road = single::<RoadId>(&mut app);
     assert_ne!(next_road, first_road);
-    assert_eq!(app.world().get::<RoadId>(next_road), Some(&NEXT_ROAD));
+    assert_eq!(app.world().get::<RoadId>(next_road), Some(&MARKET_ROAD));
     assert!(app.world().get_entity(first_road).is_err());
     assert!(
         old_children
@@ -419,7 +419,7 @@ fn unavailable_or_unknown_destinations_never_unload_the_current_road() {
     let (mut app, player, _) = game(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
     let children = descendants(app.world(), road);
-    select_destination(app.world_mut(), NEXT_ROAD);
+    select_destination(app.world_mut(), MARKET_ROAD);
     select_destination(app.world_mut(), COURT);
     assert_eq!(phase(&app), GamePhase::Exploring);
     assert_eq!(single::<RoadId>(&mut app), road);
