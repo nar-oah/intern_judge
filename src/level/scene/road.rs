@@ -6,7 +6,7 @@ use super::{
 use crate::level::{COURT, EXAMPLE_ROAD, NEXT_ROAD};
 use bevy::prelude::*;
 
-pub(in crate::level) fn example_road_scene() -> impl Scene {
+pub(super) fn example_road_scene() -> impl Scene {
     bsn! {
         #ExampleRoad
         EXAMPLE_ROAD
@@ -34,7 +34,7 @@ pub(in crate::level) fn example_road_scene() -> impl Scene {
     }
 }
 
-pub(in crate::level) fn market_road_scene() -> impl Scene {
+pub(super) fn market_road_scene() -> impl Scene {
     bsn! {
         #MarketRoad
         NEXT_ROAD
@@ -48,6 +48,18 @@ pub(in crate::level) fn market_road_scene() -> impl Scene {
             @residential_scene(Vec2::new(170.0, -112.5), Vec2::new(80.0, 100.0))
             --
             @switch_point_scene(&[COURT], Vec2::new(460.0, -137.5))
+        ]
+    }
+}
+
+pub(super) fn court_scene() -> impl Scene {
+    bsn! {
+        #Court
+        COURT
+        Transform::default()
+        Visibility::default()
+        Children [
+            @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
         ]
     }
 }
