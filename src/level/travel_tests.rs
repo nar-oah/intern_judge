@@ -1,7 +1,7 @@
 use super::{
-    COURT, EXAMPLE_ROAD, InteractRequested, LevelPlugin, NEXT_ROAD, ROAD_SPAWN, RoadId,
+    COURT, EXAMPLE_ROAD, GamePhase, InteractRequested, LevelPlugin, NEXT_ROAD, ROAD_SPAWN, RoadId,
     SwitchPoint,
-    navigation::{TravelUi, select_destination},
+    navigation::{DestinationChoices, select_destination},
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
@@ -67,6 +67,10 @@ fn descendants(world: &World, root: Entity) -> Vec<Entity> {
     result
 }
 
+fn phase(app: &App) -> GamePhase {
+    *app.world().resource::<State<GamePhase>>().get()
+}
+
 fn position(app: &App, player: Entity) -> Vec2 {
     app.world().get::<Position>(player).unwrap().0
 }
@@ -108,17 +112,14 @@ fn press_e(app: &mut App) {
     app.update();
     KeyCode::KeyE.press(app.world_mut());
     app.update();
-    // The menu is rebuilt from the state changed by the BSN observer.
+    // Bevy applies the observer's NextState and runs OnEnter on the next frame.
     app.update();
 }
 
 fn open_exit(app: &mut App, player: Entity) -> Entity {
     let point = overlap_exit(app, player, Vec2::ZERO);
     press_e(app);
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Choosing { .. }
-    ));
+    assert_eq!(phase(app), GamePhase::ChoosingDestination);
     point
 }
 
@@ -165,10 +166,7 @@ fn activate(app: &mut App, button: Entity) {
 }
 
 fn assert_closed(app: &mut App) {
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Closed
-    ));
+    assert_eq!(phase(app), GamePhase::Exploring);
     assert!(!app.world().resource::<Time<Physics>>().is_paused());
     assert_eq!(count::<TravelUiRoot>(app), 0);
     assert_eq!(count::<TravelButtonAction>(app), 0);
@@ -179,6 +177,7 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
     let (mut app, player, camera) = game(Vec2::ZERO);
     let unrelated = app.world_mut().spawn_empty().id();
     let first_road = single::<RoadId>(&mut app);
+    assert_eq!(phase(&app), GamePhase::Exploring);
     assert_eq!(app.world().get::<RoadId>(first_road), Some(&EXAMPLE_ROAD));
     let old_children = descendants(app.world(), first_road);
     assert!(!old_children.is_empty());
@@ -192,13 +191,17 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
             .destinations,
         &[NEXT_ROAD, COURT]
     );
+    assert_eq!(
+        app.world().resource::<DestinationChoices>().0,
+        &[NEXT_ROAD, COURT]
+    );
     assert_eq!(destinations(&mut app), [COURT, NEXT_ROAD]);
     let menu = single::<TravelUiRoot>(&mut app);
     let button = destination_button(&mut app, NEXT_ROAD);
     assert!(descendants(app.world(), menu).contains(&button));
-    assert!(app.world().resource::<Time<Physics>>().is_paused());
-    // A transition must discard momentum even if another system wrote it while paused.
+    assert!(!app.world().resource::<Time<Physics>>().is_paused());
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
+    app.world_mut().get_mut::<AngularVelocity>(player).unwrap().0 = 3.0;
     activate(&mut app, button);
 
     let next_road = single::<RoadId>(&mut app);
@@ -224,6 +227,7 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
         ROAD_SPAWN
     );
     assert_eq!(velocity(&app, player), Vec2::ZERO);
+    assert_eq!(app.world().get::<AngularVelocity>(player).unwrap().0, 0.0);
     assert!(app.world().get::<ShapeHits>(player).unwrap().is_empty());
     app.update();
     assert_closed(&mut app);
@@ -238,50 +242,90 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
     );
     assert_eq!(destinations(&mut app), [COURT]);
     let next_children = descendants(app.world(), next_road);
-    let court_position = position(&app, player);
+    app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(-220.0, 90.0);
+    app.world_mut().get_mut::<AngularVelocity>(player).unwrap().0 = -3.0;
     let button = destination_button(&mut app, COURT);
     activate(&mut app, button);
-    app.update();
 
-    assert!(matches!(
-        app.world().resource::<TravelUi>(),
-        TravelUi::Court
-    ));
-    assert!(app.world().resource::<Time<Physics>>().is_paused());
-    assert_eq!(single::<RoadId>(&mut app), next_road);
-    assert_eq!(descendants(app.world(), next_road), next_children);
+    let court = single::<RoadId>(&mut app);
+    assert_ne!(court, next_road);
+    assert_eq!(app.world().get::<RoadId>(court), Some(&COURT));
+    assert!(app.world().get_entity(next_road).is_err());
+    assert!(
+        next_children
+            .iter()
+            .all(|entity| app.world().get_entity(*entity).is_err())
+    );
+    assert_eq!(count::<RoadId>(&mut app), 1);
     assert_eq!(single::<Player>(&mut app), player);
     assert_eq!(single::<Camera2d>(&mut app), camera);
-    assert_eq!(position(&app, player), court_position);
-    assert!(destinations(&mut app).is_empty());
-    assert_eq!(count::<TravelUiRoot>(&mut app), 1);
-    let close = close_button(&mut app);
-    activate(&mut app, close);
+    assert!(app.world().get_entity(unrelated).is_ok());
+    assert_eq!(position(&app, player), ROAD_SPAWN);
+    assert_eq!(
+        app.world()
+            .get::<Transform>(player)
+            .unwrap()
+            .translation
+            .truncate(),
+        ROAD_SPAWN
+    );
+    assert_eq!(velocity(&app, player), Vec2::ZERO);
+    assert_eq!(app.world().get::<AngularVelocity>(player).unwrap().0, 0.0);
+    assert!(app.world().get::<ShapeHits>(player).unwrap().is_empty());
     app.update();
     assert_closed(&mut app);
+    assert_eq!(count::<super::Platform>(&mut app), 1);
+    assert_eq!(count::<super::BuildingType>(&mut app), 0);
+    assert_eq!(count::<SwitchPoint>(&mut app), 0);
+    assert_eq!(descendants(app.world(), court).len(), 1);
+
+    // The court uses the normal player and physics systems after arrival.
+    app.world_mut().resource_mut::<Gravity>().0 = Vec2::NEG_Y * 1000.0;
+    advance(&mut app, 32);
+    assert!(!app.world().get::<ShapeHits>(player).unwrap().is_empty());
+    let before_move = position(&app, player);
+    KeyCode::KeyD.press(app.world_mut());
+    app.update();
+    assert!(position(&app, player).x > before_move.x);
+    assert_eq!(velocity(&app, player).x, 220.0);
+    KeyCode::KeyD.release(app.world_mut());
+    KeyCode::Space.press(app.world_mut());
+    app.update();
+    assert!(velocity(&app, player).y > 350.0);
+    assert!(position(&app, player).y > before_move.y);
 }
 
 #[test]
-fn an_open_menu_freezes_motion_gravity_and_repeated_e_until_escape() {
-    let (mut app, player, _) = game(Vec2::NEG_Y * 1000.0);
+fn an_open_menu_stops_horizontal_motion_but_keeps_gravity_and_blocks_input() {
+    let (mut app, player, _) = game(Vec2::NEG_Y * 100.0);
     let road = single::<RoadId>(&mut app);
     overlap_exit(&mut app, player, Vec2::Y * 25.0);
     assert!(
         velocity(&app, player).y < 0.0,
         "the player is falling before opening"
     );
+    KeyCode::KeyD.press(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player).x, 220.0);
+    let falling_speed = velocity(&app, player).y;
     press_e(&mut app);
+    assert_eq!(phase(&app), GamePhase::ChoosingDestination);
+    assert!(!app.world().resource::<Time<Physics>>().is_paused());
     let menu = single::<TravelUiRoot>(&mut app);
-    let frozen_position = position(&app, player);
-    assert_eq!(velocity(&app, player), Vec2::ZERO);
+    let menu_position = position(&app, player);
+    let menu_falling_speed = velocity(&app, player).y;
+    assert_eq!(velocity(&app, player).x, 0.0);
+    assert!(menu_falling_speed < falling_speed);
     assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 1);
 
-    KeyCode::KeyD.press(app.world_mut());
     KeyCode::Space.press(app.world_mut());
     advance(&mut app, 12);
     press_e(&mut app);
-    assert_eq!(position(&app, player), frozen_position);
-    assert_eq!(velocity(&app, player), Vec2::ZERO);
+    assert_eq!(phase(&app), GamePhase::ChoosingDestination);
+    assert_eq!(position(&app, player).x, menu_position.x);
+    assert!(position(&app, player).y < menu_position.y);
+    assert_eq!(velocity(&app, player).x, 0.0);
+    assert!(velocity(&app, player).y < menu_falling_speed);
     assert_eq!(app.world().resource::<SwitchRequests>().0.len(), 1);
     assert_eq!(single::<TravelUiRoot>(&mut app), menu);
     assert_eq!(single::<RoadId>(&mut app), road);
@@ -302,7 +346,7 @@ fn an_open_menu_freezes_motion_gravity_and_repeated_e_until_escape() {
     );
     assert!(
         velocity(&app, player).y < 0.0,
-        "cancellation restores gravity"
+        "gravity still runs after cancellation"
     );
 }
 
