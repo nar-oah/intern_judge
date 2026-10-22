@@ -37,7 +37,7 @@ fn ground(app: &mut App, center: Vec2, size: Vec2) -> Entity {
 fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     let (mut app, player) = game(Vec2::ZERO);
     let entity = app.world().entity(player);
-    assert_eq!(position(&app, player), Vec2::new(0.0, -80.0));
+    assert_eq!(position(&app, player), crate::level::ROAD_SPAWN);
     assert_eq!(velocity(&app, player), Vec2::ZERO);
     assert_eq!(
         entity.get::<Sprite>().unwrap().custom_size,

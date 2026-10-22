@@ -35,7 +35,8 @@ fn scene_app() -> App {
 
 fn interaction_app() -> App {
     let mut app = App::new();
-    app.add_systems(PostUpdate, interaction::interact);
+    app.init_resource::<TravelUi>()
+        .add_systems(PostUpdate, interaction::interact);
     record_requests(&mut app);
     app
 }
@@ -164,7 +165,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
                 buildings.push(*kind);
             }
             if let Some(point) = world.get::<SwitchPoint>(child) {
-                switches.push(point.id);
+                switches.push(point.destinations);
             }
         }
     }
@@ -176,8 +177,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     ] {
         assert!(buildings.contains(&kind));
     }
-    switches.sort_unstable();
-    assert_eq!(switches, ["east_exit", "west_exit"]);
+    assert_eq!(switches, [&[NEXT_ROAD, COURT][..]]);
 
     let world = app.world_mut();
     assert!(world.despawn(road));
@@ -344,7 +344,7 @@ impl Write for LogOutput {
 }
 
 #[test]
-fn building_and_switch_scenes_bind_their_own_interaction_observers() {
+fn building_scenes_bind_their_own_interaction_observers() {
     // Keep scoped logging interest visible when other test threads register callsites.
     let _other_dispatch = tracing::Dispatch::new(tracing_subscriber::registry());
     let output = LogOutput::default();
@@ -360,17 +360,11 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
         let mut app = scene_app();
         let player = player(&mut app);
         let world = app.world_mut();
-        let mut targets: Vec<_> = world
+        let targets: Vec<_> = world
             .query::<(Entity, &BuildingType)>()
             .iter(world)
             .map(|(entity, kind)| (entity, format!("Building interaction: {kind:?}")))
             .collect();
-        targets.extend(
-            world
-                .query::<(Entity, &SwitchPoint)>()
-                .iter(world)
-                .map(|(entity, point)| (entity, format!("Switch point triggered: {}", point.id))),
-        );
         assert!(!targets.is_empty());
 
         for (entity, expected) in targets {
@@ -380,10 +374,7 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
             let logs = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
             let interactions: Vec<_> = logs
                 .lines()
-                .filter(|line| {
-                    line.contains("Building interaction:")
-                        || line.contains("Switch point triggered:")
-                })
+                .filter(|line| line.contains("Building interaction:"))
                 .collect();
             assert_eq!(interactions.len(), 1, "captured logs:\n{logs}");
             assert!(
