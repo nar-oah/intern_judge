@@ -1,10 +1,11 @@
 use super::*;
+use crate::level::GamePhase;
 use crate::physics::GameLayer;
 use crate::test_support::{advance, finish_app, headless_app};
 
 fn game(gravity: Vec2) -> (App, Entity) {
     let mut app = headless_app(gravity);
-    app.add_plugins(PlayerPlugin);
+    app.init_state::<GamePhase>().add_plugins(PlayerPlugin);
     finish_app(&mut app);
     let world = app.world_mut();
     let player = world

@@ -6,6 +6,7 @@ use avian2d::prelude::*;
 use bevy::{
     log::{tracing, tracing_subscriber},
     platform::time::Instant,
+    state::app::StatesPlugin,
 };
 use leafwing_input_manager::prelude::*;
 use std::{
@@ -35,8 +36,12 @@ fn scene_app() -> App {
 
 fn interaction_app() -> App {
     let mut app = App::new();
-    app.init_resource::<TravelUi>()
-        .add_systems(PostUpdate, interaction::interact);
+    app.add_plugins(StatesPlugin)
+        .init_state::<GamePhase>()
+        .add_systems(
+            PostUpdate,
+            interaction::interact.run_if(in_state(GamePhase::Exploring)),
+        );
     record_requests(&mut app);
     app
 }
