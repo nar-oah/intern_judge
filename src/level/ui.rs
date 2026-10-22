@@ -1,6 +1,6 @@
 use super::{
-    RoadId,
-    navigation::{self, TravelUi},
+    GamePhase, RoadId,
+    navigation::{self, DestinationChoices},
 };
 use bevy::{
     prelude::*,
@@ -16,25 +16,14 @@ pub(super) enum TravelButtonAction {
     Close,
 }
 
-pub(super) fn sync_ui(
+pub(super) fn spawn_ui(
     mut commands: Commands,
-    state: Res<TravelUi>,
-    roots: Query<Entity, With<TravelUiRoot>>,
+    choices: Res<DestinationChoices>,
 ) {
-    if !state.is_changed() {
-        return;
-    }
-
-    for root in &roots {
-        commands.entity(root).despawn();
-    }
-    if !state.is_open() {
-        return;
-    }
-
     commands
         .spawn((
             TravelUiRoot,
+            DespawnOnExit(GamePhase::ChoosingDestination),
             Name::new("Travel UI"),
             Node {
                 position_type: PositionType::Absolute,
@@ -62,40 +51,25 @@ pub(super) fn sync_ui(
                     },
                     BackgroundColor(Color::srgb(0.12, 0.14, 0.2)),
                 ))
-                .with_children(|panel| match &*state {
-                    TravelUi::Choosing { destinations } => {
-                        panel.spawn(text("Choose a destination", 28.0));
-                        for &destination in *destinations {
-                            let label = if destination == RoadId("court") {
-                                "Court"
-                            } else {
-                                destination.0
-                            };
-                            spawn_button(
-                                panel,
-                                label,
-                                TravelButtonAction::Destination(destination),
-                            );
-                        }
-                        spawn_button(panel, "Cancel (Esc)", TravelButtonAction::Close);
+                .with_children(|panel| {
+                    panel.spawn(text("Choose a destination", 28.0));
+                    for &destination in choices.0 {
+                        spawn_button(
+                            panel,
+                            destination.0,
+                            TravelButtonAction::Destination(destination),
+                        );
                     }
-                    TravelUi::Court => {
-                        panel.spawn(text("Court", 28.0));
-                        panel.spawn(text("Case review will be available here.", 18.0));
-                        panel.spawn(text("You have reached the court.", 18.0));
-                        spawn_button(panel, "Close (Esc)", TravelButtonAction::Close);
-                    }
-                    TravelUi::Closed => {}
+                    spawn_button(panel, "Cancel (Esc)", TravelButtonAction::Close);
                 });
         });
 }
 
 pub(super) fn close_on_escape(
     keys: Res<ButtonInput<KeyCode>>,
-    state: Res<TravelUi>,
     mut commands: Commands,
 ) {
-    if state.is_open() && keys.just_pressed(KeyCode::Escape) {
+    if keys.just_pressed(KeyCode::Escape) {
         commands.queue(navigation::close_ui);
     }
 }
