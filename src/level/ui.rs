@@ -16,10 +16,7 @@ pub(super) enum TravelButtonAction {
     Close,
 }
 
-pub(super) fn spawn_ui(
-    mut commands: Commands,
-    choices: Res<DestinationChoices>,
-) {
+pub(super) fn spawn_ui(mut commands: Commands, choices: Res<DestinationChoices>) {
     commands
         .spawn((
             TravelUiRoot,
@@ -65,10 +62,7 @@ pub(super) fn spawn_ui(
         });
 }
 
-pub(super) fn close_on_escape(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut commands: Commands,
-) {
+pub(super) fn close_on_escape(keys: Res<ButtonInput<KeyCode>>, mut commands: Commands) {
     if keys.just_pressed(KeyCode::Escape) {
         commands.queue(navigation::close_ui);
     }

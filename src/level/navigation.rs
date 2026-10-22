@@ -8,7 +8,10 @@ pub(super) struct DestinationChoices(pub(super) &'static [RoadId]);
 
 pub(super) fn open_destinations(world: &mut World, destinations: &'static [RoadId]) {
     if *world.resource::<State<GamePhase>>().get() != GamePhase::Exploring
-        || !matches!(world.resource::<NextState<GamePhase>>(), NextState::Unchanged)
+        || !matches!(
+            world.resource::<NextState<GamePhase>>(),
+            NextState::Unchanged
+        )
         || destinations.is_empty()
     {
         return;
@@ -39,8 +42,14 @@ pub(super) fn close_ui(world: &mut World) {
 
 pub(super) fn select_destination(world: &mut World, destination: RoadId) {
     if *world.resource::<State<GamePhase>>().get() != GamePhase::ChoosingDestination
-        || !matches!(world.resource::<NextState<GamePhase>>(), NextState::Unchanged)
-        || !world.resource::<DestinationChoices>().0.contains(&destination)
+        || !matches!(
+            world.resource::<NextState<GamePhase>>(),
+            NextState::Unchanged
+        )
+        || !world
+            .resource::<DestinationChoices>()
+            .0
+            .contains(&destination)
     {
         return;
     }

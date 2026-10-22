@@ -203,7 +203,10 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
     assert!(descendants(app.world(), menu).contains(&button));
     assert!(!app.world().resource::<Time<Physics>>().is_paused());
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
-    app.world_mut().get_mut::<AngularVelocity>(player).unwrap().0 = 3.0;
+    app.world_mut()
+        .get_mut::<AngularVelocity>(player)
+        .unwrap()
+        .0 = 3.0;
     activate(&mut app, button);
 
     let next_road = single::<RoadId>(&mut app);
@@ -245,7 +248,10 @@ fn e_and_native_buttons_complete_the_forward_road_and_court_flow() {
     assert_eq!(destinations(&mut app), [COURT]);
     let next_children = descendants(app.world(), next_road);
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(-220.0, 90.0);
-    app.world_mut().get_mut::<AngularVelocity>(player).unwrap().0 = -3.0;
+    app.world_mut()
+        .get_mut::<AngularVelocity>(player)
+        .unwrap()
+        .0 = -3.0;
     let button = destination_button(&mut app, COURT);
     activate(&mut app, button);
 
