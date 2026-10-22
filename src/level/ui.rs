@@ -1,5 +1,11 @@
-use super::{RoadId, navigation::{self, TravelUi}};
-use bevy::{prelude::*, ui_widgets::{Activate, Button}};
+use super::{
+    RoadId,
+    navigation::{self, TravelUi},
+};
+use bevy::{
+    prelude::*,
+    ui_widgets::{Activate, Button},
+};
 
 #[derive(Component)]
 pub(super) struct TravelUiRoot;
@@ -106,11 +112,7 @@ fn text(label: &str, font_size: f32) -> impl Bundle {
     )
 }
 
-fn spawn_button(
-    parent: &mut ChildSpawnerCommands,
-    label: &str,
-    action: TravelButtonAction,
-) {
+fn spawn_button(parent: &mut ChildSpawnerCommands, label: &str, action: TravelButtonAction) {
     parent
         .spawn((
             Button,
