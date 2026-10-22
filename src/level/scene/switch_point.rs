@@ -1,11 +1,12 @@
-use crate::level::{InteractRequested, Interactable, SwitchPoint};
+use crate::level::{InteractRequested, Interactable, RoadId, SwitchPoint, navigation};
+use crate::player::Player;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-pub(super) fn switch_point_scene(id: &'static str, position: Vec2) -> impl Scene {
+pub(super) fn switch_point_scene(destinations: &'static [RoadId], position: Vec2) -> impl Scene {
     let size = Vec2::new(24.0, 50.0);
     bsn! {
-        SwitchPoint { id }
+        SwitchPoint { destinations }
         Interactable
         Sprite {
             color: Color::srgb(0.3, 0.85, 0.85),
@@ -19,8 +20,16 @@ pub(super) fn switch_point_scene(id: &'static str, position: Vec2) -> impl Scene
     }
 }
 
-fn interact(request: On<InteractRequested>, switch_points: Query<&SwitchPoint>) {
-    if let Ok(point) = switch_points.get(request.entity) {
-        info!(player = ?request.player, "Switch point triggered: {}", point.id);
+fn interact(
+    request: On<InteractRequested>,
+    switch_points: Query<&SwitchPoint>,
+    players: Query<(), With<Player>>,
+    mut commands: Commands,
+) {
+    if players.contains(request.player)
+        && let Ok(point) = switch_points.get(request.entity)
+    {
+        let destinations = point.destinations;
+        commands.queue(move |world: &mut World| navigation::open_destinations(world, destinations));
     }
 }

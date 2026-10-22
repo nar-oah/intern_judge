@@ -1,10 +1,11 @@
 use super::*;
+use crate::level::GamePhase;
 use crate::physics::GameLayer;
 use crate::test_support::{advance, finish_app, headless_app};
 
 fn game(gravity: Vec2) -> (App, Entity) {
     let mut app = headless_app(gravity);
-    app.add_plugins(PlayerPlugin);
+    app.init_state::<GamePhase>().add_plugins(PlayerPlugin);
     finish_app(&mut app);
     let world = app.world_mut();
     let player = world
@@ -37,7 +38,7 @@ fn ground(app: &mut App, center: Vec2, size: Vec2) -> Entity {
 fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     let (mut app, player) = game(Vec2::ZERO);
     let entity = app.world().entity(player);
-    assert_eq!(position(&app, player), Vec2::new(0.0, -80.0));
+    assert_eq!(position(&app, player), crate::level::ROAD_SPAWN);
     assert_eq!(velocity(&app, player), Vec2::ZERO);
     assert_eq!(
         entity.get::<Sprite>().unwrap().custom_size,

@@ -6,6 +6,7 @@ use avian2d::prelude::*;
 use bevy::{
     log::{tracing, tracing_subscriber},
     platform::time::Instant,
+    state::app::StatesPlugin,
 };
 use leafwing_input_manager::prelude::*;
 use std::{
@@ -35,7 +36,12 @@ fn scene_app() -> App {
 
 fn interaction_app() -> App {
     let mut app = App::new();
-    app.add_systems(PostUpdate, interaction::interact);
+    app.add_plugins(StatesPlugin)
+        .init_state::<GamePhase>()
+        .add_systems(
+            PostUpdate,
+            interaction::interact.run_if(in_state(GamePhase::Exploring)),
+        );
     record_requests(&mut app);
     app
 }
@@ -164,7 +170,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
                 buildings.push(*kind);
             }
             if let Some(point) = world.get::<SwitchPoint>(child) {
-                switches.push(point.id);
+                switches.push(point.destinations);
             }
         }
     }
@@ -176,8 +182,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     ] {
         assert!(buildings.contains(&kind));
     }
-    switches.sort_unstable();
-    assert_eq!(switches, ["east_exit", "west_exit"]);
+    assert_eq!(switches, [&[scene::MARKET_ROAD, scene::COURT][..]]);
 
     let world = app.world_mut();
     assert!(world.despawn(road));
@@ -236,6 +241,34 @@ fn interactions_request_all_overlaps_only_on_a_fresh_press() {
     set_interact(&mut app, player, true);
     interaction_frame(&mut app);
     assert_eq!(requests(&app).len(), 4);
+}
+
+#[test]
+fn interactions_run_only_while_exploring() {
+    let mut app = interaction_app();
+    let player = player(&mut app);
+    let target = target(&mut app, &[player]);
+    app.world_mut()
+        .resource_mut::<NextState<GamePhase>>()
+        .set(GamePhase::ChoosingDestination);
+    set_interact(&mut app, player, true);
+    interaction_frame(&mut app);
+    assert_eq!(
+        *app.world().resource::<State<GamePhase>>().get(),
+        GamePhase::ChoosingDestination
+    );
+    assert!(requests(&app).is_empty());
+
+    app.world_mut()
+        .resource_mut::<NextState<GamePhase>>()
+        .set(GamePhase::Exploring);
+    interaction_frame(&mut app);
+    assert!(requests(&app).is_empty(), "a held key does not interact");
+    set_interact(&mut app, player, false);
+    interaction_frame(&mut app);
+    set_interact(&mut app, player, true);
+    interaction_frame(&mut app);
+    assert_eq!(requests(&app), [(target, player)]);
 }
 
 #[test]
@@ -344,7 +377,7 @@ impl Write for LogOutput {
 }
 
 #[test]
-fn building_and_switch_scenes_bind_their_own_interaction_observers() {
+fn building_scenes_bind_their_own_interaction_observers() {
     // Keep scoped logging interest visible when other test threads register callsites.
     let _other_dispatch = tracing::Dispatch::new(tracing_subscriber::registry());
     let output = LogOutput::default();
@@ -360,17 +393,11 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
         let mut app = scene_app();
         let player = player(&mut app);
         let world = app.world_mut();
-        let mut targets: Vec<_> = world
+        let targets: Vec<_> = world
             .query::<(Entity, &BuildingType)>()
             .iter(world)
             .map(|(entity, kind)| (entity, format!("Building interaction: {kind:?}")))
             .collect();
-        targets.extend(
-            world
-                .query::<(Entity, &SwitchPoint)>()
-                .iter(world)
-                .map(|(entity, point)| (entity, format!("Switch point triggered: {}", point.id))),
-        );
         assert!(!targets.is_empty());
 
         for (entity, expected) in targets {
@@ -380,10 +407,7 @@ fn building_and_switch_scenes_bind_their_own_interaction_observers() {
             let logs = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
             let interactions: Vec<_> = logs
                 .lines()
-                .filter(|line| {
-                    line.contains("Building interaction:")
-                        || line.contains("Switch point triggered:")
-                })
+                .filter(|line| line.contains("Building interaction:"))
                 .collect();
             assert_eq!(interactions.len(), 1, "captured logs:\n{logs}");
             assert!(
