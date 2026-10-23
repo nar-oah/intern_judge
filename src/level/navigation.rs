@@ -1,85 +1,62 @@
-use super::{GamePhase, ROAD_SPAWN, RoadId, scene};
+use super::{
+    RoadId, SceneRoot, SwitchPoint, scene,
+    ui::{self, TravelButtonAction, TravelUiRoot},
+};
 use crate::player::Player;
-use avian2d::prelude::*;
 use bevy::prelude::*;
 
-#[derive(Resource, Default)]
-pub(super) struct DestinationChoices(pub(super) &'static [RoadId]);
-
-pub(super) fn open_destinations(world: &mut World, destinations: &'static [RoadId]) {
-    if *world.resource::<State<GamePhase>>().get() != GamePhase::Exploring
-        || !matches!(
-            world.resource::<NextState<GamePhase>>(),
-            NextState::Unchanged
-        )
-        || destinations.is_empty()
+pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
+    let Some(root) = scene_root(world, point) else {
+        return;
+    };
+    if world.get::<RoadId>(root).is_none()
+        || world.get::<Player>(player).is_none()
+        || scene_root(world, player) != Some(root)
     {
         return;
     }
-    world.resource_mut::<DestinationChoices>().0 = destinations;
-    world
-        .resource_mut::<NextState<GamePhase>>()
-        .set(GamePhase::ChoosingDestination);
-}
-
-pub(super) fn stop_horizontal_motion(mut players: Query<&mut LinearVelocity, With<Player>>) {
-    for mut velocity in &mut players {
-        velocity.x = 0.0;
-    }
-}
-
-pub(super) fn clear_destinations(mut choices: ResMut<DestinationChoices>) {
-    choices.0 = &[];
-}
-
-pub(super) fn close_ui(world: &mut World) {
-    if *world.resource::<State<GamePhase>>().get() == GamePhase::ChoosingDestination {
-        world
-            .resource_mut::<NextState<GamePhase>>()
-            .set(GamePhase::Exploring);
-    }
-}
-
-pub(super) fn select_destination(world: &mut World, destination: RoadId) {
-    if *world.resource::<State<GamePhase>>().get() != GamePhase::ChoosingDestination
-        || !matches!(
-            world.resource::<NextState<GamePhase>>(),
-            NextState::Unchanged
-        )
-        || !world
-            .resource::<DestinationChoices>()
-            .0
-            .contains(&destination)
-    {
+    let Some(point) = world.get::<SwitchPoint>(point) else {
         return;
+    };
+    let mut destinations = Vec::new();
+    for &destination in point.destinations {
+        if !destinations.contains(&destination) && scene::road_scene(destination).is_some() {
+            destinations.push(destination);
+        }
     }
+    if !destinations.is_empty() {
+        replace_scene(world, root, ui::travel_ui_scene(destinations));
+    }
+}
 
-    let roads: Vec<_> = world
-        .query_filtered::<Entity, With<RoadId>>()
-        .iter(world)
-        .collect();
-    if scene::spawn_road(world, destination).is_none() {
-        warn!(?destination, "Unknown road destination");
+pub(super) fn select_destination(world: &mut World, button: Entity) {
+    let Some(&TravelButtonAction(destination)) = world.get::<TravelButtonAction>(button) else {
         return;
-    }
-    for road in roads {
-        world.despawn(road);
-    }
-    for (mut transform, mut position, mut velocity, mut angular_velocity, mut hits) in world
-        .query_filtered::<(
-            &mut Transform,
-            &mut Position,
-            &mut LinearVelocity,
-            &mut AngularVelocity,
-            &mut ShapeHits,
-        ), With<Player>>()
-        .iter_mut(world)
+    };
+    let Some(root) = scene_root(world, button) else {
+        return;
+    };
+    let Some(choices) = world.get::<TravelUiRoot>(root) else {
+        return;
+    };
+    if choices.0.contains(&destination)
+        && let Some(road) = scene::road_scene(destination)
     {
-        transform.translation = ROAD_SPAWN.extend(transform.translation.z);
-        position.0 = ROAD_SPAWN;
-        *velocity = LinearVelocity::ZERO;
-        *angular_velocity = AngularVelocity::ZERO;
-        hits.clear();
+        replace_scene(world, root, road);
     }
-    close_ui(world);
+}
+
+fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
+    loop {
+        if world.get::<SceneRoot>(entity).is_some() {
+            return Some(entity);
+        }
+        entity = world.get::<ChildOf>(entity)?.parent();
+    }
+}
+
+fn replace_scene(world: &mut World, root: Entity, next: impl Scene) {
+    // Exclusive commands validate their source at execution time, so stale events do nothing.
+    world.despawn(root);
+    world.spawn_scene(next).unwrap();
 }
