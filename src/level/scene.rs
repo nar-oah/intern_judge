@@ -8,12 +8,11 @@ use bevy::prelude::*;
 
 pub(super) use road::{COURT, EXAMPLE_ROAD, MARKET_ROAD};
 
-pub(super) fn spawn_road(world: &mut World, road: RoadId) -> Option<Entity> {
-    let entity = match road {
-        EXAMPLE_ROAD => world.spawn_scene(road::example_road_scene()).unwrap(),
-        MARKET_ROAD => world.spawn_scene(road::market_road_scene()).unwrap(),
-        COURT => world.spawn_scene(road::court_scene()).unwrap(),
+pub(super) fn road_scene(road: RoadId) -> Option<Box<dyn Scene>> {
+    Some(match road {
+        EXAMPLE_ROAD => Box::new(road::example_road_scene()),
+        MARKET_ROAD => Box::new(road::market_road_scene()),
+        COURT => Box::new(road::court_scene()),
         _ => return None,
-    };
-    Some(entity.id())
+    })
 }
