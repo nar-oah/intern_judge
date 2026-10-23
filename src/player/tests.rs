@@ -10,7 +10,8 @@ fn game(gravity: Vec2) -> (App, Entity) {
     let player = app
         .world_mut()
         .spawn_scene(player_scene(PLAYER_SPAWN))
-        .unwrap();
+        .unwrap()
+        .id();
     finish_app(&mut app);
     (app, player)
 }
