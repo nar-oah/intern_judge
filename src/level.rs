@@ -9,17 +9,11 @@ mod ui;
 use bevy::prelude::*;
 use scene::EXAMPLE_ROAD;
 
-#[derive(States, Default, Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum GamePhase {
-    #[default]
-    Exploring,
-    ChoosingDestination,
-}
+#[derive(Component, Clone, Default)]
+struct SceneRoot;
 
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoadId(pub &'static str);
-
-pub(crate) const ROAD_SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
 
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct Platform {
@@ -52,29 +46,11 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GamePhase>()
-            .init_resource::<navigation::DestinationChoices>()
-            .add_message::<ui::TravelButtonAction>()
-            .add_systems(Startup, |world: &mut World| {
-                scene::spawn_road(world, EXAMPLE_ROAD).unwrap();
-            })
-            .add_systems(
-                OnEnter(GamePhase::ChoosingDestination),
-                (navigation::stop_horizontal_motion, ui::spawn_ui),
-            )
-            .add_systems(
-                OnExit(GamePhase::ChoosingDestination),
-                navigation::clear_destinations,
-            )
-            .add_systems(
-                Update,
-                (ui::close_on_escape, ui::handle_buttons)
-                    .chain()
-                    .run_if(in_state(GamePhase::ChoosingDestination)),
-            )
-            .add_systems(
-                PostUpdate,
-                interaction::interact.run_if(in_state(GamePhase::Exploring)),
-            );
+        app.add_systems(Startup, |world: &mut World| {
+            world
+                .spawn_scene(scene::road_scene(EXAMPLE_ROAD).unwrap())
+                .unwrap();
+        })
+        .add_systems(PostUpdate, interaction::interact);
     }
 }

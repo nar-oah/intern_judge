@@ -6,7 +6,6 @@ use avian2d::prelude::*;
 use bevy::{
     log::{tracing, tracing_subscriber},
     platform::time::Instant,
-    state::app::StatesPlugin,
 };
 use leafwing_input_manager::prelude::*;
 use std::{
@@ -36,12 +35,7 @@ fn scene_app() -> App {
 
 fn interaction_app() -> App {
     let mut app = App::new();
-    app.add_plugins(StatesPlugin)
-        .init_state::<GamePhase>()
-        .add_systems(
-            PostUpdate,
-            interaction::interact.run_if(in_state(GamePhase::Exploring)),
-        );
+    app.add_systems(PostUpdate, interaction::interact);
     record_requests(&mut app);
     app
 }
@@ -55,10 +49,19 @@ fn single<C: Component>(app: &mut App) -> Entity {
 }
 
 fn teleport(app: &mut App, entity: Entity, position: Vec3) {
+    let local_position = app
+        .world()
+        .get::<ChildOf>(entity)
+        .and_then(|parent| app.world().get::<GlobalTransform>(parent.parent()))
+        .map(|parent| parent.affine().inverse().transform_point3(position))
+        .unwrap_or(position);
     app.world_mut()
         .get_mut::<Transform>(entity)
         .unwrap()
-        .translation = position;
+        .translation = local_position;
+    if let Some(mut physics_position) = app.world_mut().get_mut::<Position>(entity) {
+        physics_position.0 = position.truncate();
+    }
     advance(app, 3);
 }
 
@@ -119,7 +122,8 @@ fn requests(app: &App) -> &[(Entity, Entity)] {
 fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     let mut app = scene_app();
     let road = single::<RoadId>(&mut app);
-    let player = player(&mut app);
+    let player = single::<Player>(&mut app);
+    let unrelated = app.world_mut().spawn_empty().id();
     assert_eq!(
         app.world().get::<RoadId>(road),
         Some(&RoadId("example_road"))
@@ -154,7 +158,9 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
                 .0
                 .abs_diff_eq(expected.truncate(), 0.001)
         );
-        if let Some(platform) = world.get::<Platform>(child) {
+        if child == player {
+            assert_eq!(world.get::<RigidBody>(child), Some(&RigidBody::Dynamic));
+        } else if let Some(platform) = world.get::<Platform>(child) {
             platforms += 1;
             assert_eq!(platform.size, size);
             assert_eq!(world.get::<RigidBody>(child), Some(&RigidBody::Static));
@@ -192,7 +198,8 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
             .into_iter()
             .all(|child| world.get_entity(child).is_err())
     );
-    assert!(world.get::<Player>(player).is_some());
+    assert!(world.get_entity(player).is_err());
+    assert!(world.get_entity(unrelated).is_ok());
     assert_eq!(world.query::<&Interactable>().iter(world).count(), 0);
 }
 
@@ -241,34 +248,6 @@ fn interactions_request_all_overlaps_only_on_a_fresh_press() {
     set_interact(&mut app, player, true);
     interaction_frame(&mut app);
     assert_eq!(requests(&app).len(), 4);
-}
-
-#[test]
-fn interactions_run_only_while_exploring() {
-    let mut app = interaction_app();
-    let player = player(&mut app);
-    let target = target(&mut app, &[player]);
-    app.world_mut()
-        .resource_mut::<NextState<GamePhase>>()
-        .set(GamePhase::ChoosingDestination);
-    set_interact(&mut app, player, true);
-    interaction_frame(&mut app);
-    assert_eq!(
-        *app.world().resource::<State<GamePhase>>().get(),
-        GamePhase::ChoosingDestination
-    );
-    assert!(requests(&app).is_empty());
-
-    app.world_mut()
-        .resource_mut::<NextState<GamePhase>>()
-        .set(GamePhase::Exploring);
-    interaction_frame(&mut app);
-    assert!(requests(&app).is_empty(), "a held key does not interact");
-    set_interact(&mut app, player, false);
-    interaction_frame(&mut app);
-    set_interact(&mut app, player, true);
-    interaction_frame(&mut app);
-    assert_eq!(requests(&app), [(target, player)]);
 }
 
 #[test]
@@ -391,7 +370,7 @@ fn building_scenes_bind_their_own_interaction_observers() {
         .finish();
     tracing::subscriber::with_default(subscriber, || {
         let mut app = scene_app();
-        let player = player(&mut app);
+        let player = single::<Player>(&mut app);
         let world = app.world_mut();
         let targets: Vec<_> = world
             .query::<(Entity, &BuildingType)>()
