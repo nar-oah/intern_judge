@@ -49,10 +49,19 @@ fn single<C: Component>(app: &mut App) -> Entity {
 }
 
 fn teleport(app: &mut App, entity: Entity, position: Vec3) {
+    let local_position = app
+        .world()
+        .get::<ChildOf>(entity)
+        .and_then(|parent| app.world().get::<GlobalTransform>(parent.parent()))
+        .map(|parent| parent.affine().inverse().transform_point3(position))
+        .unwrap_or(position);
     app.world_mut()
         .get_mut::<Transform>(entity)
         .unwrap()
-        .translation = position;
+        .translation = local_position;
+    if let Some(mut physics_position) = app.world_mut().get_mut::<Position>(entity) {
+        physics_position.0 = position.truncate();
+    }
     advance(app, 3);
 }
 
