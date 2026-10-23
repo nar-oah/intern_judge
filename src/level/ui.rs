@@ -51,8 +51,9 @@ pub(super) fn travel_ui_scene(destinations: Vec<RoadId>) -> impl Scene {
 }
 
 fn text_scene(label: &str, font_size: f32) -> impl Scene {
+    let text = Text::new(label);
     bsn! {
-        Text::new(label)
+        text
         TextFont {
             font_size: FontSize::Px(font_size),
         }
