@@ -308,7 +308,7 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
         .half_extents
         .x;
     let outside = center + Vec3::X * (shop_size.x / 2.0 + player_half_width + 5.0);
-    teleport(&mut app, player, outside - Vec3::new(1000.0, 200.0, 0.0));
+    teleport(&mut app, player, outside);
     assert!(
         !app.world()
             .get::<CollidingEntities>(shop)
@@ -319,7 +319,7 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
     assert!(requests(&app).is_empty(), "nearby centers are insufficient");
 
     interact_key(&mut app, false);
-    teleport(&mut app, player, center - Vec3::new(1000.0, 200.0, 0.0));
+    teleport(&mut app, player, center);
     assert!(
         app.world()
             .get::<CollidingEntities>(shop)
@@ -332,7 +332,7 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
     advance(&mut app, 3);
     assert_eq!(requests(&app).len(), 1, "holding E does not repeat");
 
-    teleport(&mut app, player, outside - Vec3::new(1000.0, 200.0, 0.0));
+    teleport(&mut app, player, outside);
     assert!(
         !app.world()
             .get::<CollidingEntities>(shop)
