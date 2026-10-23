@@ -19,10 +19,7 @@ pub(super) fn switch_point_scene(destinations: &'static [RoadId], position: Vec2
     }
 }
 
-fn interact(
-    request: On<InteractRequested>,
-    mut commands: Commands,
-) {
+fn interact(request: On<InteractRequested>, mut commands: Commands) {
     let point = request.entity;
     let player = request.player;
     commands.queue(move |world: &mut World| navigation::open_destinations(world, point, player));

@@ -30,12 +30,18 @@ fn game() -> (App, Entity, Entity) {
 
 fn single<C: Component>(app: &mut App) -> Entity {
     let world = app.world_mut();
-    world.query_filtered::<Entity, With<C>>().single(world).unwrap()
+    world
+        .query_filtered::<Entity, With<C>>()
+        .single(world)
+        .unwrap()
 }
 
 fn count<C: Component>(app: &mut App) -> usize {
     let world = app.world_mut();
-    world.query_filtered::<Entity, With<C>>().iter(world).count()
+    world
+        .query_filtered::<Entity, With<C>>()
+        .iter(world)
+        .count()
 }
 
 fn descendants(world: &World, root: Entity) -> Vec<Entity> {
@@ -52,7 +58,11 @@ fn descendants(world: &World, root: Entity) -> Vec<Entity> {
 
 fn assert_removed(app: &App, root: Entity, children: &[Entity]) {
     assert!(app.world().get_entity(root).is_err());
-    assert!(children.iter().all(|&child| app.world().get_entity(child).is_err()));
+    assert!(
+        children
+            .iter()
+            .all(|&child| app.world().get_entity(child).is_err())
+    );
 }
 
 fn position(app: &App, player: Entity) -> Vec2 {
@@ -61,12 +71,24 @@ fn position(app: &App, player: Entity) -> Vec2 {
 
 fn overlap_exit(app: &mut App, player: Entity) -> Entity {
     let point = single::<SwitchPoint>(app);
-    let center = app.world().get::<GlobalTransform>(point).unwrap().translation();
+    let center = app
+        .world()
+        .get::<GlobalTransform>(point)
+        .unwrap()
+        .translation();
     app.world_mut().get_mut::<Position>(player).unwrap().0 = center.truncate();
-    app.world_mut().get_mut::<Transform>(player).unwrap().translation = center;
+    app.world_mut()
+        .get_mut::<Transform>(player)
+        .unwrap()
+        .translation = center;
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::ZERO;
     advance(app, 3);
-    assert!(app.world().get::<CollidingEntities>(point).unwrap().contains(&player));
+    assert!(
+        app.world()
+            .get::<CollidingEntities>(point)
+            .unwrap()
+            .contains(&player)
+    );
     point
 }
 
@@ -79,7 +101,9 @@ fn press_e(app: &mut App) {
 
 fn destination_button(app: &mut App, destination: RoadId) -> Entity {
     let world = app.world_mut();
-    world.query::<(Entity, &TravelButtonAction)>().iter(world)
+    world
+        .query::<(Entity, &TravelButtonAction)>()
+        .iter(world)
         .find_map(|(entity, action)| (action.0 == destination).then_some(entity))
         .expect("the offered destination must have a button")
 }
@@ -100,8 +124,18 @@ fn assert_road(app: &mut App, destination: RoadId) -> (Entity, Entity) {
     assert_eq!(count::<TravelUiRoot>(app), 0);
     assert_eq!(count::<TravelButtonAction>(app), 0);
     assert_eq!(position(app, player), SPAWN);
-    assert_eq!(app.world().get::<Transform>(player).unwrap().translation.truncate(), SPAWN);
-    assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().0, Vec2::ZERO);
+    assert_eq!(
+        app.world()
+            .get::<Transform>(player)
+            .unwrap()
+            .translation
+            .truncate(),
+        SPAWN
+    );
+    assert_eq!(
+        app.world().get::<LinearVelocity>(player).unwrap().0,
+        Vec2::ZERO
+    );
     assert_eq!(app.world().get::<AngularVelocity>(player).unwrap().0, 0.0);
     assert!(app.world().get::<ShapeHits>(player).unwrap().is_empty());
     (road, player)
@@ -110,7 +144,10 @@ fn assert_road(app: &mut App, destination: RoadId) -> (Entity, Entity) {
 fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
     let root = single::<TravelUiRoot>(app);
     assert_eq!(single::<SceneRoot>(app), root);
-    assert_eq!(app.world().get::<TravelUiRoot>(root).unwrap().0, destinations);
+    assert_eq!(
+        app.world().get::<TravelUiRoot>(root).unwrap().0,
+        destinations
+    );
     assert_eq!(count::<RoadId>(app), 0);
     assert_eq!(count::<Player>(app), 0);
     assert_eq!(count::<super::Platform>(app), 0);
@@ -122,7 +159,10 @@ fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
     assert_eq!(node.width, percent(100));
     assert_eq!(node.height, percent(100));
     assert_eq!(node.position_type, PositionType::Absolute);
-    assert_eq!(app.world().get::<BackgroundColor>(root).unwrap().0.alpha(), 1.0);
+    assert_eq!(
+        app.world().get::<BackgroundColor>(root).unwrap().0.alpha(),
+        1.0
+    );
     let children = descendants(app.world(), root);
     for &destination in destinations {
         let button = destination_button(app, destination);
@@ -145,9 +185,15 @@ fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
         let children = descendants(app.world(), road);
         assert!(children.contains(&player));
         let point = overlap_exit(&mut app, player);
-        assert_eq!(app.world().get::<SwitchPoint>(point).unwrap().destinations, choices);
+        assert_eq!(
+            app.world().get::<SwitchPoint>(point).unwrap().destinations,
+            choices
+        );
         app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
-        app.world_mut().get_mut::<AngularVelocity>(player).unwrap().0 = 3.0;
+        app.world_mut()
+            .get_mut::<AngularVelocity>(player)
+            .unwrap()
+            .0 = 3.0;
         press_e(&mut app);
 
         let menu = assert_ui(&mut app, choices);
@@ -207,7 +253,10 @@ fn empty_or_unknown_destinations_keep_the_road_and_player() {
         let road = single::<RoadId>(&mut app);
         let children = descendants(app.world(), road);
         let point = overlap_exit(&mut app, player);
-        app.world_mut().get_mut::<SwitchPoint>(point).unwrap().destinations = destinations;
+        app.world_mut()
+            .get_mut::<SwitchPoint>(point)
+            .unwrap()
+            .destinations = destinations;
         press_e(&mut app);
         assert_eq!(single::<SceneRoot>(&mut app), road);
         assert_eq!(single::<Player>(&mut app), player);
@@ -227,24 +276,36 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
     open_destinations(app.world_mut(), road, player);
     assert_eq!(single::<SceneRoot>(&mut app), road);
 
-    app.world_mut().get_mut::<SwitchPoint>(point).unwrap().destinations =
-        &[UNKNOWN, MARKET_ROAD, MARKET_ROAD, COURT];
+    app.world_mut()
+        .get_mut::<SwitchPoint>(point)
+        .unwrap()
+        .destinations = &[UNKNOWN, MARKET_ROAD, MARKET_ROAD, COURT];
     press_e(&mut app);
     // The unrelated action is not a UI button and cannot select a destination.
     app.world_mut().despawn(orphan);
     let menu = assert_ui(&mut app, &[MARKET_ROAD, COURT]);
     let button = destination_button(&mut app, MARKET_ROAD);
     for invalid in [EXAMPLE_ROAD, UNKNOWN] {
-        app.world_mut().get_mut::<TravelButtonAction>(button).unwrap().0 = invalid;
+        app.world_mut()
+            .get_mut::<TravelButtonAction>(button)
+            .unwrap()
+            .0 = invalid;
         activate(&mut app, button);
         assert_eq!(single::<SceneRoot>(&mut app), menu);
         assert_eq!(count::<RoadId>(&mut app), 0);
     }
     // Even a corrupted choice list must not unload the UI for an unknown road.
-    app.world_mut().get_mut::<TravelUiRoot>(menu).unwrap().0.push(UNKNOWN);
+    app.world_mut()
+        .get_mut::<TravelUiRoot>(menu)
+        .unwrap()
+        .0
+        .push(UNKNOWN);
     activate(&mut app, button);
     assert_eq!(single::<SceneRoot>(&mut app), menu);
-    app.world_mut().get_mut::<TravelButtonAction>(button).unwrap().0 = MARKET_ROAD;
+    app.world_mut()
+        .get_mut::<TravelButtonAction>(button)
+        .unwrap()
+        .0 = MARKET_ROAD;
     activate(&mut app, button);
     assert_road(&mut app, MARKET_ROAD);
 }
@@ -258,7 +319,10 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
     {
         let mut commands = app.world_mut().commands();
         for _ in 0..3 {
-            commands.trigger(InteractRequested { entity: point, player });
+            commands.trigger(InteractRequested {
+                entity: point,
+                player,
+            });
         }
     }
     app.world_mut().flush();
