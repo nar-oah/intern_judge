@@ -1,17 +1,17 @@
 use super::*;
-use crate::level::GamePhase;
 use crate::physics::GameLayer;
 use crate::test_support::{advance, finish_app, headless_app};
 
+const PLAYER_SPAWN: Vec2 = Vec2::new(125.0, 80.0);
+
 fn game(gravity: Vec2) -> (App, Entity) {
     let mut app = headless_app(gravity);
-    app.init_state::<GamePhase>().add_plugins(PlayerPlugin);
+    app.add_plugins(PlayerPlugin);
+    let player = app
+        .world_mut()
+        .spawn_scene(player_scene(PLAYER_SPAWN))
+        .unwrap();
     finish_app(&mut app);
-    let world = app.world_mut();
-    let player = world
-        .query_filtered::<Entity, With<Player>>()
-        .single(world)
-        .expect("the player scene should spawn exactly one player");
     (app, player)
 }
 
@@ -38,7 +38,7 @@ fn ground(app: &mut App, center: Vec2, size: Vec2) -> Entity {
 fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     let (mut app, player) = game(Vec2::ZERO);
     let entity = app.world().entity(player);
-    assert_eq!(position(&app, player), crate::level::ROAD_SPAWN);
+    assert_eq!(position(&app, player), PLAYER_SPAWN);
     assert_eq!(velocity(&app, player), Vec2::ZERO);
     assert_eq!(
         entity.get::<Sprite>().unwrap().custom_size,
@@ -65,6 +65,20 @@ fn player_scene_initializes_rendering_physics_and_keyboard_input() {
             .unwrap()
             .just_pressed(&PlayerAction::Interact)
     );
+}
+
+#[test]
+fn player_plugin_runs_without_spawning_a_player() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.add_plugins(PlayerPlugin);
+    finish_app(&mut app);
+
+    KeyCode::KeyD.press(app.world_mut());
+    KeyCode::Space.press(app.world_mut());
+    advance(&mut app, 2);
+
+    let world = app.world_mut();
+    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
 }
 
 #[test]

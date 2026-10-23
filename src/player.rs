@@ -1,7 +1,7 @@
 mod scene;
 #[cfg(test)]
 mod tests;
-use crate::level::GamePhase;
+pub(crate) use scene::player_scene;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
@@ -25,11 +25,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(InputManagerPlugin::<PlayerAction>::default())
-            .add_systems(Startup, scene::player_scene.spawn())
-            .add_systems(
-                FixedUpdate,
-                player_movement.run_if(in_state(GamePhase::Exploring)),
-            );
+            .add_systems(FixedUpdate, player_movement);
     }
 }
 

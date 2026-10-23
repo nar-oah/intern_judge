@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::{
     asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
-    state::app::StatesPlugin, time::TimeUpdateStrategy,
+    time::TimeUpdateStrategy,
 };
 use std::time::Duration;
 
@@ -12,7 +12,6 @@ pub(crate) fn headless_app(gravity: Vec2) -> App {
     let mut app = App::new();
     app.add_plugins((
         MinimalPlugins,
-        StatesPlugin,
         TransformPlugin,
         AssetPlugin::default(),
         ScenePlugin,

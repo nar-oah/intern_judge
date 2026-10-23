@@ -1,5 +1,4 @@
 use super::{Player, PlayerAction};
-use crate::level::ROAD_SPAWN;
 use crate::physics::GameLayer;
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -7,7 +6,7 @@ use leafwing_input_manager::prelude::*;
 
 const PLAYER_SIZE: Vec2 = Vec2::new(30.0, 50.0);
 
-pub(super) fn player_scene() -> impl Scene {
+pub(crate) fn player_scene(position: Vec2) -> impl Scene {
     let input_map = InputMap::new([
         (PlayerAction::Left, KeyCode::KeyA),
         (PlayerAction::Right, KeyCode::KeyD),
@@ -24,7 +23,7 @@ pub(super) fn player_scene() -> impl Scene {
             color: Color::srgb(0.3, 0.7, 0.9),
             custom_size: Option::Some(PLAYER_SIZE),
         }
-        Transform::from_translation(ROAD_SPAWN.extend(0.0))
+        Transform::from_translation(position.extend(0.0))
         RigidBody::Dynamic
         Collider::rectangle(PLAYER_SIZE.x, PLAYER_SIZE.y)
         LinearVelocity::ZERO
