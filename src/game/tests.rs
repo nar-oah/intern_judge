@@ -84,6 +84,7 @@ fn plugin_preserves_existing_resources() {
         })
         .insert_resource(Money(-7))
         .insert_resource(Stamina(37.5))
+        .insert_resource(HasHelmet(true))
         .add_plugins(GamePlugin);
     finish_app(&mut app);
 
@@ -92,6 +93,15 @@ fn plugin_preserves_existing_resources() {
     assert_eq!(time.elapsed, 12.0);
     assert_eq!(app.world().resource::<Money>().0, -7);
     assert_eq!(app.world().resource::<Stamina>().0, 37.5);
+    assert!(app.world().resource::<HasHelmet>().0);
+}
+
+#[test]
+fn prototype_starts_with_one_hundred_yuan_and_no_helmet() {
+    let mut app = game();
+    finish_app(&mut app);
+    assert_eq!(app.world().resource::<Money>().0, 100);
+    assert!(!app.world().resource::<HasHelmet>().0);
 }
 
 #[test]
@@ -107,7 +117,7 @@ fn hud_is_a_top_right_root_and_updates_with_time_and_money() {
     assert_eq!(node.right, px(16));
     assert_eq!(
         hud_text(&mut app),
-        "Time: 300.0s\nMoney: 0\nStamina: 100/100"
+        "Time: 300.0s\nMoney: 100\nStamina: 100/100"
     );
 
     {
@@ -164,7 +174,7 @@ fn stamina_bar_updates_while_timer_and_money_are_unchanged() {
             percent(remaining)
         );
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, elapsed);
-        assert_eq!(app.world().resource::<Money>().0, 0);
+        assert_eq!(app.world().resource::<Money>().0, 100);
         assert!(hud_text(&mut app).ends_with(&format!("Stamina: {remaining:.0}/100")));
     }
 }

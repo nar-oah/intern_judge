@@ -3535,6 +3535,7 @@ dependencies = [
  "avian2d",
  "bevy",
  "leafwing-input-manager",
+ "rand",
 ]
 
 [[package]]
