@@ -11,13 +11,21 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。
 `RoadId("court")`。选择 `market_road` 后，从新路段右侧切换点可前往法院。
 路段之间单向前进，完整流程为 Road → 目的地选择 UI → 新 Road。
 Road 和 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体及全部
-子实体，再生成新场景。Camera 等全局实体始终保留。
+子实体，再生成新场景。Camera 和右上角通勤 HUD 等全局实体始终保留。
 每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
 子场景和出生位置；进入新 Road 时生成新的 Player，移动、跳跃和物理逻辑照常运行。
-Player 不存在时，移动和交互系统自然跳过，无需额外的游戏状态管理。
+Player 不存在时，移动和交互系统自然跳过。
 法院通过 `court_scene()` 定义为普通路段，根实体标识为 `RoadId("court")`，
 目前仅有一个地面平台；进入后可正常移动和跳跃。
 UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
+
+`src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money` 和
+`CommuteState`，默认通勤时限为 300 秒，已用时间和金钱均为 0。
+计时系统只在 `Running` 状态执行；进入目的地选择 UI 时请求 `Paused`，
+选择普通 Road 后恢复 `Running`，进入 Court 后保持 `Paused`。
+状态请求由 Bevy 在下一次状态切换调度中应用，不影响物理和玩家移动。
+超时后已用时间继续增长，`remaining()` 直接返回时限减去已用时间，可为负数。
+HUD 独立于 `SceneRoot`，实时显示剩余秒数和金钱，在全屏目的地 UI 上也保持可见。
 
 关卡场景按平台、共用建筑、各类建筑、切换点和路段组合拆分到
 `src/level/scene/`，由 `scene.rs` 组织模块。场景使用 Bevy 0.20 的 `bsn!`、
@@ -31,7 +39,7 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 新增路段时，按 `example_road_scene` 的形式定义返回 `impl Scene` 的函数，
 为根实体分配独立、固定的 `RoadId`，在 `src/level/scene.rs` 的 `road_scene`
 入口中登记一次 ID 与场景函数的对应关系，再将该 ID 加入前一路段切换点的
-`destinations`。`navigation.rs` 只负责目的地验证及场景切换；无效目的地、重复或
+`destinations`。`navigation.rs` 负责目的地验证、场景切换及通勤状态请求；无效目的地、重复或
 已失效的交互不会卸载当前场景或重复生成场景。
 子实体的位置相对于根实体；平台用尺寸指定形状，根实体保持单位缩放。
 

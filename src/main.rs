@@ -1,3 +1,4 @@
+mod game;
 mod level;
 mod physics;
 mod player;
@@ -5,6 +6,7 @@ mod player;
 mod test_support;
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use game::GamePlugin;
 use level::LevelPlugin;
 use player::PlayerPlugin;
 
@@ -13,6 +15,7 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             PhysicsPlugins::default().with_length_unit(20.0),
+            GamePlugin,
             PlayerPlugin,
             LevelPlugin,
         ))
