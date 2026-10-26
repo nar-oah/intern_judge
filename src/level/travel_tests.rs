@@ -5,12 +5,14 @@ use super::{
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
+    game::{CommuteState, CommuteTime, GamePlugin},
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
 use avian2d::prelude::*;
 use bevy::{
     prelude::*,
+    state::app::StatesPlugin,
     ui_widgets::{Activate, Button},
 };
 use leafwing_input_manager::prelude::*;
@@ -20,7 +22,7 @@ const UNKNOWN: RoadId = RoadId("unknown_road");
 
 fn game() -> (App, Entity, Entity) {
     let mut app = headless_app(Vec2::ZERO);
-    app.add_plugins((PlayerPlugin, LevelPlugin));
+    app.add_plugins((StatesPlugin, GamePlugin, PlayerPlugin, LevelPlugin));
     let camera = app.world_mut().spawn(Camera2d).id();
     finish_app(&mut app);
     advance(&mut app, 2);
@@ -173,6 +175,57 @@ fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
 }
 
 #[test]
+fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() {
+    let (mut app, player, _) = game();
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Running
+    );
+    let before = app.world().resource::<CommuteTime>().elapsed;
+    advance(&mut app, 4);
+    assert!(app.world().resource::<CommuteTime>().elapsed > before);
+
+    for destination in [MARKET_ROAD, COURT] {
+        let player = if destination == MARKET_ROAD {
+            player
+        } else {
+            single::<Player>(&mut app)
+        };
+        overlap_exit(&mut app, player);
+        press_e(&mut app);
+        // Navigation requests a state change; the next frame applies it.
+        app.update();
+        assert_eq!(
+            app.world().resource::<State<CommuteState>>().get(),
+            &CommuteState::Paused
+        );
+        let paused_at = app.world().resource::<CommuteTime>().elapsed;
+        advance(&mut app, 4);
+        assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
+
+        let button = destination_button(&mut app, destination);
+        activate(&mut app, button);
+        app.update();
+        advance(&mut app, 4);
+        if destination == COURT {
+            assert_eq!(
+                app.world().resource::<State<CommuteState>>().get(),
+                &CommuteState::Paused
+            );
+            assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
+        } else {
+            assert_eq!(
+                app.world().resource::<State<CommuteState>>().get(),
+                &CommuteState::Running
+            );
+            assert!(app.world().resource::<CommuteTime>().elapsed > paused_at);
+        }
+        let road = single::<RoadId>(&mut app);
+        assert_eq!(app.world().get::<RoadId>(road), Some(&destination));
+    }
+}
+
+#[test]
 fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
     let (mut app, mut player, camera) = game();
     let unrelated = app.world_mut().spawn_empty().id();
@@ -258,10 +311,15 @@ fn empty_or_unknown_destinations_keep_the_road_and_player() {
             .unwrap()
             .destinations = destinations;
         press_e(&mut app);
+        app.update();
         assert_eq!(single::<SceneRoot>(&mut app), road);
         assert_eq!(single::<Player>(&mut app), player);
         assert_eq!(count::<TravelUiRoot>(&mut app), 0);
         assert_eq!(descendants(app.world(), road), children);
+        assert_eq!(
+            app.world().resource::<State<CommuteState>>().get(),
+            &CommuteState::Running
+        );
     }
 }
 
@@ -274,7 +332,12 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
     select_destination(app.world_mut(), orphan);
     open_destinations(app.world_mut(), point, Entity::PLACEHOLDER);
     open_destinations(app.world_mut(), road, player);
+    app.update();
     assert_eq!(single::<SceneRoot>(&mut app), road);
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Running
+    );
 
     app.world_mut()
         .get_mut::<SwitchPoint>(point)
@@ -284,6 +347,7 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
     // The unrelated action is not a UI button and cannot select a destination.
     app.world_mut().despawn(orphan);
     let menu = assert_ui(&mut app, &[MARKET_ROAD, COURT]);
+    app.update();
     let button = destination_button(&mut app, MARKET_ROAD);
     for invalid in [EXAMPLE_ROAD, UNKNOWN] {
         app.world_mut()
@@ -291,8 +355,13 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
             .unwrap()
             .0 = invalid;
         activate(&mut app, button);
+        app.update();
         assert_eq!(single::<SceneRoot>(&mut app), menu);
         assert_eq!(count::<RoadId>(&mut app), 0);
+        assert_eq!(
+            app.world().resource::<State<CommuteState>>().get(),
+            &CommuteState::Paused
+        );
     }
     // Even a corrupted choice list must not unload the UI for an unknown road.
     app.world_mut()
@@ -301,7 +370,12 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
         .0
         .push(UNKNOWN);
     activate(&mut app, button);
+    app.update();
     assert_eq!(single::<SceneRoot>(&mut app), menu);
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Paused
+    );
     app.world_mut()
         .get_mut::<TravelButtonAction>(button)
         .unwrap()
@@ -341,14 +415,24 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
     assert!(app.world().get_entity(menu).is_err());
     select_destination(app.world_mut(), court);
     open_destinations(app.world_mut(), point, player);
+    app.update();
     assert_eq!(single::<SceneRoot>(&mut app), next_road);
     assert_eq!(single::<Player>(&mut app), next_player);
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Running
+    );
 
     overlap_exit(&mut app, next_player);
     press_e(&mut app);
     let next_menu = assert_ui(&mut app, &[COURT]);
     select_destination(app.world_mut(), court);
+    app.update();
     assert_eq!(single::<SceneRoot>(&mut app), next_menu);
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Paused
+    );
     let new_court = destination_button(&mut app, COURT);
     activate(&mut app, new_court);
     assert_road(&mut app, COURT);
