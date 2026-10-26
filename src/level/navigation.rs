@@ -2,7 +2,7 @@ use super::{
     RoadId, SceneRoot, SwitchPoint, scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
-use crate::player::Player;
+use crate::{game::CommuteState, player::Player};
 use bevy::prelude::*;
 
 pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
@@ -26,6 +26,9 @@ pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity
     }
     if !destinations.is_empty() {
         replace_scene(world, root, ui::travel_ui_scene(destinations));
+        world
+            .resource_mut::<NextState<CommuteState>>()
+            .set(CommuteState::Paused);
     }
 }
 
@@ -43,6 +46,12 @@ pub(super) fn select_destination(world: &mut World, button: Entity) {
         && let Some(road) = scene::road_scene(destination)
     {
         replace_scene(world, root, road);
+        let state = if destination == scene::COURT {
+            CommuteState::Paused
+        } else {
+            CommuteState::Running
+        };
+        world.resource_mut::<NextState<CommuteState>>().set(state);
     }
 }
 
