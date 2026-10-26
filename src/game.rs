@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests;
-
 use bevy::prelude::*;
 
 #[derive(Resource, Debug)]
@@ -49,7 +48,9 @@ impl Plugin for GamePlugin {
                 Update,
                 (
                     tick_commute.run_if(in_state(CommuteState::Running)),
-                    update_hud,
+                    update_hud.run_if(
+                        resource_changed::<CommuteTime>.or_eager(resource_changed::<Money>),
+                    ),
                 )
                     .chain(),
             );
