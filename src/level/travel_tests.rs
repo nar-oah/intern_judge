@@ -5,7 +5,7 @@ use super::{
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
-    game::{CommuteState, CommuteTime, GamePlugin, Money},
+    game::{CommuteState, CommuteTime, GamePlugin, Money, Stamina},
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
@@ -183,20 +183,27 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
     let (mut app, _, _) = game();
     let world = app.world_mut();
     let hud = world
-        .query_filtered::<Entity, (With<Text>, With<Node>, Without<ChildOf>)>()
+        .query_filtered::<Entity, (With<GlobalZIndex>, With<Node>, Without<ChildOf>)>()
         .single(world)
         .unwrap();
     world.resource_mut::<Money>().0 = 37;
+    world.resource_mut::<Stamina>().0 = 42.0;
     world.resource_mut::<CommuteTime>().limit = 123.0;
     world.resource_mut::<CommuteTime>().elapsed = 10.0;
     let assert_hud = |app: &App| {
         let world = app.world();
         assert!(world.get::<Node>(hud).is_some());
-        assert!(world.get::<Text>(hud).unwrap().0.contains("Money: 37"));
+        let text = descendants(world, hud)
+            .into_iter()
+            .find_map(|entity| world.get::<Text>(entity))
+            .unwrap();
+        assert!(text.0.contains("Money: 37"));
+        assert!(text.0.contains("Stamina: 42/100"));
         assert!(world.get::<SceneRoot>(hud).is_none());
         assert!(world.get::<ChildOf>(hud).is_none());
         assert_eq!(world.get::<GlobalZIndex>(hud).unwrap().0, 200);
         assert_eq!(world.resource::<Money>().0, 37);
+        assert_eq!(world.resource::<Stamina>().0, 42.0);
         assert_eq!(world.resource::<CommuteTime>().limit, 123.0);
     };
     assert_eq!(commute_state(&app), &CommuteState::Running);
@@ -213,6 +220,8 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
         // Navigation requests a state change; the next frame applies it.
         app.update();
         assert_eq!(commute_state(&app), &CommuteState::Paused);
+        assert!(app.world().get_entity(player).is_err());
+        assert_eq!(count::<Player>(&mut app), 0);
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
         assert!(paused_at >= before_menu);
         assert_hud(&app);
@@ -231,6 +240,7 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
             assert!(app.world().resource::<CommuteTime>().elapsed > paused_at);
         }
         let road = single::<RoadId>(&mut app);
+        assert_ne!(single::<Player>(&mut app), player);
         assert_eq!(app.world().get::<RoadId>(road), Some(&destination));
         assert_hud(&app);
     }
