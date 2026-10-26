@@ -10,6 +10,7 @@ pub(crate) fn player_scene(position: Vec2) -> impl Scene {
     let input_map = InputMap::new([
         (PlayerAction::Left, KeyCode::KeyA),
         (PlayerAction::Right, KeyCode::KeyD),
+        (PlayerAction::Sprint, KeyCode::ShiftLeft),
         (PlayerAction::Jump, KeyCode::Space),
         (PlayerAction::Interact, KeyCode::KeyE),
     ]);

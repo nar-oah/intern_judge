@@ -1,6 +1,8 @@
 use super::*;
 use crate::physics::GameLayer;
 use crate::test_support::{advance, finish_app, headless_app};
+use bevy::time::TimeUpdateStrategy;
+use std::time::Duration;
 
 const PLAYER_SPAWN: Vec2 = Vec2::new(125.0, 80.0);
 
@@ -59,12 +61,19 @@ fn player_scene_initializes_rendering_physics_and_keyboard_input() {
     assert!(entity.contains::<InputMap<PlayerAction>>());
 
     KeyCode::KeyE.press(app.world_mut());
+    KeyCode::ShiftLeft.press(app.world_mut());
     app.update();
     assert!(
         app.world()
             .get::<ActionState<PlayerAction>>(player)
             .unwrap()
             .just_pressed(&PlayerAction::Interact)
+    );
+    assert!(
+        app.world()
+            .get::<ActionState<PlayerAction>>(player)
+            .unwrap()
+            .just_pressed(&PlayerAction::Sprint)
     );
 }
 
@@ -106,6 +115,83 @@ fn a_and_d_move_the_player_and_cancel_when_held_together() {
             assert!(displacement * expected_speed > 0.0);
         }
     }
+}
+
+#[test]
+fn sprinting_scales_speed_and_drains_five_stamina_per_second_at_any_fixed_timestep() {
+    for frames_per_second in [32, 64] {
+        let (mut app, player) = game(Vec2::ZERO);
+        let timestep = Duration::from_secs_f64(1.0 / f64::from(frames_per_second));
+        app.world_mut()
+            .resource_mut::<Time<Fixed>>()
+            .set_timestep(timestep);
+        app.insert_resource(TimeUpdateStrategy::ManualDuration(timestep));
+        app.world_mut().get_mut::<LinearVelocity>(player).unwrap().y = -70.0;
+        KeyCode::KeyA.press(app.world_mut());
+        KeyCode::ShiftLeft.press(app.world_mut());
+
+        advance(&mut app, frames_per_second as usize);
+
+        assert_eq!(velocity(&app, player), Vec2::new(-330.0, -70.0));
+        assert!((app.world().resource::<Stamina>().0 - 95.0).abs() < 0.001);
+    }
+}
+
+#[test]
+fn stamina_is_unchanged_without_shift_or_horizontal_movement() {
+    let (mut app, player) = game(Vec2::ZERO);
+    app.world_mut().resource_mut::<Stamina>().0 = 50.0;
+
+    // Shift alone does not consume stamina.
+    KeyCode::ShiftLeft.press(app.world_mut());
+    advance(&mut app, 64);
+    assert_eq!(velocity(&app, player).x, 0.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 50.0);
+
+    // Opposing movement inputs also leave the player stationary.
+    KeyCode::KeyA.press(app.world_mut());
+    KeyCode::KeyD.press(app.world_mut());
+    advance(&mut app, 64);
+    assert_eq!(velocity(&app, player).x, 0.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 50.0);
+
+    // Releasing Shift restores walking without spending or recovering stamina.
+    KeyCode::ShiftLeft.release(app.world_mut());
+    KeyCode::KeyA.release(app.world_mut());
+    advance(&mut app, 64);
+    assert_eq!(velocity(&app, player).x, 220.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 50.0);
+
+    KeyCode::KeyD.release(app.world_mut());
+    advance(&mut app, 64);
+    assert_eq!(velocity(&app, player).x, 0.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 50.0);
+}
+
+#[test]
+fn depleted_stamina_preserves_walking_and_jumping() {
+    let (mut app, player) = game(Vec2::NEG_Y * 1000.0);
+    let floor_center = position(&app, player) + Vec2::new(0.0, -100.0);
+    let floor = ground(&mut app, floor_center, Vec2::new(400.0, 20.0));
+    app.world_mut().entity_mut(floor).insert(Friction::ZERO);
+    advance(&mut app, 128);
+    app.world_mut().resource_mut::<Stamina>().0 = 0.01;
+
+    KeyCode::KeyD.press(app.world_mut());
+    KeyCode::ShiftLeft.press(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player).x, 330.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 0.0);
+
+    KeyCode::Space.press(app.world_mut());
+    app.update();
+    assert_eq!(velocity(&app, player).x, 220.0);
+    assert!(velocity(&app, player).y > 350.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 0.0);
+
+    advance(&mut app, 64);
+    assert_eq!(velocity(&app, player).x, 220.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 0.0);
 }
 
 #[test]
