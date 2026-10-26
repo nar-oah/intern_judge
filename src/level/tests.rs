@@ -269,7 +269,10 @@ fn interactions_ignore_unmarked_targets_and_non_players() {
     assert!(requests(&app).is_empty());
     app.world_mut().despawn(player);
     interaction_frame(&mut app);
-    assert!(requests(&app).is_empty(), "no player during scene selection");
+    assert!(
+        requests(&app).is_empty(),
+        "no player during scene selection"
+    );
 }
 
 #[test]
@@ -359,7 +362,10 @@ fn e_uses_the_tool_and_lottery_scene_observers() {
 
     assert!([70, 80, 120].contains(&app.world().resource::<Money>().0));
     assert!(app.world().resource::<HasHelmet>().0);
-    assert_eq!(requests(&app), [(tool_store, player), (lottery_store, player)]);
+    assert_eq!(
+        requests(&app),
+        [(tool_store, player), (lottery_store, player)]
+    );
     let balance = app.world().resource::<Money>().0;
     advance(&mut app, 3);
     assert_eq!(app.world().resource::<Money>().0, balance);
