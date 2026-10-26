@@ -6,7 +6,9 @@ use std::time::Duration;
 fn game() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, StatesPlugin))
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(125)))
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+            125,
+        )))
         .add_plugins(GamePlugin);
     app
 }
