@@ -392,16 +392,12 @@ fn cat_requires_a_platform_jump_and_is_rescued_only_once() {
     teleport(&mut app, player, Vec3::new(65.0, -137.5, 0.0));
     let ground_y = app.world().get::<Position>(player).unwrap().y;
     KeyCode::Space.press(app.world_mut());
+    // Rise beside the platform before moving across its upper edge.
+    advance(&mut app, 22);
+    KeyCode::Space.release(app.world_mut());
     KeyCode::KeyD.press(app.world_mut());
-    for frame in 0..96 {
+    for _ in 0..96 {
         app.update();
-        if frame % 8 == 0 {
-            println!(
-                "frame {frame}: position {:?}, velocity {:?}, ground {ground_y}",
-                app.world().get::<Position>(player).unwrap().0,
-                app.world().get::<LinearVelocity>(player).unwrap().0,
-            );
-        }
         if app
             .world()
             .get::<CollidingEntities>(cat)
@@ -411,7 +407,6 @@ fn cat_requires_a_platform_jump_and_is_rescued_only_once() {
             break;
         }
     }
-    KeyCode::Space.release(app.world_mut());
     KeyCode::KeyD.release(app.world_mut());
     assert!(app.world().get::<Position>(player).unwrap().y > ground_y + 50.0);
     assert!(
