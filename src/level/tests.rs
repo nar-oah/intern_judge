@@ -393,8 +393,15 @@ fn cat_requires_a_platform_jump_and_is_rescued_only_once() {
     let ground_y = app.world().get::<Position>(player).unwrap().y;
     KeyCode::Space.press(app.world_mut());
     KeyCode::KeyD.press(app.world_mut());
-    for _ in 0..96 {
+    for frame in 0..96 {
         app.update();
+        if frame % 8 == 0 {
+            println!(
+                "frame {frame}: position {:?}, velocity {:?}, ground {ground_y}",
+                app.world().get::<Position>(player).unwrap().0,
+                app.world().get::<LinearVelocity>(player).unwrap().0,
+            );
+        }
         if app
             .world()
             .get::<CollidingEntities>(cat)
