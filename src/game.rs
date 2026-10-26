@@ -23,8 +23,17 @@ impl CommuteTime {
     }
 }
 
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug)]
 pub struct Money(pub i32);
+
+impl Default for Money {
+    fn default() -> Self {
+        Self(100)
+    }
+}
+
+#[derive(Resource, Debug, Default)]
+pub struct HasHelmet(pub bool);
 
 #[derive(Resource, Debug)]
 pub struct Stamina(pub f32);
@@ -62,6 +71,7 @@ impl Plugin for GamePlugin {
         app.init_resource::<CommuteTime>()
             .init_resource::<Money>()
             .init_resource::<Stamina>()
+            .init_resource::<HasHelmet>()
             .init_state::<CommuteState>()
             .add_systems(Startup, setup_hud)
             .add_systems(
