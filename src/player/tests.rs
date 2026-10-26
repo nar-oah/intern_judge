@@ -172,7 +172,8 @@ fn stamina_is_unchanged_without_shift_or_horizontal_movement() {
 fn depleted_stamina_preserves_walking_and_jumping() {
     let (mut app, player) = game(Vec2::NEG_Y * 1000.0);
     let floor_center = position(&app, player) + Vec2::new(0.0, -100.0);
-    ground(&mut app, floor_center, Vec2::new(400.0, 20.0));
+    let floor = ground(&mut app, floor_center, Vec2::new(400.0, 20.0));
+    app.world_mut().entity_mut(floor).insert(Friction::ZERO);
     advance(&mut app, 128);
     app.world_mut().resource_mut::<Stamina>().0 = 0.01;
 
