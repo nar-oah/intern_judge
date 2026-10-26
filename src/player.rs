@@ -1,9 +1,9 @@
 mod scene;
 #[cfg(test)]
 mod tests;
+use crate::game::Stamina;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::game::Stamina;
 use leafwing_input_manager::prelude::*;
 pub(crate) use scene::player_scene;
 
