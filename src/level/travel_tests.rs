@@ -71,6 +71,10 @@ fn position(app: &App, player: Entity) -> Vec2 {
     app.world().get::<Position>(player).unwrap().0
 }
 
+fn commute_state(app: &App) -> &CommuteState {
+    app.world().resource::<State<CommuteState>>().get()
+}
+
 fn overlap_exit(app: &mut App, player: Entity) -> Entity {
     let point = single::<SwitchPoint>(app);
     let center = app
@@ -176,29 +180,19 @@ fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
 
 #[test]
 fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() {
-    let (mut app, player, _) = game();
-    assert_eq!(
-        app.world().resource::<State<CommuteState>>().get(),
-        &CommuteState::Running
-    );
+    let (mut app, _, _) = game();
+    assert_eq!(commute_state(&app), &CommuteState::Running);
     let before = app.world().resource::<CommuteTime>().elapsed;
     advance(&mut app, 4);
     assert!(app.world().resource::<CommuteTime>().elapsed > before);
 
     for destination in [MARKET_ROAD, COURT] {
-        let player = if destination == MARKET_ROAD {
-            player
-        } else {
-            single::<Player>(&mut app)
-        };
+        let player = single::<Player>(&mut app);
         overlap_exit(&mut app, player);
         press_e(&mut app);
         // Navigation requests a state change; the next frame applies it.
         app.update();
-        assert_eq!(
-            app.world().resource::<State<CommuteState>>().get(),
-            &CommuteState::Paused
-        );
+        assert_eq!(commute_state(&app), &CommuteState::Paused);
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
         advance(&mut app, 4);
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
@@ -208,16 +202,10 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
         app.update();
         advance(&mut app, 4);
         if destination == COURT {
-            assert_eq!(
-                app.world().resource::<State<CommuteState>>().get(),
-                &CommuteState::Paused
-            );
+            assert_eq!(commute_state(&app), &CommuteState::Paused);
             assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
         } else {
-            assert_eq!(
-                app.world().resource::<State<CommuteState>>().get(),
-                &CommuteState::Running
-            );
+            assert_eq!(commute_state(&app), &CommuteState::Running);
             assert!(app.world().resource::<CommuteTime>().elapsed > paused_at);
         }
         let road = single::<RoadId>(&mut app);
@@ -316,10 +304,7 @@ fn empty_or_unknown_destinations_keep_the_road_and_player() {
         assert_eq!(single::<Player>(&mut app), player);
         assert_eq!(count::<TravelUiRoot>(&mut app), 0);
         assert_eq!(descendants(app.world(), road), children);
-        assert_eq!(
-            app.world().resource::<State<CommuteState>>().get(),
-            &CommuteState::Running
-        );
+        assert_eq!(commute_state(&app), &CommuteState::Running);
     }
 }
 
@@ -334,10 +319,7 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
     open_destinations(app.world_mut(), road, player);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), road);
-    assert_eq!(
-        app.world().resource::<State<CommuteState>>().get(),
-        &CommuteState::Running
-    );
+    assert_eq!(commute_state(&app), &CommuteState::Running);
 
     app.world_mut()
         .get_mut::<SwitchPoint>(point)
@@ -358,10 +340,7 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
         app.update();
         assert_eq!(single::<SceneRoot>(&mut app), menu);
         assert_eq!(count::<RoadId>(&mut app), 0);
-        assert_eq!(
-            app.world().resource::<State<CommuteState>>().get(),
-            &CommuteState::Paused
-        );
+        assert_eq!(commute_state(&app), &CommuteState::Paused);
     }
     // Even a corrupted choice list must not unload the UI for an unknown road.
     app.world_mut()
@@ -372,10 +351,7 @@ fn only_valid_unique_destinations_are_offered_and_accepted() {
     activate(&mut app, button);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), menu);
-    assert_eq!(
-        app.world().resource::<State<CommuteState>>().get(),
-        &CommuteState::Paused
-    );
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
     app.world_mut()
         .get_mut::<TravelButtonAction>(button)
         .unwrap()
@@ -418,10 +394,7 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), next_road);
     assert_eq!(single::<Player>(&mut app), next_player);
-    assert_eq!(
-        app.world().resource::<State<CommuteState>>().get(),
-        &CommuteState::Running
-    );
+    assert_eq!(commute_state(&app), &CommuteState::Running);
 
     overlap_exit(&mut app, next_player);
     press_e(&mut app);
@@ -429,10 +402,7 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
     select_destination(app.world_mut(), court);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), next_menu);
-    assert_eq!(
-        app.world().resource::<State<CommuteState>>().get(),
-        &CommuteState::Paused
-    );
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
     let new_court = destination_button(&mut app, COURT);
     activate(&mut app, new_court);
     assert_road(&mut app, COURT);
