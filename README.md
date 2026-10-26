@@ -6,7 +6,13 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。
 - 按住左 Shift 并水平移动时以 1.5 倍速度加速，每秒消耗 5 点体力。
   体力初始值和上限为 100，不会自然恢复；耗尽后仍可正常移动和跳跃。
   松开左 Shift 或停止水平移动时不消耗体力。
-- 住宅为绿色、商店为橙色、工厂为紫色，切换点为青色；建筑交互输出到日志。
+- 金钱初始为 100 元。便利店为绿色，花费 10 元恢复 30 点体力，最多恢复至
+  100 点；满体力或余额不足时不交易。
+- 工具店为橙色，花费 20 元购买安全帽；已有安全帽或余额不足时不交易。
+- 彩票店为紫色，每次花费 10 元，10% 概率获得 50 元、20% 概率获得 10 元，
+  其余无奖励；余额不足时不交易。
+- 猫咪在右侧高台上，需要跳跃靠近后按 E 救援，获得 20 元并删除该猫咪场景实例。
+  切换点为青色。
 - 与切换点交互后，进入全屏、不透明的目的地选择 UI，点击有效目的地按钮继续。
   UI 是独立的 BSN 场景；进入时卸载当前 Road 及 Player，不提供 Esc 或 Cancel。
 
@@ -22,9 +28,10 @@ Player 不存在时，移动和交互系统自然跳过。
 目前仅有一个地面平台；进入后可正常移动和跳跃。
 UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 
-`src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina` 和
-`CommuteState`，默认通勤时限为 300 秒，已用时间和金钱均为 0。
-体力保存在全局 `Stamina` 资源中，切换路段或重新生成 Player 不会重置。
+`src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina`、
+`HasHelmet` 和 `CommuteState`，默认通勤时限为 300 秒，已用时间为 0，
+金钱为 100 元，初始没有安全帽。
+体力、安全帽和金钱保存在全局资源中，切换路段或重新生成 Player 不会重置。
 计时系统只在 `Running` 状态执行；进入目的地选择 UI 时请求 `Paused`，
 选择普通 Road 后恢复 `Running`，进入 Court 后保持 `Paused`。
 状态请求由 Bevy 在下一次状态切换调度中应用，不影响物理和玩家移动。
@@ -37,8 +44,9 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 `@scene(...)` 和 `Children [ ... -- ... ]` 组合。
 
 `platform_scene(position, size)` 的尺寸写入 `Platform` 组件，并同时用于 Sprite
-和 Collider，方便以后替换为九切片或平铺贴图。三种建筑各自有场景函数和
-`BuildingType` 组件，共用建筑占位场景。`SwitchPoint` 仅保存
+和 Collider，方便以后替换为九切片或平铺贴图。便利店、工具店、彩票店和猫咪
+各自有场景函数和 `BuildingType` 组件，共用 `building_scene` 占位场景。
+原型使用固定交易数值。`SwitchPoint` 仅保存
 `destinations: &'static [RoadId]`，由每个切换点自行配置可前往的路段，不再包含 `id`。
 
 新增路段时，按 `example_road_scene` 的形式定义返回 `impl Scene` 的函数，
@@ -50,9 +58,10 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 
 建筑整体和切换点使用与占位外观同尺寸的 `Collider + Sensor + CollidingEntities`
 检测重叠，允许玩家穿过。统一交互逻辑位于 `src/level/interaction.rs`，
-每次新按下 E 向所有与该玩家重叠的可交互目标发送 `InteractRequested` EntityEvent，
-事件包含目标和玩家实体。各类建筑和切换点通过 BSN 的 `on(...)` 绑定自己的
+每次新按下 E 向与玩家重叠的可交互目标发送一次 `InteractRequested` EntityEvent，
+事件包含目标和玩家实体，不处理多个交互区域重叠的情况。各类建筑和切换点通过 BSN 的 `on(...)` 绑定自己的
 Observer；路段切换由 `navigation.rs` 处理，目的地选择界面位于 `ui.rs`。
-暂不包含路线图、路网生成、路段解锁、建筑经济效果或实际判案逻辑。
+暂不包含路线图、路网生成、路段解锁、周末限制、每日猫咪刷新、跨场景救援状态保存、
+公交站或实际判案逻辑。
 
 验证：`cargo test`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`。
