@@ -259,7 +259,8 @@ fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
         assert!(children.contains(&player));
         overlap_exit(&mut app, player);
         assert_eq!(
-            app.world().resource::<RoadGraph>().roads[&app.world().get::<RoadId>(road).copied().unwrap()],
+            app.world().resource::<RoadGraph>().roads
+                [&app.world().get::<RoadId>(road).copied().unwrap()],
             choices
         );
         app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
@@ -368,8 +369,7 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
     app.world_mut()
         .get_mut::<TravelButtonAction>(button)
         .unwrap()
-        .0
-        = EXAMPLE_ROAD;
+        .0 = EXAMPLE_ROAD;
     activate(&mut app, button);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), menu);

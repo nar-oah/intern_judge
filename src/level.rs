@@ -6,8 +6,8 @@ mod tests;
 #[cfg(test)]
 mod travel_tests;
 mod ui;
-use bevy::prelude::*;
 use crate::config::GameState;
+use bevy::prelude::*;
 use scene::EXAMPLE_ROAD;
 use serde::Deserialize;
 
