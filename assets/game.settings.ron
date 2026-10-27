@@ -1,6 +1,6 @@
 (
     commute_limit: 300.0,
     initial_money: 100,
-    sprint_multiplier: 1.5,
-    stamina_drain_per_second: 5.0,
+    multiplier: 1.5,
+    per_second: 5.0,
 )

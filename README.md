@@ -31,7 +31,7 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
 
 - `game.settings.ron`：`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
-  `sprint_multiplier` 为冲刺速度倍率，`stamina_drain_per_second` 为每秒体力消耗。
+  `multiplier` 为冲刺速度倍率，`per_second` 为每秒体力消耗。
 - `roads.graph.ron`：`roads` 按 `RoadId` 枚举值配置下一路段数组；空数组表示没有目的地。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
