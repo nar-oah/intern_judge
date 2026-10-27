@@ -69,10 +69,10 @@ impl Plugin for GamePlugin {
                 (
                     tick_commute.run_if(in_state(CommuteState::Running)),
                     update_hud.run_if(
-                        resource_changed::<CommuteTime>
-                            .or_eager(resource_changed::<Money>)
-                            .or_eager(resource_changed::<Stamina>)
-                            .or_eager(resource_changed::<GameSettings>),
+                        resource_exists_and_changed::<CommuteTime>
+                            .or_eager(resource_exists_and_changed::<Money>)
+                            .or_eager(resource_exists_and_changed::<Stamina>)
+                            .or_eager(resource_exists_and_changed::<GameSettings>),
                     ),
                 )
                     .chain()
