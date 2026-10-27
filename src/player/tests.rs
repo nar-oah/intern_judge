@@ -123,8 +123,8 @@ fn sprinting_uses_configured_speed_and_drain_at_any_fixed_timestep() {
         let (mut app, player) = game(Vec2::ZERO);
         {
             let mut settings = app.world_mut().resource_mut::<GameSettings>();
-            settings.sprint_multiplier = 2.0;
-            settings.stamina_drain_per_second = 8.0;
+            settings.multiplier = 2.0;
+            settings.per_second = 8.0;
         }
         let timestep = Duration::from_secs_f64(1.0 / f64::from(frames_per_second));
         app.world_mut()

@@ -71,8 +71,8 @@ fn ron_configs_load_before_game_resources_and_scene() {
     let settings = world.resource::<GameSettings>();
     assert_eq!(settings.commute_limit, 300.0);
     assert_eq!(settings.initial_money, 100);
-    assert_eq!(settings.sprint_multiplier, 1.5);
-    assert_eq!(settings.stamina_drain_per_second, 5.0);
+    assert_eq!(settings.multiplier, 1.5);
+    assert_eq!(settings.per_second, 5.0);
     assert_eq!(world.resource::<Money>().0, settings.initial_money);
     assert_eq!(world.resource::<CommuteTime>().elapsed, 0.0);
     assert_eq!(world.resource::<Stamina>().0, Stamina::MAX);

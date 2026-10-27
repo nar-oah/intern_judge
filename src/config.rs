@@ -19,8 +19,8 @@ pub enum GameState {
 pub struct GameSettings {
     pub commute_limit: f32,
     pub initial_money: i32,
-    pub sprint_multiplier: f32,
-    pub stamina_drain_per_second: f32,
+    pub multiplier: f32,
+    pub per_second: f32,
 }
 
 #[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize)]
