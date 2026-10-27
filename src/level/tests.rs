@@ -1,17 +1,11 @@
 use super::*;
+use crate::game::{HasHelmet, Money, Stamina};
 use crate::physics::GameLayer;
 use crate::player::{Player, PlayerAction, PlayerPlugin};
 use crate::test_support::{advance, finish_app, headless_app};
 use avian2d::prelude::*;
-use bevy::{
-    log::{tracing, tracing_subscriber},
-    platform::time::Instant,
-};
+use bevy::platform::time::Instant;
 use leafwing_input_manager::prelude::*;
-use std::{
-    io::{self, Write},
-    sync::{Arc, Mutex},
-};
 
 #[derive(Resource, Default)]
 struct Requests(Vec<(Entity, Entity)>);
@@ -24,9 +18,12 @@ fn record_requests(app: &mut App) {
     );
 }
 
-fn scene_app() -> App {
-    let mut app = headless_app(Vec2::ZERO);
-    app.add_plugins(LevelPlugin);
+fn scene_app(gravity: Vec2) -> App {
+    let mut app = headless_app(gravity);
+    app.init_resource::<Money>()
+        .init_resource::<Stamina>()
+        .init_resource::<HasHelmet>()
+        .add_plugins((PlayerPlugin, LevelPlugin));
     record_requests(&mut app);
     finish_app(&mut app);
     advance(&mut app, 2);
@@ -46,6 +43,16 @@ fn single<C: Component>(app: &mut App) -> Entity {
         .query_filtered::<Entity, With<C>>()
         .single(world)
         .unwrap()
+}
+
+fn building(app: &mut App, kind: BuildingType) -> Entity {
+    let world = app.world_mut();
+    world
+        .query::<(Entity, &BuildingType)>()
+        .iter(world)
+        .find(|(_, candidate)| **candidate == kind)
+        .unwrap()
+        .0
 }
 
 fn teleport(app: &mut App, entity: Entity, position: Vec3) {
@@ -120,7 +127,7 @@ fn requests(app: &App) -> &[(Entity, Entity)] {
 
 #[test]
 fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
-    let mut app = scene_app();
+    let mut app = scene_app(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
     let player = single::<Player>(&mut app);
     let unrelated = app.world_mut().spawn_empty().id();
@@ -182,9 +189,10 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     }
     assert!(platforms > 0);
     for kind in [
-        BuildingType::Residential,
-        BuildingType::Shop,
-        BuildingType::Factory,
+        BuildingType::ConvenienceStore,
+        BuildingType::ToolStore,
+        BuildingType::LotteryStore,
+        BuildingType::Cat,
     ] {
         assert!(buildings.contains(&kind));
     }
@@ -204,99 +212,78 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
 }
 
 #[test]
-fn interactions_request_all_overlaps_only_on_a_fresh_press() {
+fn interactions_request_an_overlapping_target_only_on_a_fresh_press() {
     let mut app = interaction_app();
     let player = player(&mut app);
-    let targets = [target(&mut app, &[player]), target(&mut app, &[player])];
+    let target = target(&mut app, &[player]);
 
     interaction_frame(&mut app);
     assert!(requests(&app).is_empty(), "overlap alone does not interact");
     set_interact(&mut app, player, true);
     interaction_frame(&mut app);
-    assert_eq!(requests(&app).len(), targets.len());
-    for entity in targets {
-        assert!(requests(&app).contains(&(entity, player)));
-    }
+    assert_eq!(requests(&app), [(target, player)]);
     interaction_frame(&mut app);
-    assert_eq!(requests(&app).len(), 2, "holding interact does not repeat");
+    assert_eq!(requests(&app).len(), 1, "holding interact does not repeat");
 
-    for entity in targets {
-        app.world_mut()
-            .get_mut::<CollidingEntities>(entity)
-            .unwrap()
-            .clear();
-    }
+    app.world_mut()
+        .get_mut::<CollidingEntities>(target)
+        .unwrap()
+        .clear();
     set_interact(&mut app, player, false);
     interaction_frame(&mut app);
     set_interact(&mut app, player, true);
     interaction_frame(&mut app);
     assert_eq!(
         requests(&app).len(),
-        2,
+        1,
         "a press without overlap does nothing"
     );
-    for entity in targets {
-        app.world_mut()
-            .get_mut::<CollidingEntities>(entity)
-            .unwrap()
-            .insert(player);
-    }
+    app.world_mut()
+        .get_mut::<CollidingEntities>(target)
+        .unwrap()
+        .insert(player);
     interaction_frame(&mut app);
-    assert_eq!(requests(&app).len(), 2, "entering while held does nothing");
+    assert_eq!(requests(&app).len(), 1, "entering while held does nothing");
     set_interact(&mut app, player, false);
     interaction_frame(&mut app);
     set_interact(&mut app, player, true);
     interaction_frame(&mut app);
-    assert_eq!(requests(&app).len(), 4);
+    assert_eq!(requests(&app), [(target, player), (target, player)]);
 }
 
 #[test]
-fn interactions_filter_each_players_action_and_ignore_unmarked_targets_and_non_players() {
+fn interactions_ignore_unmarked_targets_and_non_players() {
     let mut app = interaction_app();
-    let first = player(&mut app);
-    let idle = player(&mut app);
-    let second = player(&mut app);
+    let player = player(&mut app);
     let mut actions = ActionState::<PlayerAction>::default();
     actions.press(&PlayerAction::Interact);
     let non_player = app.world_mut().spawn(actions).id();
-    let shared = target(&mut app, &[first, idle, second, non_player]);
-    let private = target(&mut app, &[first]);
     target(&mut app, &[non_player]);
     app.world_mut()
-        .spawn(CollidingEntities([first].into_iter().collect()));
+        .spawn(CollidingEntities([player].into_iter().collect()));
     app.world_mut().spawn(Interactable);
-    app.world_mut()
-        .get_mut::<ActionState<PlayerAction>>(idle)
-        .unwrap()
-        .press(&PlayerAction::Right);
-    set_interact(&mut app, first, true);
-    set_interact(&mut app, second, true);
+    set_interact(&mut app, player, true);
 
     interaction_frame(&mut app);
 
-    assert_eq!(requests(&app).len(), 3);
-    for request in [(shared, first), (shared, second), (private, first)] {
-        assert!(requests(&app).contains(&request));
-    }
+    assert!(requests(&app).is_empty());
+    app.world_mut().despawn(player);
+    interaction_frame(&mut app);
+    assert!(
+        requests(&app).is_empty(),
+        "no player during scene selection"
+    );
 }
 
 #[test]
 fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
-    let mut app = headless_app(Vec2::ZERO);
-    app.add_plugins((PlayerPlugin, LevelPlugin));
-    record_requests(&mut app);
-    finish_app(&mut app);
-    advance(&mut app, 2);
+    let mut app = scene_app(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
     let player = single::<Player>(&mut app);
     teleport(&mut app, road, Vec3::new(1000.0, 200.0, 0.0));
+    let shop = building(&mut app, BuildingType::ConvenienceStore);
+    app.world_mut().resource_mut::<Stamina>().0 = 80.0;
     let world = app.world_mut();
-    let shop = world
-        .query::<(Entity, &BuildingType)>()
-        .iter(world)
-        .find(|(_, kind)| **kind == BuildingType::Shop)
-        .unwrap()
-        .0;
     let center = world.get::<GlobalTransform>(shop).unwrap().translation();
     let shop_size = world.get::<Sprite>(shop).unwrap().custom_size.unwrap();
     let player_half_width = world
@@ -317,6 +304,8 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
     );
     interact_key(&mut app, true);
     assert!(requests(&app).is_empty(), "nearby centers are insufficient");
+    assert_eq!(app.world().resource::<Money>().0, 100);
+    assert_eq!(app.world().resource::<Stamina>().0, 80.0);
 
     interact_key(&mut app, false);
     teleport(&mut app, player, center);
@@ -329,8 +318,11 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
     assert!(requests(&app).is_empty(), "overlap alone does not interact");
     interact_key(&mut app, true);
     assert_eq!(requests(&app), [(shop, player)]);
+    assert_eq!(app.world().resource::<Money>().0, 90);
+    assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
     advance(&mut app, 3);
     assert_eq!(requests(&app).len(), 1, "holding E does not repeat");
+    assert_eq!(app.world().resource::<Money>().0, 90);
 
     teleport(&mut app, player, outside);
     assert!(
@@ -341,58 +333,96 @@ fn e_interacts_with_scene_sensors_only_during_physical_overlap() {
     );
 }
 
-#[derive(Clone, Default)]
-struct LogOutput(Arc<Mutex<Vec<u8>>>);
+#[test]
+fn e_uses_the_tool_and_lottery_scene_observers() {
+    let mut app = scene_app(Vec2::ZERO);
+    let player = single::<Player>(&mut app);
+    let tool_store = building(&mut app, BuildingType::ToolStore);
+    let center = app
+        .world()
+        .get::<GlobalTransform>(tool_store)
+        .unwrap()
+        .translation();
+    teleport(&mut app, player, center);
 
-impl Write for LogOutput {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
+    interact_key(&mut app, true);
+    assert!(app.world().resource::<HasHelmet>().0);
+    assert_eq!(app.world().resource::<Money>().0, 80);
+    assert_eq!(requests(&app), [(tool_store, player)]);
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
+    interact_key(&mut app, false);
+    let lottery_store = building(&mut app, BuildingType::LotteryStore);
+    let center = app
+        .world()
+        .get::<GlobalTransform>(lottery_store)
+        .unwrap()
+        .translation();
+    teleport(&mut app, player, center);
+    interact_key(&mut app, true);
+
+    assert!([70, 80, 120].contains(&app.world().resource::<Money>().0));
+    assert!(app.world().resource::<HasHelmet>().0);
+    assert_eq!(
+        requests(&app),
+        [(tool_store, player), (lottery_store, player)]
+    );
+    let balance = app.world().resource::<Money>().0;
+    advance(&mut app, 3);
+    assert_eq!(app.world().resource::<Money>().0, balance);
 }
 
 #[test]
-fn building_scenes_bind_their_own_interaction_observers() {
-    // Keep scoped logging interest visible when other test threads register callsites.
-    let _other_dispatch = tracing::Dispatch::new(tracing_subscriber::registry());
-    let output = LogOutput::default();
-    let writer = output.clone();
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_ansi(false)
-        .without_time()
-        .with_target(false)
-        .with_writer(move || writer.clone())
-        .finish();
-    tracing::subscriber::with_default(subscriber, || {
-        let mut app = scene_app();
-        let player = single::<Player>(&mut app);
-        let world = app.world_mut();
-        let targets: Vec<_> = world
-            .query::<(Entity, &BuildingType)>()
-            .iter(world)
-            .map(|(entity, kind)| (entity, format!("Building interaction: {kind:?}")))
-            .collect();
-        assert!(!targets.is_empty());
+fn cat_requires_a_platform_jump_and_is_rescued_only_once() {
+    let mut app = scene_app(Vec2::NEG_Y * 1000.0);
+    let player = single::<Player>(&mut app);
+    let cat = building(&mut app, BuildingType::Cat);
+    teleport(&mut app, player, Vec3::new(170.0, -137.5, 0.0));
+    advance(&mut app, 8);
+    assert!(
+        !app.world()
+            .get::<CollidingEntities>(cat)
+            .unwrap()
+            .contains(&player)
+    );
+    interact_key(&mut app, true);
+    assert!(requests(&app).is_empty());
+    assert_eq!(app.world().resource::<Money>().0, 100);
 
-        for (entity, expected) in targets {
-            output.0.lock().unwrap().clear();
-            app.world_mut()
-                .trigger(InteractRequested { entity, player });
-            let logs = String::from_utf8(output.0.lock().unwrap().clone()).unwrap();
-            let interactions: Vec<_> = logs
-                .lines()
-                .filter(|line| line.contains("Building interaction:"))
-                .collect();
-            assert_eq!(interactions.len(), 1, "captured logs:\n{logs}");
-            assert!(
-                interactions[0].contains(&expected),
-                "captured logs:\n{logs}"
-            );
+    interact_key(&mut app, false);
+    teleport(&mut app, player, Vec3::new(65.0, -137.5, 0.0));
+    let ground_y = app.world().get::<Position>(player).unwrap().y;
+    KeyCode::Space.press(app.world_mut());
+    // Rise beside the platform before moving across its upper edge.
+    advance(&mut app, 22);
+    KeyCode::Space.release(app.world_mut());
+    KeyCode::KeyD.press(app.world_mut());
+    for _ in 0..96 {
+        app.update();
+        if app
+            .world()
+            .get::<CollidingEntities>(cat)
+            .unwrap()
+            .contains(&player)
+        {
+            break;
         }
-    });
+    }
+    KeyCode::KeyD.release(app.world_mut());
+    assert!(app.world().get::<Position>(player).unwrap().y > ground_y + 50.0);
+    assert!(
+        app.world()
+            .get::<CollidingEntities>(cat)
+            .unwrap()
+            .contains(&player),
+        "the cat must be reachable by jumping onto its platform"
+    );
+
+    interact_key(&mut app, true);
+    assert_eq!(app.world().resource::<Money>().0, 120);
+    assert!(app.world().get_entity(cat).is_err());
+    assert_eq!(requests(&app), [(cat, player)]);
+    interact_key(&mut app, false);
+    interact_key(&mut app, true);
+    assert_eq!(app.world().resource::<Money>().0, 120);
+    assert_eq!(requests(&app).len(), 1);
 }

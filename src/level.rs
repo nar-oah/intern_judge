@@ -23,9 +23,10 @@ pub struct Platform {
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BuildingType {
     #[default]
-    Residential,
-    Shop,
-    Factory,
+    ConvenienceStore,
+    ToolStore,
+    LotteryStore,
+    Cat,
 }
 
 #[derive(Component, Clone, Copy, Debug, Default)]

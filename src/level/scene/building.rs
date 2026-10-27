@@ -1,12 +1,16 @@
-mod factory;
-mod residential;
-mod shop;
+mod cat;
+mod convenience_store;
+mod lottery_store;
+#[cfg(test)]
+mod tests;
+mod tool_store;
 use crate::level::Interactable;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-pub(super) use factory::factory_scene;
-pub(super) use residential::residential_scene;
-pub(super) use shop::shop_scene;
+pub(super) use cat::cat_scene;
+pub(super) use convenience_store::convenience_store_scene;
+pub(super) use lottery_store::lottery_store_scene;
+pub(super) use tool_store::tool_store_scene;
 
 fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
     bsn! {
