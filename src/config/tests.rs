@@ -5,8 +5,7 @@ use crate::{
     player::Player,
 };
 use bevy::{
-    asset::AssetPlugin, scene::ScenePlugin, state::app::StatesPlugin,
-    time::TimeUpdateStrategy,
+    asset::AssetPlugin, scene::ScenePlugin, state::app::StatesPlugin, time::TimeUpdateStrategy,
 };
 use std::time::{Duration, Instant};
 
@@ -14,7 +13,10 @@ use std::time::{Duration, Instant};
 struct LoadingObserved;
 
 fn assert_waiting_for_configs(world: &mut World) {
-    assert_eq!(world.resource::<State<GameState>>().get(), &GameState::Loading);
+    assert_eq!(
+        world.resource::<State<GameState>>().get(),
+        &GameState::Loading
+    );
     assert!(!world.contains_resource::<ConfigAssets>());
     assert!(!world.contains_resource::<GameSettings>());
     assert!(!world.contains_resource::<RoadGraph>());
@@ -78,7 +80,10 @@ fn ron_configs_load_before_game_resources_and_scene() {
 
     let graph = &world.resource::<RoadGraph>().roads;
     assert_eq!(graph.len(), 3);
-    assert_eq!(graph[&RoadId::ExampleRoad], [RoadId::MarketRoad, RoadId::Court]);
+    assert_eq!(
+        graph[&RoadId::ExampleRoad],
+        [RoadId::MarketRoad, RoadId::Court]
+    );
     assert_eq!(graph[&RoadId::MarketRoad], [RoadId::Court]);
     assert!(graph[&RoadId::Court].is_empty());
 
