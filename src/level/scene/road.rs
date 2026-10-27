@@ -4,14 +4,15 @@ use super::{
     switch_point::switch_point_scene,
 };
 use crate::{
+    config::ConvenienceKind,
     level::{RoadId, SceneRoot},
     player::player_scene,
 };
 use bevy::prelude::*;
 
-pub(in crate::level) const EXAMPLE_ROAD: RoadId = RoadId("example_road");
-pub(in crate::level) const MARKET_ROAD: RoadId = RoadId("market_road");
-pub(in crate::level) const COURT: RoadId = RoadId("court");
+pub(in crate::level) const EXAMPLE_ROAD: RoadId = RoadId::ExampleRoad;
+pub(in crate::level) const MARKET_ROAD: RoadId = RoadId::MarketRoad;
+pub(in crate::level) const COURT: RoadId = RoadId::Court;
 
 pub(super) fn example_road_scene() -> impl Scene {
     bsn! {
@@ -33,7 +34,7 @@ pub(super) fn example_road_scene() -> impl Scene {
             --
             @platform_scene(Vec2::new(170.0, -90.0), Vec2::new(150.0, 20.0))
             --
-            @convenience_store_scene(Vec2::new(-310.0, -122.5), Vec2::new(65.0, 80.0))
+            @convenience_store_scene(Vec2::new(-310.0, -122.5), Vec2::new(65.0, 80.0), ConvenienceKind::Small)
             --
             @tool_store_scene(Vec2::new(0.0, -127.5), Vec2::new(70.0, 70.0))
             --
@@ -41,7 +42,7 @@ pub(super) fn example_road_scene() -> impl Scene {
             --
             @cat_scene(Vec2::new(170.0, -66.0), Vec2::new(28.0, 28.0))
             --
-            @switch_point_scene(&[MARKET_ROAD, COURT], Vec2::new(460.0, -137.5))
+            @switch_point_scene(Vec2::new(460.0, -137.5))
         ]
     }
 }
@@ -60,9 +61,9 @@ pub(super) fn market_road_scene() -> impl Scene {
             --
             @tool_store_scene(Vec2::new(-170.0, -122.5), Vec2::new(100.0, 80.0))
             --
-            @convenience_store_scene(Vec2::new(170.0, -112.5), Vec2::new(80.0, 100.0))
+            @convenience_store_scene(Vec2::new(170.0, -112.5), Vec2::new(80.0, 100.0), ConvenienceKind::Large)
             --
-            @switch_point_scene(&[COURT], Vec2::new(460.0, -137.5))
+            @switch_point_scene(Vec2::new(460.0, -137.5))
         ]
     }
 }

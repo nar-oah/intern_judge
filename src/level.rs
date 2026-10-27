@@ -7,13 +7,20 @@ mod tests;
 mod travel_tests;
 mod ui;
 use bevy::prelude::*;
+use crate::config::GameState;
 use scene::EXAMPLE_ROAD;
+use serde::Deserialize;
 
 #[derive(Component, Clone, Default)]
 struct SceneRoot;
 
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct RoadId(pub &'static str);
+#[derive(Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash)]
+pub enum RoadId {
+    #[default]
+    ExampleRoad,
+    MarketRoad,
+    Court,
+}
 
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct Platform {
@@ -30,9 +37,7 @@ pub enum BuildingType {
 }
 
 #[derive(Component, Clone, Copy, Debug, Default)]
-pub struct SwitchPoint {
-    pub destinations: &'static [RoadId],
-}
+pub struct SwitchPoint;
 
 #[derive(Component, Clone, Copy, Default)]
 struct Interactable;
@@ -47,11 +52,12 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, |world: &mut World| {
-            world
-                .spawn_scene(scene::road_scene(EXAMPLE_ROAD).unwrap())
-                .unwrap();
+        app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
+            world.spawn_scene(scene::road_scene(EXAMPLE_ROAD)).unwrap();
         })
-        .add_systems(PostUpdate, interaction::interact);
+        .add_systems(
+            PostUpdate,
+            interaction::interact.run_if(in_state(GameState::Playing)),
+        );
     }
 }

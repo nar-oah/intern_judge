@@ -2,25 +2,28 @@ use super::{
     RoadId, SceneRoot, SwitchPoint, scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
-use crate::{game::CommuteState, player::Player};
+use crate::{config::RoadGraph, game::CommuteState, player::Player};
 use bevy::prelude::*;
 
 pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
     let Some(root) = scene_root(world, point) else {
         return;
     };
-    if world.get::<RoadId>(root).is_none()
-        || world.get::<Player>(player).is_none()
+    let Some(&road) = world.get::<RoadId>(root) else {
+        return;
+    };
+    if world.get::<Player>(player).is_none()
         || scene_root(world, player) != Some(root)
+        || world.get::<SwitchPoint>(point).is_none()
     {
         return;
     }
-    let Some(point) = world.get::<SwitchPoint>(point) else {
+    let Some(choices) = world.resource::<RoadGraph>().roads.get(&road) else {
         return;
     };
     let mut destinations = Vec::new();
-    for &destination in point.destinations {
-        if !destinations.contains(&destination) && scene::road_scene(destination).is_some() {
+    for &destination in choices {
+        if !destinations.contains(&destination) {
             destinations.push(destination);
         }
     }
@@ -42,10 +45,8 @@ pub(super) fn select_destination(world: &mut World, button: Entity) {
     let Some(choices) = world.get::<TravelUiRoot>(root) else {
         return;
     };
-    if choices.0.contains(&destination)
-        && let Some(road) = scene::road_scene(destination)
-    {
-        replace_scene(world, root, road);
+    if choices.0.contains(&destination) {
+        replace_scene(world, root, scene::road_scene(destination));
         let state = if destination == scene::COURT {
             CommuteState::Paused
         } else {
