@@ -1,9 +1,11 @@
-use crate::{config::{BuildingValues, GameSettings, GameState, RoadGraph}, game::Stamina};
+use crate::{
+    config::{BuildingValues, GameSettings, GameState, RoadGraph},
+    game::Stamina,
+};
 use avian2d::prelude::*;
 use bevy::{
     asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
-    state::app::StatesPlugin,
-    time::TimeUpdateStrategy,
+    state::app::StatesPlugin, time::TimeUpdateStrategy,
 };
 use std::time::Duration;
 
@@ -31,9 +33,16 @@ pub(crate) fn headless_app(gravity: Vec2) -> App {
 
 pub(crate) fn insert_config(app: &mut App) {
     app.insert_state(GameState::Playing)
-        .insert_resource(ron::from_str::<GameSettings>(include_str!("../assets/game.settings.ron")).unwrap())
-        .insert_resource(ron::from_str::<RoadGraph>(include_str!("../assets/roads.graph.ron")).unwrap())
-        .insert_resource(ron::from_str::<BuildingValues>(include_str!("../assets/buildings.values.ron")).unwrap());
+        .insert_resource(
+            ron::from_str::<GameSettings>(include_str!("../assets/game.settings.ron")).unwrap(),
+        )
+        .insert_resource(
+            ron::from_str::<RoadGraph>(include_str!("../assets/roads.graph.ron")).unwrap(),
+        )
+        .insert_resource(
+            ron::from_str::<BuildingValues>(include_str!("../assets/buildings.values.ron"))
+                .unwrap(),
+        );
 }
 
 /// Initialize plugins and run startup; later updates advance one fixed timestep.

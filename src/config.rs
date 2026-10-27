@@ -72,21 +72,33 @@ struct ConfigAssets {
 impl FromWorld for GameSettings {
     fn from_world(world: &mut World) -> Self {
         let handle = &world.resource::<ConfigAssets>().settings;
-        world.resource::<Assets<Self>>().get(handle).unwrap().clone()
+        world
+            .resource::<Assets<Self>>()
+            .get(handle)
+            .unwrap()
+            .clone()
     }
 }
 
 impl FromWorld for RoadGraph {
     fn from_world(world: &mut World) -> Self {
         let handle = &world.resource::<ConfigAssets>().roads;
-        world.resource::<Assets<Self>>().get(handle).unwrap().clone()
+        world
+            .resource::<Assets<Self>>()
+            .get(handle)
+            .unwrap()
+            .clone()
     }
 }
 
 impl FromWorld for BuildingValues {
     fn from_world(world: &mut World) -> Self {
         let handle = &world.resource::<ConfigAssets>().buildings;
-        world.resource::<Assets<Self>>().get(handle).unwrap().clone()
+        world
+            .resource::<Assets<Self>>()
+            .get(handle)
+            .unwrap()
+            .clone()
     }
 }
 

@@ -8,9 +8,9 @@ fn game() -> App {
     app.add_plugins((MinimalPlugins, StatesPlugin));
     insert_config(&mut app);
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
-            125,
-        )))
-        .add_plugins(GamePlugin);
+        125,
+    )))
+    .add_plugins(GamePlugin);
     app
 }
 
@@ -34,10 +34,7 @@ fn hud_text(app: &mut App) -> &str {
 #[test]
 fn remaining_time_can_be_positive_zero_or_negative() {
     for (elapsed, remaining) in [(2.0, 3.0), (5.0, 0.0), (8.0, -3.0)] {
-        assert_eq!(
-            CommuteTime { elapsed }.remaining(5.0),
-            remaining
-        );
+        assert_eq!(CommuteTime { elapsed }.remaining(5.0), remaining);
     }
 }
 
@@ -54,7 +51,10 @@ fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
     advance(&mut app, 3);
     let time = app.world().resource::<CommuteTime>();
     assert_eq!(time.elapsed, 0.375);
-    assert_eq!(time.remaining(app.world().resource::<GameSettings>().commute_limit), -0.25);
+    assert_eq!(
+        time.remaining(app.world().resource::<GameSettings>().commute_limit),
+        -0.25
+    );
 
     app.world_mut()
         .resource_mut::<NextState<CommuteState>>()
@@ -67,7 +67,12 @@ fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
         .set(CommuteState::Running);
     app.update();
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.5);
-    assert_eq!(app.world().resource::<CommuteTime>().remaining(app.world().resource::<GameSettings>().commute_limit), -0.375);
+    assert_eq!(
+        app.world()
+            .resource::<CommuteTime>()
+            .remaining(app.world().resource::<GameSettings>().commute_limit),
+        -0.375
+    );
 }
 
 #[test]
@@ -76,9 +81,7 @@ fn plugin_preserves_existing_resources() {
     app.add_plugins((MinimalPlugins, StatesPlugin));
     insert_config(&mut app);
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO))
-        .insert_resource(CommuteTime {
-            elapsed: 12.0,
-        })
+        .insert_resource(CommuteTime { elapsed: 12.0 })
         .insert_resource(Money(-7))
         .insert_resource(Stamina(37.5))
         .insert_resource(HasHelmet(true))
