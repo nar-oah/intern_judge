@@ -251,10 +251,7 @@ fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
     let (mut road, _) = assert_road(&mut app, RoadId::ExampleRoad);
 
     for (destination, choices) in [
-        (
-            RoadId::MarketRoad,
-            &[RoadId::MarketRoad, RoadId::Court][..],
-        ),
+        (RoadId::MarketRoad, &[RoadId::MarketRoad, RoadId::Court][..]),
         (RoadId::Court, &[RoadId::Court][..]),
     ] {
         let children = descendants(app.world(), road);
@@ -358,13 +355,10 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
     assert_eq!(single::<SceneRoot>(&mut app), road);
     assert_eq!(commute_state(&app), &CommuteState::Running);
 
-    app.world_mut()
-        .resource_mut::<RoadGraph>()
-        .roads
-        .insert(
-            RoadId::ExampleRoad,
-            vec![RoadId::MarketRoad, RoadId::MarketRoad, RoadId::Court],
-        );
+    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+        RoadId::ExampleRoad,
+        vec![RoadId::MarketRoad, RoadId::MarketRoad, RoadId::Court],
+    );
     press_e(&mut app);
     // The unrelated action is not a UI button and cannot select a destination.
     app.world_mut().despawn(orphan);
