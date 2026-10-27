@@ -1,9 +1,8 @@
 use super::building_scene;
+use crate::config::{BuildingValues, LotteryValues};
 use crate::game::Money;
 use crate::level::{BuildingType, InteractRequested};
 use bevy::prelude::*;
-
-const COST: i32 = 10;
 
 pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -> impl Scene {
     bsn! {
@@ -13,31 +12,55 @@ pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -
     }
 }
 
-fn interact(_: On<InteractRequested>, mut money: ResMut<Money>) {
-    if money.0 < COST {
+fn interact(_: On<InteractRequested>, values: Res<BuildingValues>, mut money: ResMut<Money>) {
+    let lottery = &values.lottery;
+    if money.0 < lottery.price {
         return;
     }
-    money.0 -= COST;
-    money.0 += prize(rand::random_range(0..10));
+    let total_weight = lottery.prizes.iter().map(|prize| prize.weight).sum();
+    money.0 -= lottery.price;
+    money.0 += prize(lottery, rand::random_range(0..total_weight));
 }
 
-fn prize(roll: u8) -> i32 {
-    match roll {
-        0 => 50,
-        1..=2 => 10,
-        _ => 0,
+fn prize(lottery: &LotteryValues, mut roll: u32) -> i32 {
+    for prize in &lottery.prizes {
+        if roll < prize.weight {
+            return prize.reward;
+        }
+        roll -= prize.weight;
     }
+    unreachable!("lottery roll must be within configured prize weights")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::LotteryPrize;
 
     #[test]
-    fn ten_equal_chances_have_one_jackpot_two_refunds_and_seven_losses() {
-        let prizes: Vec<_> = (0..10).map(prize).collect();
-        assert_eq!(prizes.iter().filter(|&&prize| prize == 50).count(), 1);
-        assert_eq!(prizes.iter().filter(|&&prize| prize == 10).count(), 2);
-        assert_eq!(prizes.iter().filter(|&&prize| prize == 0).count(), 7);
+    fn configured_weights_define_each_prizes_chances() {
+        let lottery = LotteryValues {
+            price: 13,
+            prizes: vec![
+                LotteryPrize {
+                    reward: 99,
+                    weight: 0,
+                },
+                LotteryPrize {
+                    reward: 70,
+                    weight: 2,
+                },
+                LotteryPrize {
+                    reward: 13,
+                    weight: 3,
+                },
+                LotteryPrize {
+                    reward: 0,
+                    weight: 1,
+                },
+            ],
+        };
+        let prizes: Vec<_> = (0..6).map(|roll| prize(&lottery, roll)).collect();
+        assert_eq!(prizes, [70, 70, 13, 13, 13, 0]);
     }
 }
