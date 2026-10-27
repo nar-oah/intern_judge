@@ -1,11 +1,12 @@
 use super::*;
+use crate::config::{BuildingValues, ConvenienceKind, LotteryPrize};
 use crate::game::{HasHelmet, Money, Stamina};
 use crate::level::InteractRequested;
 use crate::test_support::{finish_app, headless_app};
 
 fn building_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
-    app.init_resource::<Money>()
+    app.insert_resource(Money(100))
         .init_resource::<Stamina>()
         .init_resource::<HasHelmet>();
     finish_app(&mut app);
@@ -25,7 +26,11 @@ fn convenience_store_charges_only_when_it_can_restore_stamina() {
     let mut app = building_app();
     let store = app
         .world_mut()
-        .spawn_scene(convenience_store_scene(Vec2::ZERO, Vec2::splat(100.0)))
+        .spawn_scene(convenience_store_scene(
+            Vec2::ZERO,
+            Vec2::splat(100.0),
+            ConvenienceKind::Small,
+        ))
         .unwrap()
         .id();
 
@@ -42,6 +47,54 @@ fn convenience_store_charges_only_when_it_can_restore_stamina() {
         assert_eq!(app.world().resource::<Money>().0, expected_money);
         assert_eq!(app.world().resource::<Stamina>().0, expected_stamina);
         assert!(!app.world().resource::<HasHelmet>().0);
+    }
+}
+
+#[test]
+fn convenience_store_types_use_their_configured_price_and_recovery() {
+    let mut app = building_app();
+    {
+        let mut values = app.world_mut().resource_mut::<BuildingValues>();
+        let small = values
+            .convenience_stores
+            .get_mut(&ConvenienceKind::Small)
+            .unwrap();
+        small.price = 7;
+        small.stamina_recovery = 17.0;
+        let large = values
+            .convenience_stores
+            .get_mut(&ConvenienceKind::Large)
+            .unwrap();
+        large.price = 23;
+        large.stamina_recovery = 61.0;
+    }
+
+    for (kind, price, recovery) in [
+        (ConvenienceKind::Small, 7, 17.0),
+        (ConvenienceKind::Large, 23, 61.0),
+    ] {
+        let store = app
+            .world_mut()
+            .spawn_scene(convenience_store_scene(
+                Vec2::ZERO,
+                Vec2::splat(100.0),
+                kind,
+            ))
+            .unwrap()
+            .id();
+        assert_eq!(app.world().get::<ConvenienceKind>(store), Some(&kind));
+
+        app.world_mut().resource_mut::<Money>().0 = 100;
+        app.world_mut().resource_mut::<Stamina>().0 = 20.0;
+        interact(&mut app, store);
+        assert_eq!(app.world().resource::<Money>().0, 100 - price);
+        assert_eq!(app.world().resource::<Stamina>().0, 20.0 + recovery);
+
+        app.world_mut().resource_mut::<Money>().0 = price - 1;
+        app.world_mut().resource_mut::<Stamina>().0 = 20.0;
+        interact(&mut app, store);
+        assert_eq!(app.world().resource::<Money>().0, price - 1);
+        assert_eq!(app.world().resource::<Stamina>().0, 20.0);
     }
 }
 
@@ -72,24 +125,33 @@ fn tool_store_requires_twenty_yuan_and_does_not_sell_a_second_helmet() {
 #[test]
 fn lottery_requires_a_ticket_payment_before_applying_a_prize() {
     let mut app = building_app();
+    {
+        let mut values = app.world_mut().resource_mut::<BuildingValues>();
+        values.lottery.price = 13;
+        values.lottery.prizes = vec![LotteryPrize {
+            reward: 7,
+            weight: 1,
+        }];
+    }
     let store = app
         .world_mut()
         .spawn_scene(lottery_store_scene(Vec2::ZERO, Vec2::splat(100.0)))
         .unwrap()
         .id();
 
-    app.world_mut().resource_mut::<Money>().0 = 9;
+    app.world_mut().resource_mut::<Money>().0 = 12;
     interact(&mut app, store);
-    assert_eq!(app.world().resource::<Money>().0, 9);
+    assert_eq!(app.world().resource::<Money>().0, 12);
 
-    app.world_mut().resource_mut::<Money>().0 = 10;
+    app.world_mut().resource_mut::<Money>().0 = 13;
     interact(&mut app, store);
-    assert!([0, 10, 50].contains(&app.world().resource::<Money>().0));
+    assert_eq!(app.world().resource::<Money>().0, 7);
 }
 
 #[test]
 fn rescuing_a_cat_rewards_money_and_despawns_only_that_scene() {
     let mut app = building_app();
+    app.world_mut().resource_mut::<BuildingValues>().cat_reward = 37;
     let cat = app
         .world_mut()
         .spawn_scene(cat_scene(Vec2::ZERO, Vec2::splat(30.0)))
@@ -102,11 +164,11 @@ fn rescuing_a_cat_rewards_money_and_despawns_only_that_scene() {
         .id();
 
     interact(&mut app, cat);
-    assert_eq!(app.world().resource::<Money>().0, 120);
+    assert_eq!(app.world().resource::<Money>().0, 137);
     assert!(app.world().get_entity(cat).is_err());
     assert!(app.world().get_entity(other_cat).is_ok());
 
     interact(&mut app, other_cat);
-    assert_eq!(app.world().resource::<Money>().0, 140);
+    assert_eq!(app.world().resource::<Money>().0, 174);
     assert!(app.world().get_entity(other_cat).is_err());
 }
