@@ -11,3 +11,6 @@ bevy_common_assets = { version = "0.18.0", features = ["ron"] }
 leafwing-input-manager = "0.22"
 rand = "0.10"
 serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+ron = "0.12"

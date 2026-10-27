@@ -1,0 +1,15 @@
+(
+    cat_reward: 20,
+    lottery: (
+        price: 10,
+        prizes: [
+            (reward: 50, weight: 1),
+            (reward: 10, weight: 2),
+            (reward: 0, weight: 7),
+        ],
+    ),
+    convenience_stores: {
+        Small: (price: 10, stamina_recovery: 30.0),
+        Large: (price: 20, stamina_recovery: 60.0),
+    },
+)
