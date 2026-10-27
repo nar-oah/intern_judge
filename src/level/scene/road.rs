@@ -10,15 +10,11 @@ use crate::{
 };
 use bevy::prelude::*;
 
-pub(in crate::level) const EXAMPLE_ROAD: RoadId = RoadId::ExampleRoad;
-pub(in crate::level) const MARKET_ROAD: RoadId = RoadId::MarketRoad;
-pub(in crate::level) const COURT: RoadId = RoadId::Court;
-
 pub(super) fn example_road_scene() -> impl Scene {
     bsn! {
         #ExampleRoad
         SceneRoot
-        EXAMPLE_ROAD
+        RoadId::ExampleRoad
         Transform::default()
         Visibility::default()
         Children [
@@ -51,7 +47,7 @@ pub(super) fn market_road_scene() -> impl Scene {
     bsn! {
         #MarketRoad
         SceneRoot
-        MARKET_ROAD
+        RoadId::MarketRoad
         Transform::default()
         Visibility::default()
         Children [
@@ -72,7 +68,7 @@ pub(super) fn court_scene() -> impl Scene {
     bsn! {
         #Court
         SceneRoot
-        COURT
+        RoadId::Court
         Transform::default()
         Visibility::default()
         Children [

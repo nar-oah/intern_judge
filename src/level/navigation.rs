@@ -47,7 +47,7 @@ pub(super) fn select_destination(world: &mut World, button: Entity) {
     };
     if choices.0.contains(&destination) {
         replace_scene(world, root, scene::road_scene(destination));
-        let state = if destination == scene::COURT {
+        let state = if destination == RoadId::Court {
             CommuteState::Paused
         } else {
             CommuteState::Running

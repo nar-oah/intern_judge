@@ -1,7 +1,6 @@
 use super::{
     InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
     navigation::{open_destinations, select_destination},
-    scene::{COURT, EXAMPLE_ROAD, MARKET_ROAD},
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
@@ -211,7 +210,7 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
     assert!(app.world().resource::<CommuteTime>().elapsed > before);
     assert_hud(&app);
 
-    for destination in [MARKET_ROAD, COURT] {
+    for destination in [RoadId::MarketRoad, RoadId::Court] {
         let player = single::<Player>(&mut app);
         overlap_exit(&mut app, player);
         let before_menu = app.world().resource::<CommuteTime>().elapsed;
@@ -231,7 +230,7 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
         activate(&mut app, button);
         app.update();
         advance(&mut app, 4);
-        if destination == COURT {
+        if destination == RoadId::Court {
             assert_eq!(commute_state(&app), &CommuteState::Paused);
             assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
         } else {
@@ -249,11 +248,14 @@ fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() 
 fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
     let (mut app, mut player, camera) = game();
     let unrelated = app.world_mut().spawn_empty().id();
-    let (mut road, _) = assert_road(&mut app, EXAMPLE_ROAD);
+    let (mut road, _) = assert_road(&mut app, RoadId::ExampleRoad);
 
     for (destination, choices) in [
-        (MARKET_ROAD, &[MARKET_ROAD, COURT][..]),
-        (COURT, &[COURT][..]),
+        (
+            RoadId::MarketRoad,
+            &[RoadId::MarketRoad, RoadId::Court][..],
+        ),
+        (RoadId::Court, &[RoadId::Court][..]),
     ] {
         let children = descendants(app.world(), road);
         assert!(children.contains(&player));
@@ -326,9 +328,9 @@ fn missing_or_empty_destinations_keep_the_road_and_player() {
         overlap_exit(&mut app, player);
         let mut graph = app.world_mut().resource_mut::<RoadGraph>();
         if let Some(destinations) = destinations {
-            graph.roads.insert(EXAMPLE_ROAD, destinations);
+            graph.roads.insert(RoadId::ExampleRoad, destinations);
         } else {
-            graph.roads.remove(&EXAMPLE_ROAD);
+            graph.roads.remove(&RoadId::ExampleRoad);
         }
         press_e(&mut app);
         app.update();
@@ -345,7 +347,10 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
     let (mut app, player, _) = game();
     let road = single::<SceneRoot>(&mut app);
     let point = overlap_exit(&mut app, player);
-    let orphan = app.world_mut().spawn(TravelButtonAction(MARKET_ROAD)).id();
+    let orphan = app
+        .world_mut()
+        .spawn(TravelButtonAction(RoadId::MarketRoad))
+        .id();
     select_destination(app.world_mut(), orphan);
     open_destinations(app.world_mut(), point, Entity::PLACEHOLDER);
     open_destinations(app.world_mut(), road, player);
@@ -356,17 +361,20 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
     app.world_mut()
         .resource_mut::<RoadGraph>()
         .roads
-        .insert(EXAMPLE_ROAD, vec![MARKET_ROAD, MARKET_ROAD, COURT]);
+        .insert(
+            RoadId::ExampleRoad,
+            vec![RoadId::MarketRoad, RoadId::MarketRoad, RoadId::Court],
+        );
     press_e(&mut app);
     // The unrelated action is not a UI button and cannot select a destination.
     app.world_mut().despawn(orphan);
-    let menu = assert_ui(&mut app, &[MARKET_ROAD, COURT]);
+    let menu = assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
     app.update();
-    let button = destination_button(&mut app, MARKET_ROAD);
+    let button = destination_button(&mut app, RoadId::MarketRoad);
     app.world_mut()
         .get_mut::<TravelButtonAction>(button)
         .unwrap()
-        .0 = EXAMPLE_ROAD;
+        .0 = RoadId::ExampleRoad;
     activate(&mut app, button);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), menu);
@@ -375,9 +383,9 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
     app.world_mut()
         .get_mut::<TravelButtonAction>(button)
         .unwrap()
-        .0 = MARKET_ROAD;
+        .0 = RoadId::MarketRoad;
     activate(&mut app, button);
-    assert_road(&mut app, MARKET_ROAD);
+    assert_road(&mut app, RoadId::MarketRoad);
 }
 
 #[test]
@@ -396,10 +404,10 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
         }
     }
     app.world_mut().flush();
-    let menu = assert_ui(&mut app, &[MARKET_ROAD, COURT]);
+    let menu = assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
     assert_removed(&app, road, &children);
-    let market = destination_button(&mut app, MARKET_ROAD);
-    let court = destination_button(&mut app, COURT);
+    let market = destination_button(&mut app, RoadId::MarketRoad);
+    let court = destination_button(&mut app, RoadId::Court);
     {
         let mut commands = app.world_mut().commands();
         for button in [market, court, market] {
@@ -407,7 +415,7 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
         }
     }
     app.world_mut().flush();
-    let (next_road, next_player) = assert_road(&mut app, MARKET_ROAD);
+    let (next_road, next_player) = assert_road(&mut app, RoadId::MarketRoad);
     assert!(app.world().get_entity(menu).is_err());
     select_destination(app.world_mut(), court);
     open_destinations(app.world_mut(), point, player);
@@ -418,12 +426,12 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
 
     overlap_exit(&mut app, next_player);
     press_e(&mut app);
-    let next_menu = assert_ui(&mut app, &[COURT]);
+    let next_menu = assert_ui(&mut app, &[RoadId::Court]);
     select_destination(app.world_mut(), court);
     app.update();
     assert_eq!(single::<SceneRoot>(&mut app), next_menu);
     assert_eq!(commute_state(&app), &CommuteState::Paused);
-    let new_court = destination_button(&mut app, COURT);
+    let new_court = destination_button(&mut app, RoadId::Court);
     activate(&mut app, new_court);
-    assert_road(&mut app, COURT);
+    assert_road(&mut app, RoadId::Court);
 }

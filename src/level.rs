@@ -8,7 +8,6 @@ mod travel_tests;
 mod ui;
 use crate::config::GameState;
 use bevy::prelude::*;
-use scene::EXAMPLE_ROAD;
 use serde::Deserialize;
 
 #[derive(Component, Clone, Default)]
@@ -53,7 +52,9 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
-            world.spawn_scene(scene::road_scene(EXAMPLE_ROAD)).unwrap();
+            world
+                .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
+                .unwrap();
         })
         .add_systems(
             PostUpdate,
