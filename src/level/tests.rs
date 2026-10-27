@@ -141,13 +141,11 @@ fn road_scene_waits_for_playing() {
         .set(GameState::Playing);
     app.update();
     let road = single::<RoadId>(&mut app);
+    let player = single::<Player>(&mut app);
     assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
     assert_eq!(single::<SceneRoot>(&mut app), road);
     assert_eq!(
-        app.world()
-            .get::<ChildOf>(single::<Player>(&mut app))
-            .unwrap()
-            .parent(),
+        app.world().get::<ChildOf>(player).unwrap().parent(),
         road,
     );
 }

@@ -258,9 +258,9 @@ fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
         let children = descendants(app.world(), road);
         assert!(children.contains(&player));
         overlap_exit(&mut app, player);
+        let road_id = *app.world().get::<RoadId>(road).unwrap();
         assert_eq!(
-            app.world().resource::<RoadGraph>().roads
-                [&app.world().get::<RoadId>(road).copied().unwrap()],
+            app.world().resource::<RoadGraph>().roads[&road_id],
             choices
         );
         app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
