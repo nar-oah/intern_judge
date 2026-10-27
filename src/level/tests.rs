@@ -126,6 +126,32 @@ fn requests(app: &App) -> &[(Entity, Entity)] {
 }
 
 #[test]
+fn road_scene_waits_for_playing() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.insert_state(GameState::Loading).add_plugins(LevelPlugin);
+    finish_app(&mut app);
+    advance(&mut app, 2);
+    let world = app.world_mut();
+    assert_eq!(world.query::<&SceneRoot>().iter(world).count(), 0);
+    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
+
+    world
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    app.update();
+    let road = single::<RoadId>(&mut app);
+    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
+    assert_eq!(single::<SceneRoot>(&mut app), road);
+    assert_eq!(
+        app.world()
+            .get::<ChildOf>(single::<Player>(&mut app))
+            .unwrap()
+            .parent(),
+        road,
+    );
+}
+
+#[test]
 fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     let mut app = scene_app(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
