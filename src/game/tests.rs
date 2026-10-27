@@ -1,12 +1,13 @@
 use super::*;
-use crate::test_support::{advance, finish_app};
+use crate::test_support::{advance, finish_app, insert_config};
 use bevy::{state::app::StatesPlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
 
 fn game() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
+    app.add_plugins((MinimalPlugins, StatesPlugin));
+    insert_config(&mut app);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             125,
         )))
         .add_plugins(GamePlugin);
@@ -34,11 +35,7 @@ fn hud_text(app: &mut App) -> &str {
 fn remaining_time_can_be_positive_zero_or_negative() {
     for (elapsed, remaining) in [(2.0, 3.0), (5.0, 0.0), (8.0, -3.0)] {
         assert_eq!(
-            CommuteTime {
-                limit: 5.0,
-                elapsed,
-            }
-            .remaining(),
+            CommuteTime { elapsed }.remaining(5.0),
             remaining
         );
     }
@@ -47,7 +44,7 @@ fn remaining_time_can_be_positive_zero_or_negative() {
 #[test]
 fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
     let mut app = game();
-    app.world_mut().resource_mut::<CommuteTime>().limit = 0.125;
+    app.world_mut().resource_mut::<GameSettings>().commute_limit = 0.125;
     finish_app(&mut app);
     assert_eq!(
         *app.world().resource::<State<CommuteState>>().get(),
@@ -57,7 +54,7 @@ fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
     advance(&mut app, 3);
     let time = app.world().resource::<CommuteTime>();
     assert_eq!(time.elapsed, 0.375);
-    assert_eq!(time.remaining(), -0.25);
+    assert_eq!(time.remaining(app.world().resource::<GameSettings>().commute_limit), -0.25);
 
     app.world_mut()
         .resource_mut::<NextState<CommuteState>>()
@@ -70,16 +67,16 @@ fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
         .set(CommuteState::Running);
     app.update();
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.5);
-    assert_eq!(app.world().resource::<CommuteTime>().remaining(), -0.375);
+    assert_eq!(app.world().resource::<CommuteTime>().remaining(app.world().resource::<GameSettings>().commute_limit), -0.375);
 }
 
 #[test]
 fn plugin_preserves_existing_resources() {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin))
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO))
+    app.add_plugins((MinimalPlugins, StatesPlugin));
+    insert_config(&mut app);
+    app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO))
         .insert_resource(CommuteTime {
-            limit: 45.0,
             elapsed: 12.0,
         })
         .insert_resource(Money(-7))
@@ -89,7 +86,6 @@ fn plugin_preserves_existing_resources() {
     finish_app(&mut app);
 
     let time = app.world().resource::<CommuteTime>();
-    assert_eq!(time.limit, 45.0);
     assert_eq!(time.elapsed, 12.0);
     assert_eq!(app.world().resource::<Money>().0, -7);
     assert_eq!(app.world().resource::<Stamina>().0, 37.5);
@@ -102,6 +98,14 @@ fn prototype_starts_with_one_hundred_yuan_and_no_helmet() {
     finish_app(&mut app);
     assert_eq!(app.world().resource::<Money>().0, 100);
     assert!(!app.world().resource::<HasHelmet>().0);
+}
+
+#[test]
+fn initial_money_comes_from_settings() {
+    let mut app = game();
+    app.world_mut().resource_mut::<GameSettings>().initial_money = 47;
+    finish_app(&mut app);
+    assert_eq!(app.world().resource::<Money>().0, 47);
 }
 
 #[test]
@@ -120,11 +124,8 @@ fn hud_is_a_top_right_root_and_updates_with_time_and_money() {
         "Time: 300.0s\nMoney: 100\nStamina: 100/100"
     );
 
-    {
-        let mut time = app.world_mut().resource_mut::<CommuteTime>();
-        time.limit = 1.0;
-        time.elapsed = 2.0;
-    }
+    app.world_mut().resource_mut::<GameSettings>().commute_limit = 1.0;
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 2.0;
     app.world_mut().resource_mut::<Money>().0 = 23;
     app.update();
     assert_eq!(

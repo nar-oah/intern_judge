@@ -118,9 +118,14 @@ fn a_and_d_move_the_player_and_cancel_when_held_together() {
 }
 
 #[test]
-fn sprinting_scales_speed_and_drains_five_stamina_per_second_at_any_fixed_timestep() {
+fn sprinting_uses_configured_speed_and_drain_at_any_fixed_timestep() {
     for frames_per_second in [32, 64] {
         let (mut app, player) = game(Vec2::ZERO);
+        {
+            let mut settings = app.world_mut().resource_mut::<GameSettings>();
+            settings.sprint_multiplier = 2.0;
+            settings.stamina_drain_per_second = 8.0;
+        }
         let timestep = Duration::from_secs_f64(1.0 / f64::from(frames_per_second));
         app.world_mut()
             .resource_mut::<Time<Fixed>>()
@@ -132,8 +137,8 @@ fn sprinting_scales_speed_and_drains_five_stamina_per_second_at_any_fixed_timest
 
         advance(&mut app, frames_per_second as usize);
 
-        assert_eq!(velocity(&app, player), Vec2::new(-330.0, -70.0));
-        assert!((app.world().resource::<Stamina>().0 - 95.0).abs() < 0.001);
+        assert_eq!(velocity(&app, player), Vec2::new(-440.0, -70.0));
+        assert!((app.world().resource::<Stamina>().0 - 92.0).abs() < 0.001);
     }
 }
 
