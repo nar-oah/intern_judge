@@ -1,34 +1,25 @@
 #[cfg(test)]
 mod tests;
+use crate::config::{GameSettings, GameState};
 use bevy::prelude::*;
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Default)]
 pub struct CommuteTime {
-    pub limit: f32,
     pub elapsed: f32,
 }
 
-impl Default for CommuteTime {
-    fn default() -> Self {
-        Self {
-            limit: 300.0,
-            elapsed: 0.0,
-        }
-    }
-}
-
 impl CommuteTime {
-    pub fn remaining(&self) -> f32 {
-        self.limit - self.elapsed
+    pub fn remaining(&self, limit: f32) -> f32 {
+        limit - self.elapsed
     }
 }
 
 #[derive(Resource, Debug)]
 pub struct Money(pub i32);
 
-impl Default for Money {
-    fn default() -> Self {
-        Self(100)
+impl FromWorld for Money {
+    fn from_world(world: &mut World) -> Self {
+        Self(world.resource::<GameSettings>().initial_money)
     }
 }
 
@@ -68,25 +59,33 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CommuteTime>()
-            .init_resource::<Money>()
-            .init_resource::<Stamina>()
-            .init_resource::<HasHelmet>()
-            .init_state::<CommuteState>()
-            .add_systems(Startup, setup_hud)
+        app.init_state::<CommuteState>()
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (initialize_game, setup_hud).chain(),
+            )
             .add_systems(
                 Update,
                 (
                     tick_commute.run_if(in_state(CommuteState::Running)),
                     update_hud.run_if(
-                        resource_changed::<CommuteTime>
-                            .or_eager(resource_changed::<Money>)
-                            .or_eager(resource_changed::<Stamina>),
+                        resource_exists_and_changed::<CommuteTime>
+                            .or_eager(resource_exists_and_changed::<Money>)
+                            .or_eager(resource_exists_and_changed::<Stamina>)
+                            .or_eager(resource_exists_and_changed::<GameSettings>),
                     ),
                 )
-                    .chain(),
+                    .chain()
+                    .run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+fn initialize_game(world: &mut World) {
+    world.init_resource::<CommuteTime>();
+    world.init_resource::<Money>();
+    world.init_resource::<Stamina>();
+    world.init_resource::<HasHelmet>();
 }
 
 fn tick_commute(time: Res<Time>, mut commute: ResMut<CommuteTime>) {
@@ -146,6 +145,7 @@ fn setup_hud(mut commands: Commands) {
 }
 
 fn update_hud(
+    settings: Res<GameSettings>,
     commute: Res<CommuteTime>,
     money: Res<Money>,
     stamina: Res<Stamina>,
@@ -155,7 +155,7 @@ fn update_hud(
     for mut text in &mut hud {
         text.0 = format!(
             "Time: {:.1}s\nMoney: {}\nStamina: {:.0}/{:.0}",
-            commute.remaining(),
+            commute.remaining(settings.commute_limit),
             money.0,
             stamina.0,
             Stamina::MAX,

@@ -63,6 +63,11 @@ fn text_scene(label: &str, font_size: f32) -> impl Scene {
 }
 
 fn destination_button_scene(destination: RoadId) -> impl Scene {
+    let label = match destination {
+        RoadId::ExampleRoad => "example_road",
+        RoadId::MarketRoad => "market_road",
+        RoadId::Court => "court",
+    };
     bsn! {
         Button
         TravelButtonAction(destination)
@@ -75,7 +80,7 @@ fn destination_button_scene(destination: RoadId) -> impl Scene {
         }
         BackgroundColor(Color::srgb(0.2, 0.35, 0.5))
         on(activate_button)
-        Children [ @text_scene(destination.0, 20.0) ]
+        Children [ @text_scene(label, 20.0) ]
     }
 }
 

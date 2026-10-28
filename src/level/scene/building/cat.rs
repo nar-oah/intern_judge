@@ -1,9 +1,8 @@
 use super::building_scene;
+use crate::config::BuildingValues;
 use crate::game::Money;
 use crate::level::{BuildingType, InteractRequested};
 use bevy::prelude::*;
-
-const REWARD: i32 = 20;
 
 pub(in crate::level::scene) fn cat_scene(position: Vec2, size: Vec2) -> impl Scene {
     bsn! {
@@ -13,7 +12,12 @@ pub(in crate::level::scene) fn cat_scene(position: Vec2, size: Vec2) -> impl Sce
     }
 }
 
-fn interact(request: On<InteractRequested>, mut commands: Commands, mut money: ResMut<Money>) {
-    money.0 += REWARD;
+fn interact(
+    request: On<InteractRequested>,
+    mut commands: Commands,
+    mut money: ResMut<Money>,
+    values: Res<BuildingValues>,
+) {
+    money.0 += values.cat_reward;
     commands.entity(request.entity).despawn();
 }

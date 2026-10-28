@@ -20,7 +20,7 @@ fn record_requests(app: &mut App) {
 
 fn scene_app(gravity: Vec2) -> App {
     let mut app = headless_app(gravity);
-    app.init_resource::<Money>()
+    app.insert_resource(Money(100))
         .init_resource::<Stamina>()
         .init_resource::<HasHelmet>()
         .add_plugins((PlayerPlugin, LevelPlugin));
@@ -126,15 +126,34 @@ fn requests(app: &App) -> &[(Entity, Entity)] {
 }
 
 #[test]
+fn road_scene_waits_for_playing() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.insert_state(GameState::Loading)
+        .add_plugins(LevelPlugin);
+    finish_app(&mut app);
+    advance(&mut app, 2);
+    let world = app.world_mut();
+    assert_eq!(world.query::<&SceneRoot>().iter(world).count(), 0);
+    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
+
+    world
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    app.update();
+    let road = single::<RoadId>(&mut app);
+    let player = single::<Player>(&mut app);
+    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
+    assert_eq!(single::<SceneRoot>(&mut app), road);
+    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), road);
+}
+
+#[test]
 fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     let mut app = scene_app(Vec2::ZERO);
     let road = single::<RoadId>(&mut app);
     let player = single::<Player>(&mut app);
     let unrelated = app.world_mut().spawn_empty().id();
-    assert_eq!(
-        app.world().get::<RoadId>(road),
-        Some(&RoadId("example_road"))
-    );
+    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
     let children = app.world().get::<Children>(road).unwrap().to_vec();
     assert!(!children.is_empty());
     let offset = Vec3::new(1000.0, 200.0, 0.0);
@@ -142,7 +161,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
 
     let mut platforms = 0;
     let mut buildings = Vec::new();
-    let mut switches = Vec::new();
+    let mut switches = 0;
     for &child in &children {
         let world = app.world();
         assert_eq!(world.get::<ChildOf>(child).unwrap().parent(), road);
@@ -182,8 +201,8 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
             if let Some(kind) = world.get::<BuildingType>(child) {
                 buildings.push(*kind);
             }
-            if let Some(point) = world.get::<SwitchPoint>(child) {
-                switches.push(point.destinations);
+            if world.get::<SwitchPoint>(child).is_some() {
+                switches += 1;
             }
         }
     }
@@ -196,7 +215,7 @@ fn road_scene_keeps_physics_aligned_and_despawns_its_children() {
     ] {
         assert!(buildings.contains(&kind));
     }
-    assert_eq!(switches, [&[scene::MARKET_ROAD, scene::COURT][..]]);
+    assert_eq!(switches, 1);
 
     let world = app.world_mut();
     assert!(world.despawn(road));

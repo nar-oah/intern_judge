@@ -1,0 +1,12 @@
+(
+    roads: {
+        ExampleRoad: [
+            MarketRoad,
+            Court,
+        ],
+        MarketRoad: [
+            Court,
+        ],
+        Court: [],
+    },
+)

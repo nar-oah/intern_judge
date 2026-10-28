@@ -1,11 +1,11 @@
-use crate::level::{InteractRequested, Interactable, RoadId, SwitchPoint, navigation};
+use crate::level::{InteractRequested, Interactable, SwitchPoint, navigation};
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-pub(super) fn switch_point_scene(destinations: &'static [RoadId], position: Vec2) -> impl Scene {
+pub(super) fn switch_point_scene(position: Vec2) -> impl Scene {
     let size = Vec2::new(24.0, 50.0);
     bsn! {
-        SwitchPoint { destinations }
+        SwitchPoint
         Interactable
         Sprite {
             color: Color::srgb(0.3, 0.85, 0.85),
