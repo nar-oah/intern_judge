@@ -1,5 +1,6 @@
 use super::{
     RoadId, SceneRoot, SwitchPoint, scene,
+    map::MapLayout,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
 use crate::{config::RoadGraph, game::CommuteState, player::Player};
@@ -28,7 +29,13 @@ pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity
         }
     }
     if !destinations.is_empty() {
-        replace_scene(world, root, ui::travel_ui_scene(destinations));
+        let next = ui::travel_ui_scene(
+            road,
+            destinations,
+            world.resource::<RoadGraph>(),
+            world.resource::<MapLayout>(),
+        );
+        replace_scene(world, root, next);
         world
             .resource_mut::<NextState<CommuteState>>()
             .set(CommuteState::Paused);

@@ -1,4 +1,5 @@
 mod interaction;
+mod map;
 mod navigation;
 mod scene;
 #[cfg(test)]
@@ -13,7 +14,9 @@ use serde::Deserialize;
 #[derive(Component, Clone, Default)]
 struct SceneRoot;
 
-#[derive(Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub enum RoadId {
     #[default]
     ExampleRoad,
@@ -52,6 +55,7 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
+            world.init_resource::<map::MapLayout>();
             world
                 .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
                 .unwrap();
