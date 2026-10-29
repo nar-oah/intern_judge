@@ -12,5 +12,3 @@ leafwing-input-manager = "0.22"
 rand = "0.10"
 serde = { version = "1.0.229", features = ["derive"] }
 
-[dev-dependencies]
-ron = "0.12"

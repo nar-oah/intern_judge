@@ -38,10 +38,24 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
         ]
     );
 
-    let actions = world
-        .query_filtered::<&TravelButtonAction, With<Button>>()
+    let buttons = world
+        .query_filtered::<Entity, With<Button>>()
         .iter(world)
-        .map(|action| action.0)
         .collect::<Vec<_>>();
-    assert_eq!(actions, [RoadId::MarketRoad]);
+    assert_eq!(buttons.len(), 1);
+    let button = buttons[0];
+    assert_eq!(world.get::<MapRoadNode>(button).unwrap().0, RoadId::MarketRoad);
+    assert_eq!(world.get::<TravelButtonAction>(button).unwrap().0, RoadId::MarketRoad);
+
+    let mut connections = world
+        .query::<&MapConnection>()
+        .iter(world)
+        .map(|connection| (connection.from, connection.to))
+        .collect::<Vec<_>>();
+    connections.sort_unstable();
+    assert_eq!(connections, [
+        (RoadId::Start, RoadId::ExampleRoad),
+        (RoadId::ExampleRoad, RoadId::MarketRoad),
+        (RoadId::MarketRoad, RoadId::Court),
+    ]);
 }
