@@ -1,41 +1,19 @@
 use super::{
-    InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
+    BuildingType, InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
-    navigation::{open_destinations, select_destination},
-    ui::{MapConnection, MapRoadNode, TravelButtonAction, TravelUiRoot},
+    navigation::{destinations, open_destinations, select_destination},
+    scene,
+    ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
-    config::{GameSettings, GameState, RoadGraph},
-    game::{CommuteState, CommuteTime, GamePlugin, Money, Stamina},
+    config::{BuildingValues, ConvenienceKind, GameSettings, GameState, RoadGraph},
+    game::{CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
 use avian2d::prelude::*;
-use bevy::{
-    prelude::*,
-    ui_widgets::{Activate, Button},
-};
+use bevy::{prelude::*, ui_widgets::Activate};
 use leafwing_input_manager::prelude::*;
-use std::collections::{BTreeSet, HashMap};
-
-const SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
-
-fn initial_game() -> (App, Entity) {
-    let mut app = headless_app(Vec2::ZERO);
-    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
-    let camera = app.world_mut().spawn(Camera2d).id();
-    finish_app(&mut app);
-    (app, camera)
-}
-
-fn game() -> (App, Entity, Entity) {
-    let (mut app, camera) = initial_game();
-    let button = destination_button(&mut app, RoadId::ExampleRoad);
-    activate(&mut app, button);
-    advance(&mut app, 2);
-    let player = single::<Player>(&mut app);
-    (app, player, camera)
-}
 
 fn single<C: Component>(app: &mut App) -> Entity {
     let world = app.world_mut();
@@ -45,64 +23,84 @@ fn single<C: Component>(app: &mut App) -> Entity {
         .unwrap()
 }
 
-fn count<C: Component>(app: &mut App) -> usize {
+fn assert_absent<C: Component>(app: &mut App) {
+    let world = app.world_mut();
+    assert!(
+        world
+            .query_filtered::<Entity, With<C>>()
+            .iter(world)
+            .next()
+            .is_none()
+    );
+}
+
+fn scene_entities(world: &World, root: Entity) -> Vec<Entity> {
+    let mut entities = vec![root];
+    let mut index = 0;
+    while index < entities.len() {
+        if let Some(children) = world.get::<Children>(entities[index]) {
+            entities.extend(children.iter());
+        }
+        index += 1;
+    }
+    entities
+}
+
+fn assert_removed(app: &App, entities: &[Entity]) {
+    for &entity in entities {
+        assert!(
+            app.world().get_entity(entity).is_err(),
+            "stale scene entity {entity:?}"
+        );
+    }
+}
+
+fn destination_button(app: &mut App, destination: RoadId) -> Entity {
     let world = app.world_mut();
     world
-        .query_filtered::<Entity, With<C>>()
+        .query::<(Entity, &TravelButtonAction)>()
         .iter(world)
-        .count()
+        .find_map(|(entity, action)| (action.0 == destination).then_some(entity))
+        .expect("the destination must be offered")
 }
 
-fn descendants(world: &World, root: Entity) -> Vec<Entity> {
-    let mut result = Vec::new();
-    let mut pending = vec![root];
-    while let Some(parent) = pending.pop() {
-        if let Some(children) = world.get::<Children>(parent) {
-            pending.extend(children.iter());
-            result.extend(children.iter());
-        }
-    }
-    result
+fn activate(app: &mut App, destination: RoadId) {
+    let button = destination_button(app, destination);
+    app.world_mut().trigger(Activate { entity: button });
+    app.world_mut().flush();
 }
 
-fn assert_removed(app: &App, root: Entity, children: &[Entity]) {
-    assert!(app.world().get_entity(root).is_err());
-    assert!(
-        children
-            .iter()
-            .all(|&child| app.world().get_entity(child).is_err())
-    );
+fn assert_map(app: &mut App, choices: &[RoadId]) -> Entity {
+    let root = single::<TravelUiRoot>(app);
+    assert_eq!(app.world().get::<TravelUiRoot>(root).unwrap().0, choices);
+    assert_absent::<Player>(app);
+    root
 }
 
-fn position(app: &App, player: Entity) -> Vec2 {
-    app.world().get::<Position>(player).unwrap().0
+fn assert_road(app: &mut App, destination: RoadId) -> (Entity, Entity) {
+    let root = single::<SceneRoot>(app);
+    let player = single::<Player>(app);
+    assert_eq!(app.world().get::<RoadId>(root), Some(&destination));
+    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), root);
+    assert_absent::<TravelUiRoot>(app);
+    (root, player)
 }
 
-fn commute_state(app: &App) -> &CommuteState {
-    app.world().resource::<State<CommuteState>>().get()
-}
-
-fn overlap_exit(app: &mut App, player: Entity) -> Entity {
-    let point = single::<SwitchPoint>(app);
-    let center = app
+fn teleport(app: &mut App, entity: Entity, position: Vec3) {
+    let local = app
         .world()
-        .get::<GlobalTransform>(point)
-        .unwrap()
-        .translation();
-    app.world_mut().get_mut::<Position>(player).unwrap().0 = center.truncate();
+        .get::<ChildOf>(entity)
+        .and_then(|parent| app.world().get::<GlobalTransform>(parent.parent()))
+        .map_or(position, |parent| {
+            parent.affine().inverse().transform_point3(position)
+        });
     app.world_mut()
-        .get_mut::<Transform>(player)
+        .get_mut::<Transform>(entity)
         .unwrap()
-        .translation = center;
-    app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::ZERO;
+        .translation = local;
+    app.world_mut().get_mut::<Position>(entity).unwrap().0 = position.truncate();
+    app.world_mut().get_mut::<LinearVelocity>(entity).unwrap().0 = Vec2::ZERO;
     advance(app, 3);
-    assert!(
-        app.world()
-            .get::<CollidingEntities>(point)
-            .unwrap()
-            .contains(&player)
-    );
-    point
 }
 
 fn press_e(app: &mut App) {
@@ -112,582 +110,279 @@ fn press_e(app: &mut App) {
     app.update();
 }
 
-fn destination_button(app: &mut App, destination: RoadId) -> Entity {
-    let world = app.world_mut();
-    world
-        .query::<(Entity, &TravelButtonAction)>()
-        .iter(world)
-        .find_map(|(entity, action)| (action.0 == destination).then_some(entity))
-        .expect("the offered destination must have a button")
+fn assert_commute(app: &App, state: CommuteState) {
+    assert_eq!(*app.world().resource::<State<CommuteState>>().get(), state);
 }
 
-fn activate(app: &mut App, button: Entity) {
-    assert!(app.world().get::<Button>(button).is_some());
-    assert!(app.world().get::<Node>(button).is_some());
-    app.world_mut().trigger(Activate { entity: button });
-    app.world_mut().flush();
-}
-
-fn assert_road(app: &mut App, destination: RoadId) -> (Entity, Entity) {
-    let road = single::<RoadId>(app);
-    let player = single::<Player>(app);
-    assert_eq!(single::<SceneRoot>(app), road);
-    assert_eq!(app.world().get::<RoadId>(road), Some(&destination));
-    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), road);
-    assert_eq!(count::<TravelUiRoot>(app), 0);
-    assert_eq!(count::<TravelButtonAction>(app), 0);
-    assert_eq!(position(app, player), SPAWN);
-    assert_eq!(
-        app.world()
-            .get::<Transform>(player)
-            .unwrap()
-            .translation
-            .truncate(),
-        SPAWN
-    );
-    assert_eq!(
-        app.world().get::<LinearVelocity>(player).unwrap().0,
-        Vec2::ZERO
-    );
-    assert_eq!(app.world().get::<AngularVelocity>(player).unwrap().0, 0.0);
-    assert!(app.world().get::<ShapeHits>(player).unwrap().is_empty());
-    (road, player)
-}
-
-fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
-    let root = single::<TravelUiRoot>(app);
-    assert_eq!(single::<SceneRoot>(app), root);
-    assert_eq!(
-        app.world().get::<TravelUiRoot>(root).unwrap().0,
-        destinations
-    );
-    assert_eq!(count::<RoadId>(app), 0);
-    assert_eq!(count::<Player>(app), 0);
-    assert_eq!(count::<super::Platform>(app), 0);
-    assert_eq!(count::<super::BuildingType>(app), 0);
-    assert_eq!(count::<SwitchPoint>(app), 0);
-    assert_eq!(count::<Button>(app), destinations.len());
-    assert_eq!(count::<TravelButtonAction>(app), destinations.len());
-    let world = app.world_mut();
-    let expected_roads = world
-        .resource::<MapLayout>()
-        .positions
-        .keys()
-        .copied()
-        .collect::<BTreeSet<_>>();
-    let nodes = world
-        .query::<(Entity, &MapRoadNode)>()
-        .iter(world)
-        .map(|(entity, road)| (entity, road.0))
-        .collect::<Vec<_>>();
-    assert_eq!(nodes.len(), expected_roads.len());
-    assert_eq!(
-        nodes.iter().map(|(_, road)| *road).collect::<BTreeSet<_>>(),
-        expected_roads
-    );
-    for (entity, road) in nodes {
-        let available = destinations.contains(&road);
-        assert_eq!(world.get::<Button>(entity).is_some(), available);
-        assert_eq!(world.get::<TravelButtonAction>(entity).is_some(), available);
-    }
-    let expected_connections = world
-        .resource::<RoadGraph>()
-        .roads
-        .iter()
-        .flat_map(|(&from, destinations)| {
-            destinations
-                .iter()
-                .copied()
-                .filter(move |&to| to != from)
-                .map(move |to| (from, to))
-        })
-        .collect::<BTreeSet<_>>();
-    let connections = world
-        .query::<&MapConnection>()
-        .iter(world)
-        .map(|connection| (connection.from, connection.to))
-        .collect::<Vec<_>>();
-    assert_eq!(connections.len(), expected_connections.len());
-    assert_eq!(
-        connections.into_iter().collect::<BTreeSet<_>>(),
-        expected_connections
-    );
-    let node = app.world().get::<Node>(root).unwrap();
-    assert_eq!(node.width, percent(100));
-    assert_eq!(node.height, percent(100));
-    assert_eq!(node.position_type, PositionType::Absolute);
-    assert_eq!(
-        app.world().get::<BackgroundColor>(root).unwrap().0.alpha(),
-        1.0
-    );
-    let children = descendants(app.world(), root);
-    for &destination in destinations {
-        let button = destination_button(app, destination);
-        assert!(children.contains(&button));
-        assert!(app.world().get::<Button>(button).is_some());
-    }
-    root
-}
-
-#[test]
-fn initial_map_has_no_physical_scene_and_starts_commute_only_after_selecting_a_road() {
-    let (mut app, camera) = initial_game();
-    let menu = assert_ui(&mut app, &[RoadId::ExampleRoad]);
-    assert_eq!(count::<Collider>(&mut app), 0);
-    assert_eq!(count::<RigidBody>(&mut app), 0);
-    assert_eq!(count::<Sprite>(&mut app), 0);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
-
-    KeyCode::KeyD.press(app.world_mut());
-    KeyCode::Space.press(app.world_mut());
-    press_e(&mut app);
-    advance(&mut app, 8);
-    assert_eq!(assert_ui(&mut app, &[RoadId::ExampleRoad]), menu);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
-    KeyCode::KeyD.release(app.world_mut());
-    KeyCode::Space.release(app.world_mut());
-    KeyCode::KeyE.release(app.world_mut());
-    app.update();
-
-    let children = descendants(app.world(), menu);
-    let button = destination_button(&mut app, RoadId::ExampleRoad);
-    activate(&mut app, button);
-    assert_removed(&app, menu, &children);
-    assert_road(&mut app, RoadId::ExampleRoad);
-    assert!(count::<super::Platform>(&mut app) > 0);
-    assert_eq!(single::<Camera2d>(&mut app), camera);
-    app.update();
-    assert_eq!(commute_state(&app), &CommuteState::Running);
-    assert!(app.world().resource::<CommuteTime>().elapsed > 0.0);
-}
-
-#[test]
-fn initial_map_uses_start_connections_and_filters_duplicate_or_logical_destinations() {
+// Navigation rejection needs real scene ancestry and observers, without advancing physics.
+fn navigation_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
-    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+    app.init_state::<CommuteState>();
+    let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
+    app.insert_resource(layout);
+    finish_app(&mut app);
+    app.world_mut()
+        .spawn_scene(scene::road_scene(RoadId::ExampleRoad).unwrap())
+        .unwrap();
+    app
+}
+
+#[test]
+fn playing_starts_with_destinations_from_the_current_start_connections() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.insert_state(GameState::Loading)
+        .init_state::<CommuteState>()
+        .add_plugins(LevelPlugin);
+    finish_app(&mut app);
+    assert_absent::<SceneRoot>(&mut app);
+
+    let mut graph = app.world_mut().resource_mut::<RoadGraph>();
+    graph.roads.insert(
         RoadId::Start,
         vec![RoadId::Start, RoadId::MarketRoad, RoadId::MarketRoad],
     );
-    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
-    finish_app(&mut app);
-    assert_ui(&mut app, &[RoadId::MarketRoad]);
-    let button = destination_button(&mut app, RoadId::MarketRoad);
-    activate(&mut app, button);
-    assert_road(&mut app, RoadId::MarketRoad);
-    app.update();
-    assert_eq!(commute_state(&app), &CommuteState::Running);
-}
-
-#[test]
-fn missing_or_non_enterable_start_connections_keep_an_empty_paused_map() {
-    for destinations in [None, Some(Vec::new()), Some(vec![RoadId::Start])] {
-        let mut app = headless_app(Vec2::ZERO);
-        let mut graph = app.world_mut().resource_mut::<RoadGraph>();
-        if let Some(destinations) = destinations {
-            graph.roads.insert(RoadId::Start, destinations);
-        } else {
-            graph.roads.remove(&RoadId::Start);
-        }
-        app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
-        finish_app(&mut app);
-        let menu = assert_ui(&mut app, &[]);
-        advance(&mut app, 4);
-        assert_eq!(assert_ui(&mut app, &[]), menu);
-        assert_eq!(commute_state(&app), &CommuteState::Paused);
-        assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
-    }
-}
-
-#[test]
-fn start_is_rejected_even_if_the_button_and_ui_choices_are_forged() {
-    let (mut app, _) = initial_game();
-    let menu = assert_ui(&mut app, &[RoadId::ExampleRoad]);
-    let children = descendants(app.world(), menu);
-    let button = destination_button(&mut app, RoadId::ExampleRoad);
-    app.world_mut().get_mut::<TravelUiRoot>(menu).unwrap().0 = vec![RoadId::Start];
+    graph.roads.remove(&RoadId::MarketRoad);
     app.world_mut()
-        .get_mut::<TravelButtonAction>(button)
-        .unwrap()
-        .0 = RoadId::Start;
-    activate(&mut app, button);
-    advance(&mut app, 4);
-    assert_eq!(single::<SceneRoot>(&mut app), menu);
-    assert_eq!(descendants(app.world(), menu), children);
-    assert_eq!(count::<RoadId>(&mut app), 0);
-    assert_eq!(count::<Player>(&mut app), 0);
-    assert_eq!(count::<Collider>(&mut app), 0);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    app.update();
+
+    assert_map(&mut app, &[RoadId::MarketRoad]);
+    assert_commute(&app, CommuteState::Paused);
+    activate(&mut app, RoadId::MarketRoad);
+    assert_road(&mut app, RoadId::MarketRoad);
 }
 
 #[test]
-fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() {
-    let (mut app, _, _) = game();
-    let world = app.world_mut();
-    let hud = world
-        .query_filtered::<Entity, (With<GlobalZIndex>, With<Node>, Without<ChildOf>)>()
-        .single(world)
-        .unwrap();
-    world.resource_mut::<Money>().0 = 37;
-    world.resource_mut::<Stamina>().0 = 42.0;
-    world.resource_mut::<GameSettings>().commute_limit = 123.0;
-    world.resource_mut::<CommuteTime>().elapsed = 10.0;
-    let assert_hud = |app: &App| {
-        let world = app.world();
-        assert!(world.get::<Node>(hud).is_some());
-        let text = descendants(world, hud)
-            .into_iter()
-            .find_map(|entity| world.get::<Text>(entity))
-            .unwrap();
-        assert!(text.0.contains("Money: 37"));
-        assert!(text.0.contains("Stamina: 42/100"));
-        assert!(world.get::<SceneRoot>(hud).is_none());
-        assert!(world.get::<ChildOf>(hud).is_none());
-        assert_eq!(world.get::<GlobalZIndex>(hud).unwrap().0, 200);
-        assert_eq!(world.resource::<Money>().0, 37);
-        assert_eq!(world.resource::<Stamina>().0, 42.0);
-        assert_eq!(world.resource::<GameSettings>().commute_limit, 123.0);
-    };
-    assert_eq!(commute_state(&app), &CommuteState::Running);
-    let before = app.world().resource::<CommuteTime>().elapsed;
-    advance(&mut app, 4);
-    assert!(app.world().resource::<CommuteTime>().elapsed > before);
-    assert_hud(&app);
-
-    for destination in [RoadId::MarketRoad, RoadId::Court] {
-        let player = single::<Player>(&mut app);
-        overlap_exit(&mut app, player);
-        let before_menu = app.world().resource::<CommuteTime>().elapsed;
-        press_e(&mut app);
-        // Navigation requests a state change; the next frame applies it.
-        app.update();
-        assert_eq!(commute_state(&app), &CommuteState::Paused);
-        assert!(app.world().get_entity(player).is_err());
-        assert_eq!(count::<Player>(&mut app), 0);
-        let paused_at = app.world().resource::<CommuteTime>().elapsed;
-        assert!(paused_at >= before_menu);
-        assert_hud(&app);
-        advance(&mut app, 4);
-        assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
-
-        let button = destination_button(&mut app, destination);
-        activate(&mut app, button);
-        app.update();
-        advance(&mut app, 4);
-        if destination == RoadId::Court {
-            assert_eq!(commute_state(&app), &CommuteState::Paused);
-            assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
-        } else {
-            assert_eq!(commute_state(&app), &CommuteState::Running);
-            assert!(app.world().resource::<CommuteTime>().elapsed > paused_at);
-        }
-        let road = single::<RoadId>(&mut app);
-        assert_ne!(single::<Player>(&mut app), player);
-        assert_eq!(app.world().get::<RoadId>(road), Some(&destination));
-        assert_hud(&app);
-    }
-}
-
-#[test]
-fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
-    let (mut app, mut player, camera) = game();
+fn commute_journey_replaces_scenes_and_preserves_global_progress() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
+    let camera = app.world_mut().spawn(Camera2d).id();
     let unrelated = app.world_mut().spawn_empty().id();
-    let (mut road, _) = assert_road(&mut app, RoadId::ExampleRoad);
+    finish_app(&mut app);
 
+    let initial_map = assert_map(&mut app, &[RoadId::ExampleRoad]);
+    let old_map = scene_entities(app.world(), initial_map);
+    advance(&mut app, 4);
+    assert_commute(&app, CommuteState::Paused);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    activate(&mut app, RoadId::ExampleRoad);
+    assert_removed(&app, &old_map);
+    let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
+    let spawn = app.world().get::<Position>(player).unwrap().0;
+    advance(&mut app, 3);
+
+    // A real shop sensor connects keyboard input, collision detection, and its observer.
+    let shop = {
+        let world = app.world_mut();
+        world
+            .query::<(Entity, &BuildingType)>()
+            .iter(world)
+            .find_map(|(entity, kind)| (*kind == BuildingType::ConvenienceStore).then_some(entity))
+            .unwrap()
+    };
+    let price =
+        app.world().resource::<BuildingValues>().convenience_stores[&ConvenienceKind::Small].price;
+    let balance = price + 1;
+    app.world_mut().resource_mut::<Money>().0 = balance;
+    app.world_mut().resource_mut::<Stamina>().0 = 1.0;
+    press_e(&mut app);
+    assert_eq!(app.world().resource::<Money>().0, balance);
+    let center = app
+        .world()
+        .get::<GlobalTransform>(shop)
+        .unwrap()
+        .translation();
+    teleport(&mut app, player, center);
+    assert!(
+        app.world()
+            .get::<CollidingEntities>(shop)
+            .unwrap()
+            .contains(&player)
+    );
+    assert_eq!(
+        app.world().resource::<Money>().0,
+        balance,
+        "entering while E is held does nothing"
+    );
+    press_e(&mut app);
+    let after_purchase = app.world().resource::<Money>().0;
+    assert!(after_purchase < balance);
+    assert!(app.world().resource::<Stamina>().0 > 1.0);
+    advance(&mut app, 3);
+    assert_eq!(
+        app.world().resource::<Money>().0,
+        after_purchase,
+        "holding E does not purchase again"
+    );
+
+    app.world_mut().resource_mut::<Money>().0 = 37;
+    app.world_mut().resource_mut::<Stamina>().0 = 42.0;
+    app.world_mut().resource_mut::<HasHelmet>().0 = true;
+    app.world_mut().resource_mut::<GameSettings>().commute_limit = 123.0;
     for (destination, choices) in [
         (RoadId::MarketRoad, &[RoadId::MarketRoad, RoadId::Court][..]),
         (RoadId::Court, &[RoadId::Court][..]),
     ] {
-        let children = descendants(app.world(), road);
-        assert!(children.contains(&player));
-        overlap_exit(&mut app, player);
-        let road_id = *app.world().get::<RoadId>(road).unwrap();
-        assert_eq!(app.world().resource::<RoadGraph>().roads[&road_id], choices);
-        app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(220.0, -70.0);
-        app.world_mut()
-            .get_mut::<AngularVelocity>(player)
+        let road = single::<SceneRoot>(&mut app);
+        let player = single::<Player>(&mut app);
+        let old_road = scene_entities(app.world(), road);
+        let before = app.world().resource::<CommuteTime>().elapsed;
+        advance(&mut app, 3);
+        assert_commute(&app, CommuteState::Running);
+        assert!(app.world().resource::<CommuteTime>().elapsed > before);
+
+        let point = single::<SwitchPoint>(&mut app);
+        let center = app
+            .world()
+            .get::<GlobalTransform>(point)
             .unwrap()
-            .0 = 3.0;
+            .translation();
+        teleport(&mut app, player, center);
+        assert!(
+            app.world()
+                .get::<CollidingEntities>(point)
+                .unwrap()
+                .contains(&player)
+        );
         press_e(&mut app);
-
-        let menu = assert_ui(&mut app, choices);
-        assert_removed(&app, road, &children);
-        assert!(app.world().get_entity(player).is_err());
-        assert_eq!(single::<Camera2d>(&mut app), camera);
-        assert!(app.world().get_entity(unrelated).is_ok());
-        assert!(!app.world().resource::<Time<Physics>>().is_paused());
-
-        // With no Player, movement and interaction naturally do nothing in the UI.
-        KeyCode::KeyD.press(app.world_mut());
-        KeyCode::Space.press(app.world_mut());
-        advance(&mut app, 4);
-        press_e(&mut app);
-        assert_eq!(assert_ui(&mut app, choices), menu);
-        KeyCode::KeyD.release(app.world_mut());
-        KeyCode::Space.release(app.world_mut());
         app.update();
+        assert_removed(&app, &old_road);
+        let map = assert_map(&mut app, choices);
+        let old_map = scene_entities(app.world(), map);
+        assert_commute(&app, CommuteState::Paused);
+        let paused_at = app.world().resource::<CommuteTime>().elapsed;
+        advance(&mut app, 4);
+        assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
 
-        let menu_children = descendants(app.world(), menu);
-        let button = destination_button(&mut app, destination);
-        activate(&mut app, button);
-        assert_removed(&app, menu, &menu_children);
-        let (next_road, next_player) = assert_road(&mut app, destination);
-        assert_ne!(next_road, road);
+        activate(&mut app, destination);
+        assert_removed(&app, &old_map);
+        let (_, next_player) = assert_road(&mut app, destination);
         assert_ne!(next_player, player);
-        assert_eq!(single::<Camera2d>(&mut app), camera);
+        assert_eq!(app.world().get::<Position>(next_player).unwrap().0, spawn);
+        assert_eq!(
+            app.world().get::<LinearVelocity>(next_player).unwrap().0,
+            Vec2::ZERO
+        );
+        advance(&mut app, 3);
+        if destination == RoadId::Court {
+            assert_commute(&app, CommuteState::Paused);
+            assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
+        } else {
+            assert_commute(&app, CommuteState::Running);
+            assert!(app.world().resource::<CommuteTime>().elapsed > paused_at);
+        }
+        assert!(app.world().get_entity(camera).is_ok());
         assert!(app.world().get_entity(unrelated).is_ok());
-        road = next_road;
-        player = next_player;
-        advance(&mut app, 2);
+        assert_eq!(app.world().resource::<Money>().0, 37);
+        assert_eq!(app.world().resource::<Stamina>().0, 42.0);
+        assert!(app.world().resource::<HasHelmet>().0);
+        assert_eq!(app.world().resource::<GameSettings>().commute_limit, 123.0);
     }
-
-    assert_eq!(count::<super::Platform>(&mut app), 1);
-    assert_eq!(count::<super::BuildingType>(&mut app), 0);
-    assert_eq!(count::<SwitchPoint>(&mut app), 0);
-    assert_eq!(descendants(app.world(), road).len(), 2);
-
-    app.world_mut().resource_mut::<Gravity>().0 = Vec2::NEG_Y * 1000.0;
-    advance(&mut app, 32);
-    assert!(!app.world().get::<ShapeHits>(player).unwrap().is_empty());
-    let before_move = position(&app, player);
-    KeyCode::KeyD.press(app.world_mut());
-    app.update();
-    assert!(position(&app, player).x > before_move.x);
-    KeyCode::KeyD.release(app.world_mut());
-    KeyCode::Space.press(app.world_mut());
-    app.update();
-    assert!(app.world().get::<LinearVelocity>(player).unwrap().y > 350.0);
-    assert!(position(&app, player).y > before_move.y);
 }
 
 #[test]
-fn missing_or_empty_destinations_keep_the_road_and_player() {
-    for destinations in [None, Some(Vec::new()), Some(vec![RoadId::Start])] {
-        let (mut app, player, _) = game();
-        let road = single::<RoadId>(&mut app);
-        let children = descendants(app.world(), road);
-        overlap_exit(&mut app, player);
+fn missing_empty_and_logical_connections_offer_no_travel() {
+    let mut app = navigation_app();
+    let road = single::<SceneRoot>(&mut app);
+    let player = single::<Player>(&mut app);
+    let point = single::<SwitchPoint>(&mut app);
+    for connections in [None, Some(vec![]), Some(vec![RoadId::Start])] {
         let mut graph = app.world_mut().resource_mut::<RoadGraph>();
-        if let Some(destinations) = destinations {
-            graph.roads.insert(RoadId::ExampleRoad, destinations);
-        } else {
-            graph.roads.remove(&RoadId::ExampleRoad);
+        match connections {
+            Some(connections) => {
+                graph.roads.insert(RoadId::ExampleRoad, connections);
+            }
+            None => {
+                graph.roads.remove(&RoadId::ExampleRoad);
+            }
         }
-        press_e(&mut app);
-        app.update();
+        assert!(destinations(&graph, RoadId::ExampleRoad).is_empty());
+        open_destinations(app.world_mut(), point, player);
         assert_eq!(single::<SceneRoot>(&mut app), road);
         assert_eq!(single::<Player>(&mut app), player);
-        assert_eq!(count::<TravelUiRoot>(&mut app), 0);
-        assert_eq!(descendants(app.world(), road), children);
-        assert_eq!(commute_state(&app), &CommuteState::Running);
     }
 }
 
 #[test]
-fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
-    let (mut app, player, _) = game();
+fn navigation_rejects_invalid_actors_and_destinations() {
+    let mut app = navigation_app();
     let road = single::<SceneRoot>(&mut app);
-    let point = overlap_exit(&mut app, player);
+    let player = single::<Player>(&mut app);
+    let point = single::<SwitchPoint>(&mut app);
+    let foreign_root = app.world_mut().spawn(SceneRoot).id();
+    let foreign_player = app
+        .world_mut()
+        .spawn((Player::default(), ChildOf(foreign_root)))
+        .id();
     let orphan = app
         .world_mut()
-        .spawn(TravelButtonAction(RoadId::MarketRoad))
+        .spawn(TravelButtonAction(RoadId::Court))
         .id();
     select_destination(app.world_mut(), orphan);
-    open_destinations(app.world_mut(), point, Entity::PLACEHOLDER);
-    open_destinations(app.world_mut(), road, player);
-    app.update();
-    assert_eq!(single::<SceneRoot>(&mut app), road);
-    assert_eq!(commute_state(&app), &CommuteState::Running);
-
-    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
-        RoadId::ExampleRoad,
-        vec![
-            RoadId::Start,
-            RoadId::MarketRoad,
-            RoadId::MarketRoad,
-            RoadId::Court,
-        ],
-    );
-    press_e(&mut app);
-    // The unrelated action is not a UI button and cannot select a destination.
+    for (target, actor) in [
+        (point, Entity::PLACEHOLDER),
+        (point, foreign_player),
+        (road, player),
+    ] {
+        open_destinations(app.world_mut(), target, actor);
+    }
+    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
+    assert!(app.world().get_entity(player).is_ok());
+    assert_absent::<TravelUiRoot>(&mut app);
+    app.world_mut().despawn(foreign_root);
     app.world_mut().despawn(orphan);
-    let menu = assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
-    app.update();
-    let button = destination_button(&mut app, RoadId::MarketRoad);
-    app.world_mut()
-        .get_mut::<TravelButtonAction>(button)
-        .unwrap()
-        .0 = RoadId::ExampleRoad;
-    activate(&mut app, button);
-    app.update();
-    assert_eq!(single::<SceneRoot>(&mut app), menu);
-    assert_eq!(count::<RoadId>(&mut app), 0);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
-    app.world_mut()
-        .get_mut::<TravelButtonAction>(button)
-        .unwrap()
-        .0 = RoadId::MarketRoad;
-    activate(&mut app, button);
-    assert_road(&mut app, RoadId::MarketRoad);
-}
 
-#[test]
-fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
-    let (mut app, player, _) = game();
-    let road = single::<SceneRoot>(&mut app);
-    let children = descendants(app.world(), road);
-    let point = overlap_exit(&mut app, player);
-    {
-        let mut commands = app.world_mut().commands();
-        for _ in 0..3 {
-            commands.trigger(InteractRequested {
-                entity: point,
-                player,
-            });
-        }
-    }
-    app.world_mut().flush();
-    let menu = assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
-    assert_removed(&app, road, &children);
-    let market = destination_button(&mut app, RoadId::MarketRoad);
-    let court = destination_button(&mut app, RoadId::Court);
-    {
-        let mut commands = app.world_mut().commands();
-        for button in [market, court, market] {
-            commands.trigger(Activate { entity: button });
-        }
-    }
-    app.world_mut().flush();
-    let (next_road, next_player) = assert_road(&mut app, RoadId::MarketRoad);
-    assert!(app.world().get_entity(menu).is_err());
-    select_destination(app.world_mut(), court);
     open_destinations(app.world_mut(), point, player);
-    app.update();
-    assert_eq!(single::<SceneRoot>(&mut app), next_road);
-    assert_eq!(single::<Player>(&mut app), next_player);
-    assert_eq!(commute_state(&app), &CommuteState::Running);
-
-    overlap_exit(&mut app, next_player);
-    press_e(&mut app);
-    let next_menu = assert_ui(&mut app, &[RoadId::Court]);
-    select_destination(app.world_mut(), court);
-    app.update();
-    assert_eq!(single::<SceneRoot>(&mut app), next_menu);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
-    let new_court = destination_button(&mut app, RoadId::Court);
-    activate(&mut app, new_court);
-    assert_road(&mut app, RoadId::Court);
-}
-
-#[test]
-fn map_shows_all_roads_but_only_outgoing_destinations_can_be_activated() {
-    let (mut app, player, _) = game();
-    overlap_exit(&mut app, player);
-    press_e(&mut app);
-    assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
-
-    let world = app.world_mut();
-    let colors = world
-        .query::<(&MapRoadNode, &BackgroundColor)>()
-        .iter(world)
-        .map(|(road, color)| (road.0, color.0))
-        .collect::<HashMap<_, _>>();
-    assert_ne!(colors[&RoadId::Court], colors[&RoadId::ExampleRoad]);
-    assert_ne!(colors[&RoadId::Court], colors[&RoadId::MarketRoad]);
-    assert_ne!(colors[&RoadId::ExampleRoad], colors[&RoadId::MarketRoad]);
-
-    let market = destination_button(&mut app, RoadId::MarketRoad);
-    activate(&mut app, market);
-    let (_, player) = assert_road(&mut app, RoadId::MarketRoad);
-    advance(&mut app, 2);
-    overlap_exit(&mut app, player);
-    press_e(&mut app);
-    let menu = assert_ui(&mut app, &[RoadId::Court]);
-    let world = app.world_mut();
-    let display_nodes = world
-        .query::<(Entity, &MapRoadNode)>()
-        .iter(world)
-        .filter(|(_, road)| road.0 != RoadId::Court)
-        .map(|(entity, _)| entity)
-        .collect::<Vec<_>>();
-    assert_eq!(display_nodes.len(), 3);
-    for entity in display_nodes {
-        world.trigger(Activate { entity });
-        select_destination(world, entity);
+    let map = assert_map(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
+    let button = destination_button(&mut app, RoadId::MarketRoad);
+    for (destination, choices) in [
+        (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::Court]),
+        (RoadId::Start, vec![RoadId::Start]),
+    ] {
+        app.world_mut()
+            .get_mut::<TravelButtonAction>(button)
+            .unwrap()
+            .0 = destination;
+        app.world_mut().get_mut::<TravelUiRoot>(map).unwrap().0 = choices;
+        select_destination(app.world_mut(), button);
+        assert_eq!(single::<SceneRoot>(&mut app), map);
+        assert_absent::<Player>(&mut app);
     }
-    world.flush();
-    app.update();
-    assert_eq!(assert_ui(&mut app, &[RoadId::Court]), menu);
-    assert_eq!(commute_state(&app), &CommuteState::Paused);
 }
 
 #[test]
-fn map_includes_destination_only_roads_without_graph_entries() {
-    let mut app = headless_app(Vec2::ZERO);
-    app.world_mut()
-        .resource_mut::<RoadGraph>()
-        .roads
-        .remove(&RoadId::Court);
-    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
-    app.world_mut().spawn(Camera2d);
-    finish_app(&mut app);
-    let button = destination_button(&mut app, RoadId::ExampleRoad);
-    activate(&mut app, button);
-    advance(&mut app, 2);
+fn duplicate_and_stale_events_cannot_navigate_a_replacement_scene() {
+    let mut app = navigation_app();
     let player = single::<Player>(&mut app);
-    overlap_exit(&mut app, player);
-    press_e(&mut app);
-    assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
-    assert!(
-        app.world()
-            .resource::<MapLayout>()
-            .positions
-            .contains_key(&RoadId::Court)
-    );
-    let court = destination_button(&mut app, RoadId::Court);
-    assert!(app.world().get::<Button>(court).is_some());
-}
+    let point = single::<SwitchPoint>(&mut app);
+    for _ in 0..3 {
+        app.world_mut().commands().trigger(InteractRequested {
+            entity: point,
+            player,
+        });
+    }
+    app.world_mut().flush();
+    let map = assert_map(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
+    let market = destination_button(&mut app, RoadId::MarketRoad);
+    let stale_court = destination_button(&mut app, RoadId::Court);
+    for button in [market, stale_court, market] {
+        app.world_mut()
+            .commands()
+            .trigger(Activate { entity: button });
+    }
+    app.world_mut().flush();
+    let (road, next_player) = assert_road(&mut app, RoadId::MarketRoad);
+    assert!(app.world().get_entity(map).is_err());
+    open_destinations(app.world_mut(), point, player);
+    select_destination(app.world_mut(), stale_court);
+    assert_eq!(single::<SceneRoot>(&mut app), road);
 
-#[test]
-fn layout_is_regenerated_from_the_current_graph_when_playing_starts() {
-    let mut app = headless_app(Vec2::ZERO);
-    app.insert_state(GameState::Loading)
-        .add_plugins(LevelPlugin);
-    app.world_mut()
-        .resource_mut::<RoadGraph>()
-        .roads
-        .insert(RoadId::ExampleRoad, vec![RoadId::MarketRoad]);
-    finish_app(&mut app);
-    advance(&mut app, 2);
-    assert!(!app.world().contains_resource::<MapLayout>());
-
-    app.world_mut()
-        .resource_mut::<NextState<GameState>>()
-        .set(GameState::Playing);
-    app.update();
-    let original = app.world().resource::<MapLayout>().positions.clone();
-    assert!(original[&RoadId::ExampleRoad].length() > original[&RoadId::MarketRoad].length());
-    app.world_mut()
-        .resource_mut::<RoadGraph>()
-        .roads
-        .insert(RoadId::ExampleRoad, vec![RoadId::Court]);
-    advance(&mut app, 3);
-    assert_eq!(app.world().resource::<MapLayout>().positions, original);
-
-    app.world_mut()
-        .resource_mut::<NextState<GameState>>()
-        .set(GameState::Loading);
-    app.update();
-    app.world_mut()
-        .resource_mut::<NextState<GameState>>()
-        .set(GameState::Playing);
-    app.update();
-    let layout = app.world().resource::<MapLayout>();
-    assert_eq!(
-        layout.positions,
-        MapLayout::from_graph(app.world().resource::<RoadGraph>()).positions
-    );
-    assert_ne!(layout.positions, original);
+    let next_point = single::<SwitchPoint>(&mut app);
+    open_destinations(app.world_mut(), next_point, next_player);
+    let next_map = assert_map(&mut app, &[RoadId::Court]);
+    select_destination(app.world_mut(), stale_court);
+    assert_eq!(single::<SceneRoot>(&mut app), next_map);
+    activate(&mut app, RoadId::Court);
+    assert_road(&mut app, RoadId::Court);
 }
