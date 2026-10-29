@@ -1,6 +1,10 @@
 use crate::{
-    config::{BuildingValues, GameSettings, GameState, RoadGraph},
+    config::{
+        BuildingValues, ConvenienceKind, ConvenienceValues, GameSettings, GameState, LotteryPrize,
+        LotteryValues, RoadGraph,
+    },
     game::Stamina,
+    level::RoadId,
 };
 use avian2d::prelude::*;
 use bevy::{
@@ -11,15 +15,19 @@ use std::time::Duration;
 
 const FIXED_TIMESTEP: Duration = Duration::from_micros(15_625);
 
+/// Scene spawning needs assets, but does not need rendering or physics.
+pub(crate) fn scene_app() -> App {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app
+}
+
 /// Build a headless app without spawning game entities.
 pub(crate) fn headless_app(gravity: Vec2) -> App {
-    let mut app = App::new();
+    let mut app = scene_app();
     app.add_plugins((
-        MinimalPlugins,
         StatesPlugin,
         TransformPlugin,
-        AssetPlugin::default(),
-        ScenePlugin,
         InputPlugin,
         PhysicsPlugins::default().with_length_unit(20.0),
     ))
@@ -32,17 +40,51 @@ pub(crate) fn headless_app(gravity: Vec2) -> App {
 }
 
 pub(crate) fn insert_config(app: &mut App) {
+    // Behavioral tests use their own data so balancing the shipped RON assets
+    // does not change their expectations. Config tests exercise the real loader.
     app.insert_state(GameState::Playing)
-        .insert_resource(
-            ron::from_str::<GameSettings>(include_str!("../assets/game.settings.ron")).unwrap(),
-        )
-        .insert_resource(
-            ron::from_str::<RoadGraph>(include_str!("../assets/roads.graph.ron")).unwrap(),
-        )
-        .insert_resource(
-            ron::from_str::<BuildingValues>(include_str!("../assets/buildings.values.ron"))
-                .unwrap(),
-        );
+        .insert_resource(GameSettings {
+            commute_limit: 8.0,
+            initial_money: 73,
+            multiplier: 2.0,
+            per_second: 8.0,
+        })
+        .insert_resource(RoadGraph {
+            roads: [
+                (RoadId::Start, vec![RoadId::ExampleRoad]),
+                (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::Court]),
+                (RoadId::MarketRoad, vec![RoadId::Court]),
+                (RoadId::Court, vec![]),
+            ]
+            .into(),
+        })
+        .insert_resource(BuildingValues {
+            cat_reward: 17,
+            lottery: LotteryValues {
+                price: 7,
+                prizes: vec![LotteryPrize {
+                    reward: 13,
+                    weight: 1,
+                }],
+            },
+            convenience_stores: [
+                (
+                    ConvenienceKind::Small,
+                    ConvenienceValues {
+                        price: 7,
+                        stamina_recovery: 25.0,
+                    },
+                ),
+                (
+                    ConvenienceKind::Large,
+                    ConvenienceValues {
+                        price: 13,
+                        stamina_recovery: 55.0,
+                    },
+                ),
+            ]
+            .into(),
+        });
 }
 
 /// Initialize plugins and run startup; later updates advance one fixed timestep.
