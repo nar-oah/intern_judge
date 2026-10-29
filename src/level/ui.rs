@@ -161,10 +161,11 @@ fn road_node_scene(
     } else {
         Color::srgb(0.4, 0.44, 0.52)
     };
+    let destination = node.0;
     let action = available.then(|| {
         bsn! {
             Button
-            TravelButtonAction(node.0)
+            TravelButtonAction(destination)
             on(activate_button)
         }
     });
