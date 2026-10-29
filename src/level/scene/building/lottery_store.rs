@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod tests;
 use super::building_scene;
 use crate::config::{BuildingValues, LotteryValues};
 use crate::game::Money;
@@ -31,6 +33,3 @@ fn prize(lottery: &LotteryValues, mut roll: u32) -> i32 {
     }
     unreachable!("lottery roll must be within configured prize weights")
 }
-
-#[cfg(test)]
-mod tests;

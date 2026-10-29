@@ -74,7 +74,6 @@ fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
 }
 
 fn replace_scene(world: &mut World, root: Entity, next: impl Scene) {
-    // Exclusive commands validate their source at execution time, so stale events do nothing.
     world.despawn(root);
     world.spawn_scene(next).unwrap();
 }
