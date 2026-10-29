@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use super::{RoadId, SceneRoot, map::MapLayout, navigation};
 use crate::config::RoadGraph;
 use bevy::{
