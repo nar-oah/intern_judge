@@ -1,4 +1,5 @@
 mod interaction;
+mod map;
 mod navigation;
 mod scene;
 #[cfg(test)]
@@ -6,14 +7,16 @@ mod tests;
 #[cfg(test)]
 mod travel_tests;
 mod ui;
-use crate::config::GameState;
+use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
 use serde::Deserialize;
 
 #[derive(Component, Clone, Default)]
 struct SceneRoot;
 
-#[derive(Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash)]
+#[derive(
+    Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 pub enum RoadId {
     #[default]
     ExampleRoad,
@@ -52,6 +55,8 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
+            let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
+            world.insert_resource(layout);
             world
                 .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
                 .unwrap();
