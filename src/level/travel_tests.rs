@@ -116,8 +116,7 @@ fn assert_commute(app: &App, state: CommuteState) {
 
 fn level_app() -> App {
     let mut app = scene_app();
-    app.add_plugins(StatesPlugin)
-        .init_state::<CommuteState>();
+    app.add_plugins(StatesPlugin).init_state::<CommuteState>();
     insert_config(&mut app);
     app
 }
@@ -137,7 +136,8 @@ fn navigation_app() -> App {
 #[test]
 fn playing_starts_with_destinations_from_the_current_start_connections() {
     let mut app = level_app();
-    app.insert_state(GameState::Loading).add_plugins(LevelPlugin);
+    app.insert_state(GameState::Loading)
+        .add_plugins(LevelPlugin);
     finish_app(&mut app);
     assert_absent::<SceneRoot>(&mut app);
 
