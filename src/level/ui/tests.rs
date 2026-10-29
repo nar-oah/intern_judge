@@ -44,8 +44,14 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
         .collect::<Vec<_>>();
     assert_eq!(buttons.len(), 1);
     let button = buttons[0];
-    assert_eq!(world.get::<MapRoadNode>(button).unwrap().0, RoadId::MarketRoad);
-    assert_eq!(world.get::<TravelButtonAction>(button).unwrap().0, RoadId::MarketRoad);
+    assert_eq!(
+        world.get::<MapRoadNode>(button).unwrap().0,
+        RoadId::MarketRoad
+    );
+    assert_eq!(
+        world.get::<TravelButtonAction>(button).unwrap().0,
+        RoadId::MarketRoad
+    );
 
     let mut connections = world
         .query::<&MapConnection>()
@@ -53,9 +59,12 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
         .map(|connection| (connection.from, connection.to))
         .collect::<Vec<_>>();
     connections.sort_unstable();
-    assert_eq!(connections, [
-        (RoadId::Start, RoadId::ExampleRoad),
-        (RoadId::ExampleRoad, RoadId::MarketRoad),
-        (RoadId::MarketRoad, RoadId::Court),
-    ]);
+    assert_eq!(
+        connections,
+        [
+            (RoadId::Start, RoadId::ExampleRoad),
+            (RoadId::ExampleRoad, RoadId::MarketRoad),
+            (RoadId::MarketRoad, RoadId::Court),
+        ]
+    );
 }
