@@ -1,7 +1,9 @@
 use super::*;
 
 fn graph(roads: impl IntoIterator<Item = (RoadId, Vec<RoadId>)>) -> RoadGraph {
-    RoadGraph { roads: roads.into_iter().collect() }
+    RoadGraph {
+        roads: roads.into_iter().collect(),
+    }
 }
 
 #[test]
@@ -31,11 +33,19 @@ fn same_depth_roads_are_separated_and_layout_is_stable_when_edges_are_reordered(
     ]);
     let reordered = graph([
         (RoadId::MarketRoad, vec![RoadId::Court]),
-        (RoadId::ExampleRoad, vec![RoadId::Court, RoadId::MarketRoad, RoadId::Court]),
+        (
+            RoadId::ExampleRoad,
+            vec![RoadId::Court, RoadId::MarketRoad, RoadId::Court],
+        ),
     ]);
     let layout = MapLayout::from_graph(&first);
-    assert_eq!(layout.positions, MapLayout::from_graph(&reordered).positions);
-    assert!(layout.positions[&RoadId::ExampleRoad]
-        .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001));
+    assert_eq!(
+        layout.positions,
+        MapLayout::from_graph(&reordered).positions
+    );
+    assert!(
+        layout.positions[&RoadId::ExampleRoad]
+            .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001)
+    );
     assert!((layout.positions[&RoadId::ExampleRoad].length() - 1.0).abs() < 0.0001);
 }
