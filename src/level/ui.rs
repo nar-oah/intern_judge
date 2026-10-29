@@ -244,6 +244,7 @@ fn line_scene(from: Vec2, to: Vec2, color: Color) -> impl Scene {
             top: vmin(midpoint.y),
             width: vmin(delta.length()),
             height: vmin(0.25),
+            min_height: px(1),
         }
         UiTransform {
             translation: Val2::percent(-50.0, -50.0),
