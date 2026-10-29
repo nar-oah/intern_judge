@@ -183,7 +183,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     };
     let price =
         app.world().resource::<BuildingValues>().convenience_stores[&ConvenienceKind::Small].price;
-    let balance = price + 1;
+    let balance = price * 3 + 1;
     app.world_mut().resource_mut::<Money>().0 = balance;
     app.world_mut().resource_mut::<Stamina>().0 = 1.0;
     press_e(&mut app);
