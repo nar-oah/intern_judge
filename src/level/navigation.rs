@@ -1,6 +1,7 @@
 use super::{
-    RoadId, SceneRoot, SwitchPoint, scene,
+    RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
+    scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
 use crate::{config::RoadGraph, game::CommuteState, player::Player};

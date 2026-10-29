@@ -533,7 +533,12 @@ fn map_includes_destination_only_roads_without_graph_entries() {
     overlap_exit(&mut app, player);
     press_e(&mut app);
     assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
-    assert!(app.world().resource::<MapLayout>().positions.contains_key(&RoadId::Court));
+    assert!(
+        app.world()
+            .resource::<MapLayout>()
+            .positions
+            .contains_key(&RoadId::Court)
+    );
     let court = destination_button(&mut app, RoadId::Court);
     assert!(app.world().get::<Button>(court).is_some());
 }
@@ -541,11 +546,12 @@ fn map_includes_destination_only_roads_without_graph_entries() {
 #[test]
 fn layout_is_initialized_after_loading_and_not_recomputed_each_frame() {
     let mut app = headless_app(Vec2::ZERO);
-    app.insert_state(GameState::Loading).add_plugins(LevelPlugin);
-    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
-        RoadId::ExampleRoad,
-        vec![RoadId::MarketRoad],
-    );
+    app.insert_state(GameState::Loading)
+        .add_plugins(LevelPlugin);
+    app.world_mut()
+        .resource_mut::<RoadGraph>()
+        .roads
+        .insert(RoadId::ExampleRoad, vec![RoadId::MarketRoad]);
     finish_app(&mut app);
     advance(&mut app, 2);
     assert!(!app.world().contains_resource::<MapLayout>());
@@ -556,10 +562,10 @@ fn layout_is_initialized_after_loading_and_not_recomputed_each_frame() {
     app.update();
     let original = app.world().resource::<MapLayout>().positions.clone();
     assert!(original[&RoadId::ExampleRoad].length() > original[&RoadId::MarketRoad].length());
-    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
-        RoadId::ExampleRoad,
-        vec![RoadId::Court],
-    );
+    app.world_mut()
+        .resource_mut::<RoadGraph>()
+        .roads
+        .insert(RoadId::ExampleRoad, vec![RoadId::Court]);
     advance(&mut app, 3);
     assert_eq!(app.world().resource::<MapLayout>().positions, original);
 }

@@ -47,9 +47,7 @@ pub(super) fn travel_ui_scene(
         .iter()
         .flat_map(|(&from, roads)| roads.iter().map(move |&to| (from, to)))
         .filter(|(from, to)| {
-            from != to
-                && layout.positions.contains_key(from)
-                && layout.positions.contains_key(to)
+            from != to && layout.positions.contains_key(from) && layout.positions.contains_key(to)
         })
         .collect::<Vec<_>>();
     edges.sort_unstable();
@@ -207,9 +205,7 @@ fn connection_scene(
 ) -> impl Scene + use<> {
     let direction = (to - from).normalize_or_zero();
     // Stop at the rectangular node boundary so the arrow remains visible.
-    let clearance = |direction: Vec2| {
-        (NODE_SIZE / 2.0 / direction.abs()).min_element() + 0.6
-    };
+    let clearance = |direction: Vec2| (NODE_SIZE / 2.0 / direction.abs()).min_element() + 0.6;
     let start = from + direction * clearance(direction);
     let tip = to - direction * clearance(direction);
     let arrow_back = tip - direction * 1.4;

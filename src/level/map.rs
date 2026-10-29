@@ -80,7 +80,10 @@ mod tests {
     #[test]
     fn court_is_at_the_origin_even_for_an_empty_graph() {
         let layout = MapLayout::from_graph(&graph([]));
-        assert_eq!(layout.positions, HashMap::from([(RoadId::Court, Vec2::ZERO)]));
+        assert_eq!(
+            layout.positions,
+            HashMap::from([(RoadId::Court, Vec2::ZERO)])
+        );
     }
 
     #[test]
@@ -106,8 +109,10 @@ mod tests {
         )]));
         assert_radius(&layout, RoadId::ExampleRoad, 1.0);
         assert_radius(&layout, RoadId::MarketRoad, 1.0);
-        assert!(layout.positions[&RoadId::ExampleRoad]
-            .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001));
+        assert!(
+            layout.positions[&RoadId::ExampleRoad]
+                .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001)
+        );
     }
 
     #[test]
@@ -120,10 +125,15 @@ mod tests {
         let reordered = graph([
             (RoadId::Court, vec![]),
             (RoadId::MarketRoad, vec![RoadId::Court]),
-            (RoadId::ExampleRoad, vec![RoadId::Court, RoadId::MarketRoad, RoadId::Court]),
+            (
+                RoadId::ExampleRoad,
+                vec![RoadId::Court, RoadId::MarketRoad, RoadId::Court],
+            ),
         ]);
-        assert_eq!(MapLayout::from_graph(&first).positions,
-            MapLayout::from_graph(&reordered).positions);
+        assert_eq!(
+            MapLayout::from_graph(&first).positions,
+            MapLayout::from_graph(&reordered).positions
+        );
     }
 
     #[test]
@@ -135,6 +145,11 @@ mod tests {
         assert_eq!(layout.positions.len(), 3);
         assert_radius(&layout, RoadId::ExampleRoad, 1.0);
         assert_radius(&layout, RoadId::MarketRoad, 2.0);
-        assert!(layout.positions.values().all(|position| position.is_finite()));
+        assert!(
+            layout
+                .positions
+                .values()
+                .all(|position| position.is_finite())
+        );
     }
 }
