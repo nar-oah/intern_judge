@@ -100,9 +100,12 @@ pub(super) fn travel_ui_scene(
             Pickable::IGNORE
             Children [
                 @text_scene("Road map", 3.5)
+                --
                 @text_scene("Gold: Court | Blue: Current", 1.8)
+                --
                 @text_scene("Green border: Available | Arrows: Travel direction", 1.8)
             ]
+            --
             Node {
                 position_type: PositionType::Absolute,
                 left: percent(50),
@@ -223,7 +226,9 @@ fn connection_scene(
         Pickable::IGNORE
         Children [
             @line_scene(start, tip, color)
+            --
             @line_scene(arrow_back + side, tip, color)
+            --
             @line_scene(arrow_back - side, tip, color)
         ]
     }
