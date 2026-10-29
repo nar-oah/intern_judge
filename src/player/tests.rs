@@ -117,7 +117,11 @@ fn walking_or_sprint_without_movement_does_not_spend_stamina() {
         vec![],
         vec![PlayerAction::Right],
         vec![PlayerAction::Sprint],
-        vec![PlayerAction::Left, PlayerAction::Right, PlayerAction::Sprint],
+        vec![
+            PlayerAction::Left,
+            PlayerAction::Right,
+            PlayerAction::Sprint,
+        ],
     ] {
         movement.actions(&actions);
         movement.step(1.0);
@@ -168,7 +172,11 @@ fn holding_an_airborne_jump_does_not_jump_on_landing() {
     assert_eq!(movement.velocity().y, -70.0);
 
     movement.contacts(&[Vec2::Y]);
-    movement.world.get_mut::<LinearVelocity>(movement.player).unwrap().y = 0.0;
+    movement
+        .world
+        .get_mut::<LinearVelocity>(movement.player)
+        .unwrap()
+        .y = 0.0;
     movement.step(0.25);
     assert_eq!(movement.velocity().y, 0.0);
 
@@ -213,7 +221,10 @@ fn keyboard_controls_move_sprint_and_jump_after_a_real_landing() {
         }
         app.update();
     }
-    assert!(landed(&app), "player did not land within the simulation limit");
+    assert!(
+        landed(&app),
+        "player did not land within the simulation limit"
+    );
 
     KeyCode::KeyA.press(app.world_mut());
     app.update();
