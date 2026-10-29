@@ -544,7 +544,7 @@ fn map_includes_destination_only_roads_without_graph_entries() {
 }
 
 #[test]
-fn layout_is_initialized_after_loading_and_not_recomputed_each_frame() {
+fn layout_is_regenerated_from_the_current_graph_when_playing_starts() {
     let mut app = headless_app(Vec2::ZERO);
     app.insert_state(GameState::Loading)
         .add_plugins(LevelPlugin);
@@ -568,4 +568,19 @@ fn layout_is_initialized_after_loading_and_not_recomputed_each_frame() {
         .insert(RoadId::ExampleRoad, vec![RoadId::Court]);
     advance(&mut app, 3);
     assert_eq!(app.world().resource::<MapLayout>().positions, original);
+
+    app.world_mut()
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Loading);
+    app.update();
+    app.world_mut()
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    app.update();
+    let layout = app.world().resource::<MapLayout>();
+    assert_eq!(
+        layout.positions,
+        MapLayout::from_graph(app.world().resource::<RoadGraph>()).positions
+    );
+    assert_ne!(layout.positions, original);
 }

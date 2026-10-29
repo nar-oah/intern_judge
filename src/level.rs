@@ -7,7 +7,7 @@ mod tests;
 #[cfg(test)]
 mod travel_tests;
 mod ui;
-use crate::config::GameState;
+use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
 use serde::Deserialize;
 
@@ -55,7 +55,8 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
-            world.init_resource::<map::MapLayout>();
+            let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
+            world.insert_resource(layout);
             world
                 .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
                 .unwrap();
