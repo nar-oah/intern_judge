@@ -2,7 +2,8 @@ use super::*;
 
 #[test]
 fn connection_is_a_single_center_to_center_line_in_viewport_units() {
-    let mut world = World::new();
+    let mut app = crate::test_support::headless_app(Vec2::ZERO);
+    let world = app.world_mut();
     let line = world
         .spawn_scene(connection_scene(
             MapConnection {
