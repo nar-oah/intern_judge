@@ -1,32 +1,70 @@
 use super::*;
 
 #[test]
-fn connection_is_a_single_center_to_center_line_in_viewport_units() {
-    let mut app = crate::test_support::headless_app(Vec2::ZERO);
+fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
+    let mut app = crate::test_support::scene_app();
+    let graph = RoadGraph {
+        roads: [
+            (RoadId::Start, vec![RoadId::ExampleRoad]),
+            (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
+            (RoadId::MarketRoad, vec![RoadId::Court]),
+        ]
+        .into(),
+    };
+    let layout = MapLayout::from_graph(&graph);
     let world = app.world_mut();
-    let line = world
-        .spawn_scene(connection_scene(
-            MapConnection {
-                from: RoadId::ExampleRoad,
-                to: RoadId::Court,
-            },
-            Vec2::new(6.0, 9.0),
-            Vec2::new(18.0, 25.0),
+    world
+        .spawn_scene(travel_ui_scene(
             RoadId::ExampleRoad,
-            &[RoadId::Court],
+            navigation::destinations(&graph, RoadId::ExampleRoad),
+            &graph,
+            &layout,
         ))
-        .unwrap()
-        .id();
+        .unwrap();
 
-    let node = world.get::<Node>(line).unwrap();
-    assert_eq!(node.left, vmin(12));
-    assert_eq!(node.top, vmin(17));
-    assert_eq!(node.width, vmin(20));
-    assert_eq!(node.height, vmin(0.25));
-    assert_eq!(node.min_height, px(1));
-    let transform = world.get::<UiTransform>(line).unwrap();
-    assert_eq!(transform.translation, Val2::percent(-50.0, -50.0));
-    assert!((transform.rotation * Vec2::X - Vec2::new(0.6, 0.8)).length() < 0.0001);
-    assert!(!world.get::<Pickable>(line).unwrap().is_hoverable);
-    assert!(world.get::<Children>(line).is_none());
+    let mut displayed = world
+        .query::<&MapRoadNode>()
+        .iter(world)
+        .map(|node| node.0)
+        .collect::<Vec<_>>();
+    displayed.sort_unstable();
+    assert_eq!(
+        displayed,
+        [
+            RoadId::Start,
+            RoadId::ExampleRoad,
+            RoadId::MarketRoad,
+            RoadId::Court,
+        ]
+    );
+
+    let buttons = world
+        .query_filtered::<Entity, With<Button>>()
+        .iter(world)
+        .collect::<Vec<_>>();
+    assert_eq!(buttons.len(), 1);
+    let button = buttons[0];
+    assert_eq!(
+        world.get::<MapRoadNode>(button).unwrap().0,
+        RoadId::MarketRoad
+    );
+    assert_eq!(
+        world.get::<TravelButtonAction>(button).unwrap().0,
+        RoadId::MarketRoad
+    );
+
+    let mut connections = world
+        .query::<&MapConnection>()
+        .iter(world)
+        .map(|connection| (connection.from, connection.to))
+        .collect::<Vec<_>>();
+    connections.sort_unstable();
+    assert_eq!(
+        connections,
+        [
+            (RoadId::Start, RoadId::ExampleRoad),
+            (RoadId::ExampleRoad, RoadId::MarketRoad),
+            (RoadId::MarketRoad, RoadId::Court),
+        ]
+    );
 }

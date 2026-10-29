@@ -41,8 +41,8 @@ impl Default for Stamina {
 
 #[derive(States, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum CommuteState {
-    #[default]
     Running,
+    #[default]
     Paused,
 }
 

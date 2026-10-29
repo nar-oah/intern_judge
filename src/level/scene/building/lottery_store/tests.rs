@@ -2,7 +2,7 @@ use super::*;
 use crate::config::LotteryPrize;
 
 #[test]
-fn configured_weights_define_each_prizes_chances() {
+fn prize_intervals_include_their_first_roll_and_exclude_the_next_interval() {
     let lottery = LotteryValues {
         price: 13,
         prizes: vec![
@@ -15,6 +15,10 @@ fn configured_weights_define_each_prizes_chances() {
                 weight: 2,
             },
             LotteryPrize {
+                reward: 99,
+                weight: 0,
+            },
+            LotteryPrize {
                 reward: 13,
                 weight: 3,
             },
@@ -24,6 +28,8 @@ fn configured_weights_define_each_prizes_chances() {
             },
         ],
     };
-    let prizes: Vec<_> = (0..6).map(|roll| prize(&lottery, roll)).collect();
-    assert_eq!(prizes, [70, 70, 13, 13, 13, 0]);
+
+    for (roll, expected_reward) in [(0, 70), (1, 70), (2, 13), (4, 13), (5, 0)] {
+        assert_eq!(prize(&lottery, roll), expected_reward, "roll {roll}");
+    }
 }

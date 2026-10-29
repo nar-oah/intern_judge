@@ -3600,7 +3600,6 @@ dependencies = [
  "bevy_common_assets",
  "leafwing-input-manager",
  "rand",
- "ron",
  "serde",
 ]
 

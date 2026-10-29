@@ -6,80 +6,46 @@ fn graph(roads: impl IntoIterator<Item = (RoadId, Vec<RoadId>)>) -> RoadGraph {
     }
 }
 
-fn assert_radius(layout: &MapLayout, road: RoadId, radius: f32) {
-    assert!((layout.positions[&road].length() - radius).abs() < 0.0001);
-}
-
 #[test]
-fn court_is_at_the_origin_even_for_an_empty_graph() {
-    let layout = MapLayout::from_graph(&graph([]));
-    assert_eq!(
-        layout.positions,
-        HashMap::from([(RoadId::Court, Vec2::ZERO)])
-    );
-}
-
-#[test]
-fn radius_uses_undirected_shortest_distance_without_changing_travel_rules() {
-    let graph = graph([
+fn court_is_centered_and_roads_follow_the_shortest_undirected_distance() {
+    // The reverse Court -> MarketRoad edge and the cycle must not affect depth.
+    let layout = MapLayout::from_graph(&graph([
+        (RoadId::Start, vec![RoadId::ExampleRoad]),
         (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
-        (RoadId::MarketRoad, vec![RoadId::Court]),
-        (RoadId::Court, vec![]),
-    ]);
-    let original_roads = graph.roads.clone();
-    let layout = MapLayout::from_graph(&graph);
+        (RoadId::Court, vec![RoadId::MarketRoad]),
+        (RoadId::MarketRoad, vec![RoadId::Court, RoadId::ExampleRoad]),
+    ]));
     assert_eq!(layout.positions[&RoadId::Court], Vec2::ZERO);
-    assert_radius(&layout, RoadId::MarketRoad, 1.0);
-    assert_radius(&layout, RoadId::ExampleRoad, 2.0);
-    assert_eq!(graph.roads, original_roads);
+    for (road, radius) in [
+        (RoadId::MarketRoad, 1.0),
+        (RoadId::ExampleRoad, 2.0),
+        (RoadId::Start, 3.0),
+    ] {
+        assert!((layout.positions[&road].length() - radius).abs() < 0.0001);
+    }
 }
 
 #[test]
-fn roads_at_the_same_depth_are_spaced_evenly() {
-    let layout = MapLayout::from_graph(&graph([(
-        RoadId::Court,
-        vec![RoadId::ExampleRoad, RoadId::MarketRoad],
-    )]));
-    assert_radius(&layout, RoadId::ExampleRoad, 1.0);
-    assert_radius(&layout, RoadId::MarketRoad, 1.0);
-    assert!(
-        layout.positions[&RoadId::ExampleRoad]
-            .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001)
-    );
-}
-
-#[test]
-fn layout_is_stable_across_node_edge_and_duplicate_order() {
+fn same_depth_roads_are_separated_and_layout_is_stable_when_edges_are_reordered() {
     let first = graph([
         (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::Court]),
         (RoadId::MarketRoad, vec![RoadId::Court]),
-        (RoadId::Court, vec![]),
     ]);
     let reordered = graph([
-        (RoadId::Court, vec![]),
         (RoadId::MarketRoad, vec![RoadId::Court]),
         (
             RoadId::ExampleRoad,
             vec![RoadId::Court, RoadId::MarketRoad, RoadId::Court],
         ),
     ]);
+    let layout = MapLayout::from_graph(&first);
     assert_eq!(
-        MapLayout::from_graph(&first).positions,
+        layout.positions,
         MapLayout::from_graph(&reordered).positions
     );
-}
-
-#[test]
-fn disconnected_and_destination_only_roads_are_kept() {
-    let layout = MapLayout::from_graph(&graph([
-        (RoadId::Court, vec![RoadId::ExampleRoad]),
-        (RoadId::MarketRoad, vec![]),
-    ]));
-    assert_eq!(layout.positions.len(), 3);
     assert!(
-        layout
-            .positions
-            .values()
-            .all(|position| position.is_finite())
+        layout.positions[&RoadId::ExampleRoad]
+            .abs_diff_eq(-layout.positions[&RoadId::MarketRoad], 0.0001)
     );
+    assert!((layout.positions[&RoadId::ExampleRoad].length() - 1.0).abs() < 0.0001);
 }

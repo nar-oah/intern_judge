@@ -18,6 +18,7 @@ struct SceneRoot;
     Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]
 pub enum RoadId {
+    Start,
     #[default]
     ExampleRoad,
     MarketRoad,
@@ -57,9 +58,14 @@ impl Plugin for LevelPlugin {
         app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
             let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
             world.insert_resource(layout);
-            world
-                .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
-                .unwrap();
+            let graph = world.resource::<RoadGraph>();
+            let initial_map = ui::travel_ui_scene(
+                RoadId::Start,
+                navigation::destinations(graph, RoadId::Start),
+                graph,
+                world.resource::<map::MapLayout>(),
+            );
+            world.spawn_scene(initial_map).unwrap();
         })
         .add_systems(
             PostUpdate,
