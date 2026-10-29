@@ -1,10 +1,11 @@
 use super::{
     InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
+    map::MapLayout,
     navigation::{open_destinations, select_destination},
-    ui::{TravelButtonAction, TravelUiRoot},
+    ui::{MapConnection, MapRoadNode, TravelButtonAction, TravelUiRoot},
 };
 use crate::{
-    config::{GameSettings, RoadGraph},
+    config::{GameSettings, GameState, RoadGraph},
     game::{CommuteState, CommuteTime, GamePlugin, Money, Stamina},
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -15,6 +16,7 @@ use bevy::{
     ui_widgets::{Activate, Button},
 };
 use leafwing_input_manager::prelude::*;
+use std::collections::{BTreeSet, HashMap};
 
 const SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
 
@@ -159,6 +161,50 @@ fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
     assert_eq!(count::<SwitchPoint>(app), 0);
     assert_eq!(count::<Button>(app), destinations.len());
     assert_eq!(count::<TravelButtonAction>(app), destinations.len());
+    let world = app.world_mut();
+    let expected_roads = world
+        .resource::<MapLayout>()
+        .positions
+        .keys()
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let nodes = world
+        .query::<(Entity, &MapRoadNode)>()
+        .iter(world)
+        .map(|(entity, road)| (entity, road.0))
+        .collect::<Vec<_>>();
+    assert_eq!(nodes.len(), expected_roads.len());
+    assert_eq!(
+        nodes.iter().map(|(_, road)| *road).collect::<BTreeSet<_>>(),
+        expected_roads
+    );
+    for (entity, road) in nodes {
+        let available = destinations.contains(&road);
+        assert_eq!(world.get::<Button>(entity).is_some(), available);
+        assert_eq!(world.get::<TravelButtonAction>(entity).is_some(), available);
+    }
+    let expected_connections = world
+        .resource::<RoadGraph>()
+        .roads
+        .iter()
+        .flat_map(|(&from, destinations)| {
+            destinations
+                .iter()
+                .copied()
+                .filter(move |&to| to != from)
+                .map(move |to| (from, to))
+        })
+        .collect::<BTreeSet<_>>();
+    let connections = world
+        .query::<&MapConnection>()
+        .iter(world)
+        .map(|connection| (connection.from, connection.to))
+        .collect::<Vec<_>>();
+    assert_eq!(connections.len(), expected_connections.len());
+    assert_eq!(
+        connections.into_iter().collect::<BTreeSet<_>>(),
+        expected_connections
+    );
     let node = app.world().get::<Node>(root).unwrap();
     assert_eq!(node.width, percent(100));
     assert_eq!(node.height, percent(100));
@@ -428,4 +474,92 @@ fn duplicate_and_stale_observer_events_do_not_replace_the_new_scene() {
     let new_court = destination_button(&mut app, RoadId::Court);
     activate(&mut app, new_court);
     assert_road(&mut app, RoadId::Court);
+}
+
+#[test]
+fn map_shows_all_roads_but_only_outgoing_destinations_can_be_activated() {
+    let (mut app, player, _) = game();
+    overlap_exit(&mut app, player);
+    press_e(&mut app);
+    assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
+
+    let world = app.world_mut();
+    let colors = world
+        .query::<(&MapRoadNode, &BackgroundColor)>()
+        .iter(world)
+        .map(|(road, color)| (road.0, color.0))
+        .collect::<HashMap<_, _>>();
+    assert_ne!(colors[&RoadId::Court], colors[&RoadId::ExampleRoad]);
+    assert_ne!(colors[&RoadId::Court], colors[&RoadId::MarketRoad]);
+    assert_ne!(colors[&RoadId::ExampleRoad], colors[&RoadId::MarketRoad]);
+
+    let market = destination_button(&mut app, RoadId::MarketRoad);
+    activate(&mut app, market);
+    let (_, player) = assert_road(&mut app, RoadId::MarketRoad);
+    advance(&mut app, 2);
+    overlap_exit(&mut app, player);
+    press_e(&mut app);
+    let menu = assert_ui(&mut app, &[RoadId::Court]);
+    let world = app.world_mut();
+    let display_nodes = world
+        .query::<(Entity, &MapRoadNode)>()
+        .iter(world)
+        .filter(|(_, road)| road.0 != RoadId::Court)
+        .map(|(entity, _)| entity)
+        .collect::<Vec<_>>();
+    assert_eq!(display_nodes.len(), 2);
+    for entity in display_nodes {
+        world.trigger(Activate { entity });
+        select_destination(world, entity);
+    }
+    world.flush();
+    app.update();
+    assert_eq!(assert_ui(&mut app, &[RoadId::Court]), menu);
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
+}
+
+#[test]
+fn map_includes_destination_only_roads_without_graph_entries() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.world_mut()
+        .resource_mut::<RoadGraph>()
+        .roads
+        .remove(&RoadId::Court);
+    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
+    app.world_mut().spawn(Camera2d);
+    finish_app(&mut app);
+    advance(&mut app, 2);
+    let player = single::<Player>(&mut app);
+    overlap_exit(&mut app, player);
+    press_e(&mut app);
+    assert_ui(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
+    assert!(app.world().resource::<MapLayout>().positions.contains_key(&RoadId::Court));
+    let court = destination_button(&mut app, RoadId::Court);
+    assert!(app.world().get::<Button>(court).is_some());
+}
+
+#[test]
+fn layout_is_initialized_after_loading_and_not_recomputed_each_frame() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.insert_state(GameState::Loading).add_plugins(LevelPlugin);
+    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+        RoadId::ExampleRoad,
+        vec![RoadId::MarketRoad],
+    );
+    finish_app(&mut app);
+    advance(&mut app, 2);
+    assert!(!app.world().contains_resource::<MapLayout>());
+
+    app.world_mut()
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    app.update();
+    let original = app.world().resource::<MapLayout>().positions.clone();
+    assert!(original[&RoadId::ExampleRoad].length() > original[&RoadId::MarketRoad].length());
+    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+        RoadId::ExampleRoad,
+        vec![RoadId::Court],
+    );
+    advance(&mut app, 3);
+    assert_eq!(app.world().resource::<MapLayout>().positions, original);
 }
