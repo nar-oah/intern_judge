@@ -116,7 +116,7 @@ pub(super) fn travel_ui_scene(
             UiTransform::from_translation(Val2::percent(-50.0, -50.0))
             Pickable::IGNORE
             Children [
-                -- { connections }
+                { connections }
                 -- { nodes }
             ]
         ]
