@@ -1,42 +1,48 @@
 use super::*;
-use crate::config::{BuildingValues, ConvenienceKind, ConvenienceValues, LotteryPrize, LotteryValues};
+use crate::config::{
+    BuildingValues, ConvenienceKind, ConvenienceValues, LotteryPrize, LotteryValues,
+};
 use crate::game::{HasHelmet, Money, Stamina};
 use crate::level::InteractRequested;
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, scene::ScenePlugin};
 
 fn building_app() -> App {
     let mut app = App::new();
-    app.add_plugins((TaskPoolPlugin::default(), AssetPlugin::default(), ScenePlugin))
-        .insert_resource(BuildingValues {
-            cat_reward: 37,
-            lottery: LotteryValues {
-                price: 13,
-                prizes: vec![LotteryPrize {
-                    reward: 7,
-                    weight: 1,
-                }],
-            },
-            convenience_stores: [
-                (
-                    ConvenienceKind::Small,
-                    ConvenienceValues {
-                        price: 7,
-                        stamina_recovery: 17.0,
-                    },
-                ),
-                (
-                    ConvenienceKind::Large,
-                    ConvenienceValues {
-                        price: 23,
-                        stamina_recovery: 61.0,
-                    },
-                ),
-            ]
-            .into(),
-        })
-        .insert_resource(Money(100))
-        .init_resource::<Stamina>()
-        .init_resource::<HasHelmet>();
+    app.add_plugins((
+        TaskPoolPlugin::default(),
+        AssetPlugin::default(),
+        ScenePlugin,
+    ))
+    .insert_resource(BuildingValues {
+        cat_reward: 37,
+        lottery: LotteryValues {
+            price: 13,
+            prizes: vec![LotteryPrize {
+                reward: 7,
+                weight: 1,
+            }],
+        },
+        convenience_stores: [
+            (
+                ConvenienceKind::Small,
+                ConvenienceValues {
+                    price: 7,
+                    stamina_recovery: 17.0,
+                },
+            ),
+            (
+                ConvenienceKind::Large,
+                ConvenienceValues {
+                    price: 23,
+                    stamina_recovery: 61.0,
+                },
+            ),
+        ]
+        .into(),
+    })
+    .insert_resource(Money(100))
+    .init_resource::<Stamina>()
+    .init_resource::<HasHelmet>();
     app.finish();
     app.cleanup();
     app
