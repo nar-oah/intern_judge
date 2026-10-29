@@ -76,5 +76,10 @@ fn disconnected_and_destination_only_roads_are_kept() {
         (RoadId::MarketRoad, vec![]),
     ]));
     assert_eq!(layout.positions.len(), 3);
-    assert!(layout.positions.values().all(|position| position.is_finite()));
+    assert!(
+        layout
+            .positions
+            .values()
+            .all(|position| position.is_finite())
+    );
 }
