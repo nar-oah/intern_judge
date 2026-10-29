@@ -1,10 +1,11 @@
 use super::*;
-use crate::game::{HasHelmet, Money, Stamina};
+use crate::game::{CommuteState, HasHelmet, Money, Stamina};
 use crate::physics::GameLayer;
 use crate::player::{Player, PlayerAction, PlayerPlugin};
 use crate::test_support::{advance, finish_app, headless_app};
 use avian2d::prelude::*;
 use bevy::platform::time::Instant;
+use bevy::ui_widgets::Activate;
 use leafwing_input_manager::prelude::*;
 
 #[derive(Resource, Default)]
@@ -23,9 +24,17 @@ fn scene_app(gravity: Vec2) -> App {
     app.insert_resource(Money(100))
         .init_resource::<Stamina>()
         .init_resource::<HasHelmet>()
+        .init_state::<CommuteState>()
         .add_plugins((PlayerPlugin, LevelPlugin));
     record_requests(&mut app);
     finish_app(&mut app);
+    let button = single::<ui::TravelButtonAction>(&mut app);
+    assert_eq!(
+        app.world().get::<ui::TravelButtonAction>(button).unwrap().0,
+        RoadId::ExampleRoad
+    );
+    app.world_mut().trigger(Activate { entity: button });
+    app.world_mut().flush();
     advance(&mut app, 2);
     app
 }
@@ -126,9 +135,10 @@ fn requests(app: &App) -> &[(Entity, Entity)] {
 }
 
 #[test]
-fn road_scene_waits_for_playing() {
+fn initial_map_waits_for_playing_and_spawns_no_physical_scene() {
     let mut app = headless_app(Vec2::ZERO);
     app.insert_state(GameState::Loading)
+        .init_state::<CommuteState>()
         .add_plugins(LevelPlugin);
     finish_app(&mut app);
     advance(&mut app, 2);
@@ -140,11 +150,23 @@ fn road_scene_waits_for_playing() {
         .resource_mut::<NextState<GameState>>()
         .set(GameState::Playing);
     app.update();
-    let road = single::<RoadId>(&mut app);
-    let player = single::<Player>(&mut app);
-    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
-    assert_eq!(single::<SceneRoot>(&mut app), road);
-    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), road);
+    let map = single::<ui::TravelUiRoot>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), map);
+    assert_eq!(
+        app.world().get::<ui::TravelUiRoot>(map).unwrap().0,
+        [RoadId::ExampleRoad]
+    );
+    let world = app.world_mut();
+    assert_eq!(world.query::<&RoadId>().iter(world).count(), 0);
+    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
+    assert_eq!(world.query::<&Platform>().iter(world).count(), 0);
+    assert_eq!(world.query::<&BuildingType>().iter(world).count(), 0);
+    assert_eq!(world.query::<&SwitchPoint>().iter(world).count(), 0);
+    assert_eq!(world.query::<&Collider>().iter(world).count(), 0);
+    assert_eq!(
+        world.resource::<State<CommuteState>>().get(),
+        &CommuteState::Paused
+    );
 }
 
 #[test]

@@ -23,9 +23,11 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 正常路网假设与法院连通。布局只负责坐标，实际通行仍由有向路网和导航校验决定。
 `ui.rs` 使用原生 UI / BSN 绘制节点和连线，并复用原有目的地选择逻辑。
 
-初始路段为 `RoadId::ExampleRoad`，走到右侧切换点可选择 `RoadId::MarketRoad`
+游戏从逻辑出生点 `RoadId::Start` 直接打开地图，初始可选择 `RoadId::ExampleRoad`。
+Start 仅用于路网和地图展示，没有关卡场景，不生成玩家或物理实体，也不作为经过路段。
+进入 ExampleRoad 后，走到右侧切换点按 E 可选择 `RoadId::MarketRoad`
 或法院 `RoadId::Court`。选择 MarketRoad 后，从新路段右侧切换点可前往法院。
-路段之间单向前进，完整流程为 Road → 目的地选择 UI → 新 Road。
+路段之间单向前进，完整流程为 Start → 地图 UI → Road → 地图 UI → Road → Court。
 Road 和 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体及全部
 子实体，再生成新场景。Camera 和右上角通勤 HUD 等全局实体始终保留。
 每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
@@ -40,6 +42,7 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 - `game.settings.ron`：`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
   `multiplier` 为冲刺速度倍率，`per_second` 为每秒体力消耗。
 - `roads.graph.ron`：`roads` 按 `RoadId` 枚举值配置下一路段数组；空数组表示没有目的地。
+  `Start` 初始连接 `ExampleRoad`，不能作为可进入的目的地。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
   `convenience_stores` 按 Small、Large 类型配置 `price` 和 `stamina_recovery`。
@@ -55,8 +58,8 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 `CommuteTime.elapsed` 仍是运行时资源；金钱按 `initial_money` 初始化，已用时间
 初始为 0，初始没有安全帽。`Stamina::MAX` 保持硬编码为 100。
 体力、安全帽和金钱保存在全局资源中，切换路段或重新生成 Player 不会重置。
-计时系统只在 `Running` 状态执行；进入目的地选择 UI 时请求 `Paused`，
-选择普通 Road 后恢复 `Running`，进入 Court 后保持 `Paused`。
+计时系统只在 `Running` 状态执行；初始地图为 `Paused`，选择首个实际 Road 后才开始计时。
+后续进入目的地选择 UI 时请求 `Paused`，选择普通 Road 后恢复 `Running`，进入 Court 后保持 `Paused`。
 状态请求由 Bevy 在下一次状态切换调度中应用，不影响物理和玩家移动。
 超时后已用时间继续增长，`remaining(limit)` 接收配置中的通勤时限，返回时限减去
 已用时间，可为负数。

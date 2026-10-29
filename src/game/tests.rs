@@ -39,15 +39,21 @@ fn remaining_time_can_be_positive_zero_or_negative() {
 }
 
 #[test]
-fn running_timer_continues_after_timeout_and_pauses_until_resumed() {
+fn timer_starts_paused_then_runs_after_timeout_and_pauses_until_resumed() {
     let mut app = game();
     app.world_mut().resource_mut::<GameSettings>().commute_limit = 0.125;
     finish_app(&mut app);
     assert_eq!(
         *app.world().resource::<State<CommuteState>>().get(),
-        CommuteState::Running
+        CommuteState::Paused
     );
 
+    advance(&mut app, 3);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+
+    app.world_mut()
+        .resource_mut::<NextState<CommuteState>>()
+        .set(CommuteState::Running);
     advance(&mut app, 3);
     let time = app.world().resource::<CommuteTime>();
     assert_eq!(time.elapsed, 0.375);
@@ -133,7 +139,7 @@ fn hud_is_a_top_right_root_and_updates_with_time_and_money() {
     app.update();
     assert_eq!(
         hud_text(&mut app),
-        "Time: -1.1s\nMoney: 23\nStamina: 100/100"
+        "Time: -1.0s\nMoney: 23\nStamina: 100/100"
     );
 }
 

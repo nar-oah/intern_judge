@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    game::{CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
+    game::{CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
     level::LevelPlugin,
     player::Player,
 };
@@ -79,7 +79,8 @@ fn ron_configs_load_before_game_resources_and_scene() {
     assert!(!world.resource::<HasHelmet>().0);
 
     let graph = &world.resource::<RoadGraph>().roads;
-    assert_eq!(graph.len(), 3);
+    assert_eq!(graph.len(), 4);
+    assert_eq!(graph[&RoadId::Start], [RoadId::ExampleRoad]);
     assert_eq!(
         graph[&RoadId::ExampleRoad],
         [RoadId::MarketRoad, RoadId::Court]
@@ -109,10 +110,11 @@ fn ron_configs_load_before_game_resources_and_scene() {
         assert_eq!(store.stamina_recovery, recovery);
     }
 
-    assert_eq!(world.query::<&Player>().iter(world).count(), 1);
+    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
+    assert_eq!(world.query::<&RoadId>().iter(world).count(), 0);
     assert_eq!(
-        world.query::<&RoadId>().single(world).unwrap(),
-        &RoadId::ExampleRoad
+        world.resource::<State<CommuteState>>().get(),
+        &CommuteState::Paused
     );
 
     // Runtime systems retain a snapshot instead of reading a changing asset.
