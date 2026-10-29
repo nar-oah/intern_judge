@@ -59,7 +59,8 @@ pub(super) fn travel_ui_scene(
                 MapConnection { from, to },
                 project(from),
                 project(to),
-                from == current && destinations.contains(&to),
+                current,
+                &destinations,
             )
         })
         .collect::<Vec<_>>();
@@ -200,11 +201,12 @@ fn connection_scene(
     connection: MapConnection,
     from: Vec2,
     to: Vec2,
-    available: bool,
+    current: RoadId,
+    destinations: &[RoadId],
 ) -> impl Scene + use<> {
     let midpoint = (from + to) / 2.0;
     let delta = to - from;
-    let color = if available {
+    let color = if connection.from == current && destinations.contains(&connection.to) {
         Color::srgb(0.35, 0.75, 0.5)
     } else {
         Color::srgb(0.35, 0.4, 0.5)
