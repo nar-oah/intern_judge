@@ -190,6 +190,11 @@ fn holding_an_airborne_jump_does_not_jump_on_landing() {
 #[test]
 fn keyboard_controls_move_sprint_and_jump_after_a_real_landing() {
     let mut app = headless_app(Vec2::NEG_Y * 1000.0);
+    {
+        let mut settings = app.world_mut().resource_mut::<GameSettings>();
+        settings.multiplier = 2.5;
+        settings.per_second = 8.0;
+    }
     app.add_plugins(PlayerPlugin);
     let player = app
         .world_mut()
