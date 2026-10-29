@@ -90,7 +90,12 @@ fn native_map_geometry_and_picking_follow_viewport_resizes() {
             } else {
                 continue;
             }
-            assert!(node.size().min_element() > 0.0);
+            assert!(
+                node.size().min_element() > 0.0,
+                "zero size {:?} for road {:?} in viewport {size:?}",
+                node.size(),
+                road.map(|road| road.0),
+            );
             for sign in [
                 Vec2::new(-1.0, -1.0),
                 Vec2::new(-1.0, 1.0),
