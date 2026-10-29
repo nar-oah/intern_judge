@@ -9,10 +9,10 @@ use crate::{
     config::{BuildingValues, ConvenienceKind, GameSettings, GameState, RoadGraph},
     game::{CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
     player::{Player, PlayerPlugin},
-    test_support::{advance, finish_app, headless_app},
+    test_support::{advance, finish_app, headless_app, insert_config, scene_app},
 };
 use avian2d::prelude::*;
-use bevy::{prelude::*, ui_widgets::Activate};
+use bevy::{prelude::*, state::app::StatesPlugin, ui_widgets::Activate};
 use leafwing_input_manager::prelude::*;
 
 fn single<C: Component>(app: &mut App) -> Entity {
@@ -114,10 +114,17 @@ fn assert_commute(app: &App, state: CommuteState) {
     assert_eq!(*app.world().resource::<State<CommuteState>>().get(), state);
 }
 
+fn level_app() -> App {
+    let mut app = scene_app();
+    app.add_plugins(StatesPlugin)
+        .init_state::<CommuteState>();
+    insert_config(&mut app);
+    app
+}
+
 // Navigation rejection needs real scene ancestry and observers, without advancing physics.
 fn navigation_app() -> App {
-    let mut app = headless_app(Vec2::ZERO);
-    app.init_state::<CommuteState>();
+    let mut app = level_app();
     let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
     app.insert_resource(layout);
     finish_app(&mut app);
@@ -129,10 +136,8 @@ fn navigation_app() -> App {
 
 #[test]
 fn playing_starts_with_destinations_from_the_current_start_connections() {
-    let mut app = headless_app(Vec2::ZERO);
-    app.insert_state(GameState::Loading)
-        .init_state::<CommuteState>()
-        .add_plugins(LevelPlugin);
+    let mut app = level_app();
+    app.insert_state(GameState::Loading).add_plugins(LevelPlugin);
     finish_app(&mut app);
     assert_absent::<SceneRoot>(&mut app);
 

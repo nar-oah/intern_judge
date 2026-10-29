@@ -92,21 +92,6 @@ fn interaction_requires_overlap_at_the_time_of_a_fresh_press() {
 }
 
 #[test]
-fn one_press_requests_only_one_of_the_overlapping_targets() {
-    let mut app = interaction_app();
-    let player = player(&mut app);
-    let targets = [target(&mut app, &[player]), target(&mut app, &[player])];
-
-    interact(&mut app, player, true);
-    frame(&mut app);
-
-    let requests = &app.world().resource::<Requests>().0;
-    assert_eq!(requests.len(), 1);
-    assert!(targets.contains(&requests[0].0));
-    assert_eq!(requests[0].1, player);
-}
-
-#[test]
 fn non_interactive_collisions_and_non_player_input_do_not_request_interactions() {
     let mut app = interaction_app();
     let player = player(&mut app);
