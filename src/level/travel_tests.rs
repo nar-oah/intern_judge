@@ -20,11 +20,18 @@ use std::collections::{BTreeSet, HashMap};
 
 const SPAWN: Vec2 = Vec2::new(-460.0, -130.0);
 
-fn game() -> (App, Entity, Entity) {
+fn initial_game() -> (App, Entity) {
     let mut app = headless_app(Vec2::ZERO);
     app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
     let camera = app.world_mut().spawn(Camera2d).id();
     finish_app(&mut app);
+    (app, camera)
+}
+
+fn game() -> (App, Entity, Entity) {
+    let (mut app, camera) = initial_game();
+    let button = destination_button(&mut app, RoadId::ExampleRoad);
+    activate(&mut app, button);
     advance(&mut app, 2);
     let player = single::<Player>(&mut app);
     (app, player, camera)
@@ -223,6 +230,99 @@ fn assert_ui(app: &mut App, destinations: &[RoadId]) -> Entity {
 }
 
 #[test]
+fn initial_map_has_no_physical_scene_and_starts_commute_only_after_selecting_a_road() {
+    let (mut app, camera) = initial_game();
+    let menu = assert_ui(&mut app, &[RoadId::ExampleRoad]);
+    assert_eq!(count::<Collider>(&mut app), 0);
+    assert_eq!(count::<RigidBody>(&mut app), 0);
+    assert_eq!(count::<Sprite>(&mut app), 0);
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+
+    KeyCode::KeyD.press(app.world_mut());
+    KeyCode::Space.press(app.world_mut());
+    press_e(&mut app);
+    advance(&mut app, 8);
+    assert_eq!(assert_ui(&mut app, &[RoadId::ExampleRoad]), menu);
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    KeyCode::KeyD.release(app.world_mut());
+    KeyCode::Space.release(app.world_mut());
+    KeyCode::KeyE.release(app.world_mut());
+    app.update();
+
+    let children = descendants(app.world(), menu);
+    let button = destination_button(&mut app, RoadId::ExampleRoad);
+    activate(&mut app, button);
+    assert_removed(&app, menu, &children);
+    assert_road(&mut app, RoadId::ExampleRoad);
+    assert!(count::<super::Platform>(&mut app) > 0);
+    assert_eq!(single::<Camera2d>(&mut app), camera);
+    app.update();
+    assert_eq!(commute_state(&app), &CommuteState::Running);
+    assert!(app.world().resource::<CommuteTime>().elapsed > 0.0);
+}
+
+#[test]
+fn initial_map_uses_start_connections_and_filters_duplicate_or_logical_destinations() {
+    let mut app = headless_app(Vec2::ZERO);
+    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+        RoadId::Start,
+        vec![RoadId::Start, RoadId::MarketRoad, RoadId::MarketRoad],
+    );
+    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
+    finish_app(&mut app);
+    assert_ui(&mut app, &[RoadId::MarketRoad]);
+    let button = destination_button(&mut app, RoadId::MarketRoad);
+    activate(&mut app, button);
+    assert_road(&mut app, RoadId::MarketRoad);
+    app.update();
+    assert_eq!(commute_state(&app), &CommuteState::Running);
+}
+
+#[test]
+fn missing_or_non_enterable_start_connections_keep_an_empty_paused_map() {
+    for destinations in [None, Some(Vec::new()), Some(vec![RoadId::Start])] {
+        let mut app = headless_app(Vec2::ZERO);
+        let mut graph = app.world_mut().resource_mut::<RoadGraph>();
+        if let Some(destinations) = destinations {
+            graph.roads.insert(RoadId::Start, destinations);
+        } else {
+            graph.roads.remove(&RoadId::Start);
+        }
+        app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
+        finish_app(&mut app);
+        let menu = assert_ui(&mut app, &[]);
+        advance(&mut app, 4);
+        assert_eq!(assert_ui(&mut app, &[]), menu);
+        assert_eq!(commute_state(&app), &CommuteState::Paused);
+        assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    }
+}
+
+#[test]
+fn start_is_rejected_even_if_the_button_and_ui_choices_are_forged() {
+    let (mut app, _) = initial_game();
+    let menu = assert_ui(&mut app, &[RoadId::ExampleRoad]);
+    let children = descendants(app.world(), menu);
+    let button = destination_button(&mut app, RoadId::ExampleRoad);
+    app.world_mut().get_mut::<TravelUiRoot>(menu).unwrap().0 = vec![RoadId::Start];
+    app.world_mut()
+        .get_mut::<TravelButtonAction>(button)
+        .unwrap()
+        .0 = RoadId::Start;
+    activate(&mut app, button);
+    advance(&mut app, 4);
+    assert_eq!(single::<SceneRoot>(&mut app), menu);
+    assert_eq!(descendants(app.world(), menu), children);
+    assert_eq!(count::<RoadId>(&mut app), 0);
+    assert_eq!(count::<Player>(&mut app), 0);
+    assert_eq!(count::<Collider>(&mut app), 0);
+    assert_eq!(commute_state(&app), &CommuteState::Paused);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+}
+
+#[test]
 fn commute_pauses_for_destinations_resumes_on_roads_and_stays_paused_in_court() {
     let (mut app, _, _) = game();
     let world = app.world_mut();
@@ -364,7 +464,7 @@ fn e_and_native_buttons_replace_complete_scenes_and_recreate_players() {
 
 #[test]
 fn missing_or_empty_destinations_keep_the_road_and_player() {
-    for destinations in [None, Some(Vec::new())] {
+    for destinations in [None, Some(Vec::new()), Some(vec![RoadId::Start])] {
         let (mut app, player, _) = game();
         let road = single::<RoadId>(&mut app);
         let children = descendants(app.world(), road);
@@ -403,7 +503,12 @@ fn only_unique_destinations_from_the_current_road_are_offered_and_accepted() {
 
     app.world_mut().resource_mut::<RoadGraph>().roads.insert(
         RoadId::ExampleRoad,
-        vec![RoadId::MarketRoad, RoadId::MarketRoad, RoadId::Court],
+        vec![
+            RoadId::Start,
+            RoadId::MarketRoad,
+            RoadId::MarketRoad,
+            RoadId::Court,
+        ],
     );
     press_e(&mut app);
     // The unrelated action is not a UI button and cannot select a destination.
@@ -507,7 +612,7 @@ fn map_shows_all_roads_but_only_outgoing_destinations_can_be_activated() {
         .filter(|(_, road)| road.0 != RoadId::Court)
         .map(|(entity, _)| entity)
         .collect::<Vec<_>>();
-    assert_eq!(display_nodes.len(), 2);
+    assert_eq!(display_nodes.len(), 3);
     for entity in display_nodes {
         world.trigger(Activate { entity });
         select_destination(world, entity);
@@ -528,6 +633,8 @@ fn map_includes_destination_only_roads_without_graph_entries() {
     app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
     app.world_mut().spawn(Camera2d);
     finish_app(&mut app);
+    let button = destination_button(&mut app, RoadId::ExampleRoad);
+    activate(&mut app, button);
     advance(&mut app, 2);
     let player = single::<Player>(&mut app);
     overlap_exit(&mut app, player);
