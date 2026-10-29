@@ -59,8 +59,7 @@ pub(super) fn travel_ui_scene(
                 MapConnection { from, to },
                 project(from),
                 project(to),
-                current,
-                &destinations,
+                from == current && destinations.contains(&to),
             )
         })
         .collect::<Vec<_>>();
@@ -104,7 +103,7 @@ pub(super) fn travel_ui_scene(
                 --
                 @text_scene("Gold: Court | Blue: Current", 1.8)
                 --
-                @text_scene("Green border: Available | Arrows: Travel direction", 1.8)
+                @text_scene("Green border: Available", 1.8)
             ]
             --
             Node {
@@ -201,43 +200,17 @@ fn connection_scene(
     connection: MapConnection,
     from: Vec2,
     to: Vec2,
-    current: RoadId,
-    destinations: &[RoadId],
+    available: bool,
 ) -> impl Scene + use<> {
-    let direction = (to - from).normalize_or_zero();
-    // Stop at the rectangular node boundary so the arrow remains visible.
-    let clearance = |direction: Vec2| (NODE_SIZE / 2.0 / direction.abs()).min_element() + 0.6;
-    let start = from + direction * clearance(direction);
-    let tip = to - direction * clearance(direction);
-    let arrow_back = tip - direction * 1.4;
-    let side = direction.perp() * 0.8;
-    let color = if connection.from == current && destinations.contains(&connection.to) {
+    let midpoint = (from + to) / 2.0;
+    let delta = to - from;
+    let color = if available {
         Color::srgb(0.35, 0.75, 0.5)
     } else {
         Color::srgb(0.35, 0.4, 0.5)
     };
     bsn! {
         connection
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            height: percent(100),
-        }
-        Pickable::IGNORE
-        Children [
-            @line_scene(start, tip, color)
-            --
-            @line_scene(arrow_back + side, tip, color)
-            --
-            @line_scene(arrow_back - side, tip, color)
-        ]
-    }
-}
-
-fn line_scene(from: Vec2, to: Vec2, color: Color) -> impl Scene {
-    let midpoint = (from + to) / 2.0;
-    let delta = to - from;
-    bsn! {
         Node {
             position_type: PositionType::Absolute,
             left: vmin(midpoint.x),
