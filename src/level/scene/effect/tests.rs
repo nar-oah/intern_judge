@@ -69,9 +69,14 @@ fn helmet_is_consumed_by_one_player_hit_and_the_next_hit_stuns() {
 
 #[test]
 fn falling_object_disappears_on_real_player_platform_and_sensor_contacts() {
-    for target_kind in ["player", "platform", "building"] {
+    for (target_kind, helmet) in [
+        ("player", false),
+        ("player", true),
+        ("platform", true),
+        ("building", true),
+    ] {
         let mut app = headless_app(Vec2::NEG_Y * 1000.0);
-        app.insert_resource(HasHelmet(true));
+        app.insert_resource(HasHelmet(helmet));
         let target = if target_kind == "player" {
             app.world_mut()
                 .spawn_scene(player_scene(Vec2::ZERO))
@@ -110,7 +115,10 @@ fn falling_object_disappears_on_real_player_platform_and_sensor_contacts() {
             "falling object did not disappear on {target_kind} contact"
         );
         assert!(app.world().get_entity(target).is_ok());
-        assert!(app.world().get::<Stunned>(target).is_none());
+        assert_eq!(
+            app.world().get::<Stunned>(target).is_some(),
+            target_kind == "player" && !helmet
+        );
         assert_eq!(
             app.world().resource::<HasHelmet>().0,
             target_kind != "player"
