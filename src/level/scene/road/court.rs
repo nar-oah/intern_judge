@@ -16,11 +16,9 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
         let x = *FALLING_X.choose(&mut rand::rng()).unwrap();
         bsn_list! { @falling_object_scene(Vec2::new(x, 320.0)) }
     });
-    let construction_detour = effects
-        .contains(&RoadEffect::ConstructionDetour)
-        .then(|| {
-            bsn_list! { @construction_detour_scene(Vec2::new(0.0, -132.5), Vec2::splat(60.0)) }
-        });
+    let construction_detour = effects.contains(&RoadEffect::ConstructionDetour).then(|| {
+        bsn_list! { @construction_detour_scene(Vec2::new(0.0, -132.5), Vec2::splat(60.0)) }
+    });
 
     bsn! {
         #Court

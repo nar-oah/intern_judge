@@ -62,7 +62,10 @@ fn helmet_is_consumed_by_one_player_hit_and_the_next_hit_stuns() {
         assert!(!app.world().resource::<HasHelmet>().0);
         assert_eq!(app.world().get::<Stunned>(player).is_none(), protected);
         if protected {
-            assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().0, velocity);
+            assert_eq!(
+                app.world().get::<LinearVelocity>(player).unwrap().0,
+                velocity
+            );
         }
     }
 }
@@ -83,10 +86,9 @@ fn falling_object_disappears_on_real_player_platform_and_sensor_contacts() {
                 .unwrap()
                 .id()
         } else {
-            let mut target = app.world_mut().spawn((
-                Collider::rectangle(200.0, 20.0),
-                Transform::default(),
-            ));
+            let mut target = app
+                .world_mut()
+                .spawn((Collider::rectangle(200.0, 20.0), Transform::default()));
             if target_kind == "building" {
                 target.insert(Sensor);
             } else {
@@ -137,7 +139,10 @@ fn market_detour_blocks_walking_and_can_be_cleared_by_the_initial_jump() {
         ))
         .unwrap();
     let world = app.world_mut();
-    let player = world.query_filtered::<Entity, With<Player>>().single(world).unwrap();
+    let player = world
+        .query_filtered::<Entity, With<Player>>()
+        .single(world)
+        .unwrap();
     let detour = world
         .query_filtered::<Entity, With<ConstructionDetour>>()
         .single(world)
