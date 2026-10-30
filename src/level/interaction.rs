@@ -4,9 +4,11 @@ use avian2d::prelude::CollidingEntities;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
+type InteractablePlayerFilter = (With<Player>, Without<Stunned>);
+
 pub(super) fn interact(
     mut commands: Commands,
-    players: Query<(Entity, &ActionState<PlayerAction>), (With<Player>, Without<Stunned>)>,
+    players: Query<(Entity, &ActionState<PlayerAction>), InteractablePlayerFilter>,
     targets: Query<(Entity, &CollidingEntities), With<Interactable>>,
 ) {
     let Ok((player, actions)) = players.single() else {
