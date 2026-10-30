@@ -11,6 +11,7 @@ mod ui;
 use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Component, Clone, Default)]
 struct SceneRoot;
@@ -23,6 +24,24 @@ pub enum RoadId {
     ExampleRoad,
     MarketRoad,
     Court,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoadEffect {
+    FallingObject,
+    ConstructionDetour,
+}
+
+#[derive(Resource, Debug, PartialEq, Eq)]
+pub struct RoadEffects(pub HashMap<RoadId, Vec<RoadEffect>>);
+
+impl Default for RoadEffects {
+    fn default() -> Self {
+        Self(HashMap::from([
+            (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
+            (RoadId::MarketRoad, vec![RoadEffect::ConstructionDetour]),
+        ]))
+    }
 }
 
 #[derive(Resource, Default)]
@@ -62,10 +81,13 @@ impl Plugin for LevelPlugin {
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
             .add_systems(OnEnter(GameState::Playing), |world: &mut World| {
+                world.insert_resource(RoadEffects::default());
                 let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
                 world.insert_resource(layout);
                 let road = world.resource::<InitialRoad>().0;
-                world.spawn_scene(scene::road_scene(road)).unwrap();
+                let effects = world.resource::<RoadEffects>().0.get(&road);
+                let scene = scene::road_scene(road, effects.map_or(&[], Vec::as_slice));
+                world.spawn_scene(scene).unwrap();
             })
             .add_systems(
                 PostUpdate,
