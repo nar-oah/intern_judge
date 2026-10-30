@@ -1,5 +1,5 @@
 use super::{InteractRequested, Interactable};
-use crate::player::{Player, PlayerAction};
+use crate::player::{Player, PlayerAction, Stunned};
 use avian2d::prelude::CollidingEntities;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
