@@ -6,7 +6,7 @@ use leafwing_input_manager::prelude::*;
 
 pub(super) fn interact(
     mut commands: Commands,
-    players: Query<(Entity, &ActionState<PlayerAction>), With<Player>>,
+    players: Query<(Entity, &ActionState<PlayerAction>), (With<Player>, Without<Stunned>)>,
     targets: Query<(Entity, &CollidingEntities), With<Interactable>>,
 ) {
     let Ok((player, actions)) = players.single() else {
