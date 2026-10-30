@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests;
-
 use crate::level::RoadId;
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
@@ -12,6 +11,7 @@ use std::collections::HashMap;
 pub enum GameState {
     #[default]
     Loading,
+    MainMenu,
     Playing,
 }
 
@@ -118,7 +118,7 @@ impl Plugin for ConfigPlugin {
                     .finally_init_resource::<GameSettings>()
                     .finally_init_resource::<RoadGraph>()
                     .finally_init_resource::<BuildingValues>()
-                    .continue_to_state(GameState::Playing),
+                    .continue_to_state(GameState::MainMenu),
             );
     }
 }

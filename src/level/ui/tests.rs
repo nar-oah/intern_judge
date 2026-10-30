@@ -5,7 +5,6 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
     let mut app = crate::test_support::scene_app();
     let graph = RoadGraph {
         roads: [
-            (RoadId::Start, vec![RoadId::ExampleRoad]),
             (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
             (RoadId::MarketRoad, vec![RoadId::Court]),
         ]
@@ -16,7 +15,7 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
     world
         .spawn_scene(travel_ui_scene(
             RoadId::ExampleRoad,
-            navigation::destinations(&graph, RoadId::ExampleRoad),
+            graph.roads[&RoadId::ExampleRoad].clone(),
             &graph,
             &layout,
         ))
@@ -30,12 +29,7 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
     displayed.sort_unstable();
     assert_eq!(
         displayed,
-        [
-            RoadId::Start,
-            RoadId::ExampleRoad,
-            RoadId::MarketRoad,
-            RoadId::Court,
-        ]
+        [RoadId::ExampleRoad, RoadId::MarketRoad, RoadId::Court,]
     );
 
     let buttons = world
@@ -62,7 +56,6 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
     assert_eq!(
         connections,
         [
-            (RoadId::Start, RoadId::ExampleRoad),
             (RoadId::ExampleRoad, RoadId::MarketRoad),
             (RoadId::MarketRoad, RoadId::Court),
         ]

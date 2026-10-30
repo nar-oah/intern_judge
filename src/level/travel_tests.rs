@@ -1,7 +1,7 @@
 use super::{
-    BuildingType, InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
+    BuildingType, InitialRoad, InteractRequested, LevelPlugin, RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
-    navigation::{destinations, open_destinations, select_destination},
+    navigation::{open_destinations, select_destination},
     scene,
     ui::{TravelButtonAction, TravelUiRoot},
 };
@@ -128,34 +128,32 @@ fn navigation_app() -> App {
     app.insert_resource(layout);
     finish_app(&mut app);
     app.world_mut()
-        .spawn_scene(scene::road_scene(RoadId::ExampleRoad).unwrap())
+        .spawn_scene(scene::road_scene(RoadId::ExampleRoad))
         .unwrap();
     app
 }
 
 #[test]
-fn playing_starts_with_destinations_from_the_current_start_connections() {
+fn playing_loads_the_configured_initial_road_without_requiring_outgoing_connections() {
     let mut app = level_app();
     app.insert_state(GameState::Loading)
         .add_plugins(LevelPlugin);
     finish_app(&mut app);
     assert_absent::<SceneRoot>(&mut app);
 
-    let mut graph = app.world_mut().resource_mut::<RoadGraph>();
-    graph.roads.insert(
-        RoadId::Start,
-        vec![RoadId::Start, RoadId::MarketRoad, RoadId::MarketRoad],
-    );
-    graph.roads.remove(&RoadId::MarketRoad);
+    assert_eq!(app.world().resource::<InitialRoad>().0, RoadId::ExampleRoad);
+    app.world_mut().resource_mut::<InitialRoad>().0 = RoadId::MarketRoad;
+    app.world_mut()
+        .resource_mut::<RoadGraph>()
+        .roads
+        .remove(&RoadId::MarketRoad);
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
         .set(GameState::Playing);
     app.update();
 
-    assert_map(&mut app, &[RoadId::MarketRoad]);
-    assert_commute(&app, CommuteState::Paused);
-    activate(&mut app, RoadId::MarketRoad);
     assert_road(&mut app, RoadId::MarketRoad);
+    assert_commute(&app, CommuteState::Running);
 }
 
 #[test]
@@ -166,16 +164,12 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     let unrelated = app.world_mut().spawn_empty().id();
     finish_app(&mut app);
 
-    let initial_map = assert_map(&mut app, &[RoadId::ExampleRoad]);
-    let old_map = scene_entities(app.world(), initial_map);
-    advance(&mut app, 4);
-    assert_commute(&app, CommuteState::Paused);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
-    activate(&mut app, RoadId::ExampleRoad);
-    assert_removed(&app, &old_map);
     let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
     let spawn = app.world().get::<Position>(player).unwrap().0;
+    assert_commute(&app, CommuteState::Running);
+    let initial_elapsed = app.world().resource::<CommuteTime>().elapsed;
     advance(&mut app, 3);
+    assert!(app.world().resource::<CommuteTime>().elapsed > initial_elapsed);
 
     // A real shop sensor connects keyboard input, collision detection, and its observer.
     let shop = {
@@ -287,12 +281,12 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
 }
 
 #[test]
-fn missing_empty_and_logical_connections_offer_no_travel() {
+fn missing_and_empty_connections_offer_no_travel() {
     let mut app = navigation_app();
     let road = single::<SceneRoot>(&mut app);
     let player = single::<Player>(&mut app);
     let point = single::<SwitchPoint>(&mut app);
-    for connections in [None, Some(vec![]), Some(vec![RoadId::Start])] {
+    for connections in [None, Some(vec![])] {
         let mut graph = app.world_mut().resource_mut::<RoadGraph>();
         match connections {
             Some(connections) => {
@@ -302,11 +296,30 @@ fn missing_empty_and_logical_connections_offer_no_travel() {
                 graph.roads.remove(&RoadId::ExampleRoad);
             }
         }
-        assert!(destinations(&graph, RoadId::ExampleRoad).is_empty());
         open_destinations(app.world_mut(), point, player);
         assert_eq!(single::<SceneRoot>(&mut app), road);
         assert_eq!(single::<Player>(&mut app), player);
     }
+}
+
+#[test]
+fn duplicate_connections_offer_each_forward_destination_once() {
+    let mut app = navigation_app();
+    app.world_mut().resource_mut::<RoadGraph>().roads.insert(
+        RoadId::ExampleRoad,
+        vec![
+            RoadId::MarketRoad,
+            RoadId::MarketRoad,
+            RoadId::Court,
+            RoadId::Court,
+        ],
+    );
+    let player = single::<Player>(&mut app);
+    let point = single::<SwitchPoint>(&mut app);
+    open_destinations(app.world_mut(), point, player);
+    assert_map(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
+    activate(&mut app, RoadId::MarketRoad);
+    assert_road(&mut app, RoadId::MarketRoad);
 }
 
 #[test]
@@ -341,19 +354,13 @@ fn navigation_rejects_invalid_actors_and_destinations() {
     open_destinations(app.world_mut(), point, player);
     let map = assert_map(&mut app, &[RoadId::MarketRoad, RoadId::Court]);
     let button = destination_button(&mut app, RoadId::MarketRoad);
-    for (destination, choices) in [
-        (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::Court]),
-        (RoadId::Start, vec![RoadId::Start]),
-    ] {
-        app.world_mut()
-            .get_mut::<TravelButtonAction>(button)
-            .unwrap()
-            .0 = destination;
-        app.world_mut().get_mut::<TravelUiRoot>(map).unwrap().0 = choices;
-        select_destination(app.world_mut(), button);
-        assert_eq!(single::<SceneRoot>(&mut app), map);
-        assert_absent::<Player>(&mut app);
-    }
+    app.world_mut()
+        .get_mut::<TravelButtonAction>(button)
+        .unwrap()
+        .0 = RoadId::ExampleRoad;
+    select_destination(app.world_mut(), button);
+    assert_eq!(single::<SceneRoot>(&mut app), map);
+    assert_absent::<Player>(&mut app);
 }
 
 #[test]

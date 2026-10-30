@@ -41,8 +41,8 @@ impl Default for Stamina {
 
 #[derive(States, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum CommuteState {
-    Running,
     #[default]
+    Running,
     Paused,
 }
 
@@ -82,10 +82,14 @@ impl Plugin for GamePlugin {
 }
 
 fn initialize_game(world: &mut World) {
-    world.init_resource::<CommuteTime>();
-    world.init_resource::<Money>();
-    world.init_resource::<Stamina>();
-    world.init_resource::<HasHelmet>();
+    world.insert_resource(CommuteTime::default());
+    let money = Money::from_world(world);
+    world.insert_resource(money);
+    world.insert_resource(Stamina::default());
+    world.insert_resource(HasHelmet::default());
+    world
+        .resource_mut::<NextState<CommuteState>>()
+        .set(CommuteState::Running);
 }
 
 fn tick_commute(time: Res<Time>, mut commute: ResMut<CommuteTime>) {

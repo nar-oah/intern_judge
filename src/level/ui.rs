@@ -143,7 +143,6 @@ fn road_node_scene(
     available: bool,
 ) -> impl Scene {
     let label = match node.0 {
-        RoadId::Start => "Start",
         RoadId::ExampleRoad => "Example Road",
         RoadId::MarketRoad => "Market Road",
         RoadId::Court => "Court",

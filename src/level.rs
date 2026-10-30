@@ -1,5 +1,6 @@
 mod interaction;
 mod map;
+mod menu;
 mod navigation;
 mod scene;
 #[cfg(test)]
@@ -18,12 +19,14 @@ struct SceneRoot;
     Component, Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord,
 )]
 pub enum RoadId {
-    Start,
     #[default]
     ExampleRoad,
     MarketRoad,
     Court,
 }
+
+#[derive(Resource, Default)]
+pub struct InitialRoad(pub RoadId);
 
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct Platform {
@@ -55,21 +58,18 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), |world: &mut World| {
-            let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
-            world.insert_resource(layout);
-            let graph = world.resource::<RoadGraph>();
-            let initial_map = ui::travel_ui_scene(
-                RoadId::Start,
-                navigation::destinations(graph, RoadId::Start),
-                graph,
-                world.resource::<map::MapLayout>(),
+        app.init_resource::<InitialRoad>()
+            .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
+            .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
+            .add_systems(OnEnter(GameState::Playing), |world: &mut World| {
+                let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
+                world.insert_resource(layout);
+                let road = world.resource::<InitialRoad>().0;
+                world.spawn_scene(scene::road_scene(road)).unwrap();
+            })
+            .add_systems(
+                PostUpdate,
+                interaction::interact.run_if(in_state(GameState::Playing)),
             );
-            world.spawn_scene(initial_map).unwrap();
-        })
-        .add_systems(
-            PostUpdate,
-            interaction::interact.run_if(in_state(GameState::Playing)),
-        );
     }
 }

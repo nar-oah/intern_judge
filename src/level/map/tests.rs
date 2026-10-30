@@ -10,17 +10,12 @@ fn graph(roads: impl IntoIterator<Item = (RoadId, Vec<RoadId>)>) -> RoadGraph {
 fn court_is_centered_and_roads_follow_the_shortest_undirected_distance() {
     // The reverse Court -> MarketRoad edge and the cycle must not affect depth.
     let layout = MapLayout::from_graph(&graph([
-        (RoadId::Start, vec![RoadId::ExampleRoad]),
         (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
         (RoadId::Court, vec![RoadId::MarketRoad]),
         (RoadId::MarketRoad, vec![RoadId::Court, RoadId::ExampleRoad]),
     ]));
     assert_eq!(layout.positions[&RoadId::Court], Vec2::ZERO);
-    for (road, radius) in [
-        (RoadId::MarketRoad, 1.0),
-        (RoadId::ExampleRoad, 2.0),
-        (RoadId::Start, 3.0),
-    ] {
+    for (road, radius) in [(RoadId::MarketRoad, 1.0), (RoadId::ExampleRoad, 2.0)] {
         assert!((layout.positions[&road].length() - radius).abs() < 0.0001);
     }
 }
