@@ -14,14 +14,16 @@ use rand::seq::IndexedRandom;
 
 const FALLING_X: [f32; 4] = [-420.0, -250.0, 90.0, 250.0];
 
-pub(super) fn example_road_scene(effects: &[RoadEffect]) -> impl Scene {
+pub(in crate::level::scene) fn example_road_scene(effects: &[RoadEffect]) -> impl Scene + use<> {
     let falling_object = effects.contains(&RoadEffect::FallingObject).then(|| {
         let x = *FALLING_X.choose(&mut rand::rng()).unwrap();
-        falling_object_scene(Vec2::new(x, 320.0))
+        bsn_list! { @falling_object_scene(Vec2::new(x, 320.0)) }
     });
     let construction_detour = effects
         .contains(&RoadEffect::ConstructionDetour)
-        .then(|| construction_detour_scene(Vec2::new(90.0, -132.5), Vec2::splat(60.0)));
+        .then(|| {
+            bsn_list! { @construction_detour_scene(Vec2::new(90.0, -132.5), Vec2::splat(60.0)) }
+        });
 
     bsn! {
         #ExampleRoad
@@ -52,9 +54,9 @@ pub(super) fn example_road_scene(effects: &[RoadEffect]) -> impl Scene {
             --
             @switch_point_scene(Vec2::new(460.0, -137.5))
             --
-            @falling_object
+            {falling_object}
             --
-            @construction_detour
+            {construction_detour}
         ]
     }
 }
