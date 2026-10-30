@@ -16,6 +16,11 @@ pub(crate) struct Player {
     jump_speed: f32,
 }
 
+#[derive(Component)]
+pub(crate) struct Stunned {
+    pub remaining: f32,
+}
+
 #[derive(Actionlike, Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
 pub(crate) enum PlayerAction {
     Left,
@@ -32,8 +37,23 @@ impl Plugin for PlayerPlugin {
         app.add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(
                 FixedUpdate,
-                player_movement.run_if(in_state(GameState::Playing)),
+                (tick_stun, player_movement)
+                    .chain()
+                    .run_if(in_state(GameState::Playing)),
             );
+    }
+}
+
+fn tick_stun(
+    mut commands: Commands,
+    time: Res<Time<Fixed>>,
+    mut players: Query<(Entity, &mut Stunned), With<Player>>,
+) {
+    for (entity, mut stunned) in &mut players {
+        stunned.remaining -= time.delta_secs();
+        if stunned.remaining <= 0.0 {
+            commands.entity(entity).remove::<Stunned>();
+        }
     }
 }
 
@@ -41,12 +61,15 @@ fn player_movement(
     time: Res<Time<Fixed>>,
     settings: Res<GameSettings>,
     mut stamina: ResMut<Stamina>,
-    mut players: Query<(
-        &Player,
-        &ActionState<PlayerAction>,
-        &ShapeHits,
-        &mut LinearVelocity,
-    )>,
+    mut players: Query<
+        (
+            &Player,
+            &ActionState<PlayerAction>,
+            &ShapeHits,
+            &mut LinearVelocity,
+        ),
+        Without<Stunned>,
+    >,
 ) {
     for (player, actions, hits, mut velocity) in &mut players {
         let left = actions.pressed(&PlayerAction::Left);

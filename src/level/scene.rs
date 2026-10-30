@@ -1,15 +1,16 @@
 mod building;
+pub(crate) mod effect;
 mod platform;
 mod road;
 mod switch_point;
 
-use super::RoadId;
+use super::{RoadEffect, RoadId};
 use bevy::prelude::*;
 
-pub(super) fn road_scene(road: RoadId) -> Box<dyn Scene> {
+pub(super) fn road_scene(road: RoadId, effects: &[RoadEffect]) -> Box<dyn Scene> {
     match road {
-        RoadId::ExampleRoad => Box::new(road::example_road_scene()),
-        RoadId::MarketRoad => Box::new(road::market_road_scene()),
-        RoadId::Court => Box::new(road::court_scene()),
+        RoadId::ExampleRoad => Box::new(road::example_road_scene(effects)),
+        RoadId::MarketRoad => Box::new(road::market_road_scene(effects)),
+        RoadId::Court => Box::new(road::court_scene(effects)),
     }
 }

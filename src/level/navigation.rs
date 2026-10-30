@@ -1,5 +1,5 @@
 use super::{
-    RoadId, SceneRoot, SwitchPoint,
+    RoadEffects, RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
     scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
@@ -54,7 +54,9 @@ pub(super) fn select_destination(world: &mut World, button: Entity) {
         return;
     };
     if choices.0.contains(&destination) {
-        replace_scene(world, root, scene::road_scene(destination));
+        let effects = world.resource::<RoadEffects>().0.get(&destination);
+        let next = scene::road_scene(destination, effects.map_or(&[], Vec::as_slice));
+        replace_scene(world, root, next);
         let state = if destination == RoadId::Court {
             CommuteState::Paused
         } else {
