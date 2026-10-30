@@ -15,10 +15,7 @@ fn court_is_centered_and_roads_follow_the_shortest_undirected_distance() {
         (RoadId::MarketRoad, vec![RoadId::Court, RoadId::ExampleRoad]),
     ]));
     assert_eq!(layout.positions[&RoadId::Court], Vec2::ZERO);
-    for (road, radius) in [
-        (RoadId::MarketRoad, 1.0),
-        (RoadId::ExampleRoad, 2.0),
-    ] {
+    for (road, radius) in [(RoadId::MarketRoad, 1.0), (RoadId::ExampleRoad, 2.0)] {
         assert!((layout.positions[&road].length() - radius).abs() < 0.0001);
     }
 }

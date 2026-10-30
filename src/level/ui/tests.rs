@@ -29,11 +29,7 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
     displayed.sort_unstable();
     assert_eq!(
         displayed,
-        [
-            RoadId::ExampleRoad,
-            RoadId::MarketRoad,
-            RoadId::Court,
-        ]
+        [RoadId::ExampleRoad, RoadId::MarketRoad, RoadId::Court,]
     );
 
     let buttons = world
