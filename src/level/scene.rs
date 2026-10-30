@@ -6,12 +6,10 @@ mod switch_point;
 use super::RoadId;
 use bevy::prelude::*;
 
-// Start is a logical map origin and never has a physical scene.
-pub(super) fn road_scene(road: RoadId) -> Option<Box<dyn Scene>> {
+pub(super) fn road_scene(road: RoadId) -> Box<dyn Scene> {
     match road {
-        RoadId::Start => None,
-        RoadId::ExampleRoad => Some(Box::new(road::example_road_scene())),
-        RoadId::MarketRoad => Some(Box::new(road::market_road_scene())),
-        RoadId::Court => Some(Box::new(road::court_scene())),
+        RoadId::ExampleRoad => Box::new(road::example_road_scene()),
+        RoadId::MarketRoad => Box::new(road::market_road_scene()),
+        RoadId::Court => Box::new(road::court_scene()),
     }
 }

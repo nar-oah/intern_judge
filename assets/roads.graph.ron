@@ -1,8 +1,5 @@
 (
     roads: {
-        Start: [
-            ExampleRoad,
-        ],
         ExampleRoad: [
             MarketRoad,
             Court,
