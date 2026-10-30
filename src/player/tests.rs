@@ -1,7 +1,7 @@
 use super::*;
 use crate::physics::GameLayer;
 use crate::test_support::{finish_app, headless_app};
-use bevy::{ecs::system::RunSystemOnce, platform::time::Instant};
+use bevy::platform::time::Instant;
 use std::time::Duration;
 
 const WALK_SPEED: f32 = 200.0;
@@ -23,6 +23,9 @@ impl Movement {
             per_second: 8.0,
         });
         world.insert_resource(Stamina(stamina));
+        let mut schedule = Schedule::new(FixedUpdate);
+        schedule.add_systems((tick_stun, player_movement).chain());
+        world.add_schedule(schedule);
         let player = world
             .spawn((
                 Player {
@@ -64,7 +67,7 @@ impl Movement {
         self.world
             .resource_mut::<Time<Fixed>>()
             .advance_by(Duration::from_secs_f32(seconds));
-        self.world.run_system_once(player_movement).unwrap();
+        self.world.run_schedule(FixedUpdate);
         let now = Instant::now();
         self.world
             .get_mut::<ActionState<PlayerAction>>(self.player)
@@ -185,6 +188,79 @@ fn holding_an_airborne_jump_does_not_jump_on_landing() {
     movement.actions(&[PlayerAction::Jump]);
     movement.step(0.25);
     assert_eq!(movement.velocity().y, JUMP_SPEED);
+}
+
+#[test]
+fn stun_blocks_movement_sprint_and_jump_without_spending_stamina() {
+    let mut movement = Movement::new(50.0);
+    movement
+        .world
+        .entity_mut(movement.player)
+        .insert(Stunned { remaining: 2.0 });
+    movement.contacts(&[Vec2::Y]);
+    movement.actions(&[
+        PlayerAction::Right,
+        PlayerAction::Sprint,
+        PlayerAction::Jump,
+    ]);
+
+    movement.step(0.5);
+
+    assert_eq!(movement.velocity(), Vec2::new(0.0, -70.0));
+    assert_eq!(movement.stamina(), 50.0);
+    assert_eq!(
+        movement
+            .world
+            .get::<Stunned>(movement.player)
+            .unwrap()
+            .remaining,
+        1.5
+    );
+}
+
+#[test]
+fn expired_stun_restores_movement_on_the_same_fixed_step() {
+    let mut movement = Movement::new(50.0);
+    movement
+        .world
+        .entity_mut(movement.player)
+        .insert(Stunned { remaining: 2.0 });
+    movement.actions(&[PlayerAction::Right]);
+
+    movement.step(1.5);
+    assert_eq!(movement.velocity(), Vec2::new(0.0, -70.0));
+    movement.step(0.5);
+
+    assert!(movement.world.get::<Stunned>(movement.player).is_none());
+    assert_eq!(movement.velocity(), Vec2::new(WALK_SPEED, -70.0));
+}
+
+#[test]
+fn stunned_player_keeps_falling_under_gravity() {
+    let mut app = headless_app(Vec2::NEG_Y * 1000.0);
+    app.add_plugins(PlayerPlugin);
+    let player = app
+        .world_mut()
+        .spawn_scene(player_scene(Vec2::new(0.0, 200.0)))
+        .unwrap()
+        .insert(Stunned { remaining: 2.0 })
+        .id();
+    finish_app(&mut app);
+    KeyCode::KeyD.press(app.world_mut());
+    KeyCode::ShiftLeft.press(app.world_mut());
+    KeyCode::Space.press(app.world_mut());
+    let stamina = app.world().resource::<Stamina>().0;
+
+    for _ in 0..16 {
+        app.update();
+    }
+
+    let velocity = app.world().get::<LinearVelocity>(player).unwrap();
+    assert_eq!(velocity.x, 0.0);
+    assert!(velocity.y < 0.0);
+    assert!(app.world().get::<Position>(player).unwrap().y < 200.0);
+    assert!(app.world().get::<Stunned>(player).is_some());
+    assert_eq!(app.world().resource::<Stamina>().0, stamina);
 }
 
 #[test]
