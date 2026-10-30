@@ -51,7 +51,6 @@ pub(crate) fn insert_config(app: &mut App) {
         })
         .insert_resource(RoadGraph {
             roads: [
-                (RoadId::Start, vec![RoadId::ExampleRoad]),
                 (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::Court]),
                 (RoadId::MarketRoad, vec![RoadId::Court]),
                 (RoadId::Court, vec![]),

@@ -1,6 +1,8 @@
 # Intern Judge
 
 Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以下数值为默认配置。
+启动流程为 Loading → MainMenu → Playing（初始 Road）；配置加载后显示标题
+“Intern Judge”和“Start Game”按钮，点击按钮开始本局游戏。
 
 - A / D：移动；空格：跳跃；E：与碰撞箱重叠的建筑或切换点交互。
 - 按住左 Shift 并水平移动时以 1.5 倍速度加速，每秒消耗 5 点体力。
@@ -23,13 +25,15 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 正常路网假设与法院连通。布局只负责坐标，实际通行仍由有向路网和导航校验决定。
 `ui.rs` 使用原生 UI / BSN 绘制节点和连线，并复用原有目的地选择逻辑。
 
-游戏从逻辑出生点 `RoadId::Start` 直接打开地图，初始可选择 `RoadId::ExampleRoad`。
-Start 仅用于路网和地图展示，没有关卡场景，不生成玩家或物理实体，也不作为经过路段。
+`InitialRoad` Resource 保存初始路段，目前固定为 `RoadId::ExampleRoad`。
+点击开始按钮后直接加载该路段及 Player，并开始通勤计时。
 进入 ExampleRoad 后，走到右侧切换点按 E 可选择 `RoadId::MarketRoad`
 或法院 `RoadId::Court`。选择 MarketRoad 后，从新路段右侧切换点可前往法院。
-路段之间单向前进，完整流程为 Start → 地图 UI → Road → 地图 UI → Road → Court。
-Road 和 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体及全部
-子实体，再生成新场景。Camera 和右上角通勤 HUD 等全局实体始终保留。
+路段之间单向前进，不能返回已走过的路段；流程为初始 Road → 地图 UI → Road → Court，
+也可从初始 Road 经地图直接前往 Court。
+开始菜单、Road 和地图 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体
+及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成右上角通勤 HUD，
+之后切换 Road 与地图 UI 时保留。
 每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
 子场景和出生位置；进入新 Road 时生成新的 Player，移动、跳跃和物理逻辑照常运行。
 Player 不存在时，移动和交互系统自然跳过。
@@ -42,7 +46,6 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 - `game.settings.ron`：`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
   `multiplier` 为冲刺速度倍率，`per_second` 为每秒体力消耗。
 - `roads.graph.ron`：`roads` 按 `RoadId` 枚举值配置下一路段数组；空数组表示没有目的地。
-  `Start` 初始连接 `ExampleRoad`，不能作为可进入的目的地。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
   `convenience_stores` 按 Small、Large 类型配置 `price` 和 `stamina_recovery`。
@@ -50,15 +53,17 @@ UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
 `src/config.rs` 集中定义配置类型与 `ConfigPlugin` 加载逻辑，使用
 `bevy_asset_loader` 加载、`bevy_common_assets` 反序列化 RON。启动时进入
 `GameState::Loading`，全部配置加载完成并从静态 Asset 转为只读 Resource 后，
-进入 `GameState::Playing`，再初始化游戏、HUD 和关卡场景。系统直接读取
+进入 `GameState::MainMenu`，通过 Bevy UI / BSN 显示开始菜单。点击开始按钮后进入
+`GameState::Playing`，初始化本局数据、HUD 和 `InitialRoad` 对应的关卡场景。
+开始菜单随状态切换清理。系统直接读取
 `GameSettings`、`RoadGraph`、`BuildingValues`，无需反复查询 `Assets<T>`。
 
 `src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina`、
 `HasHelmet` 和 `CommuteState`。固定参数直接读取配置，`Money` 和
-`CommuteTime.elapsed` 仍是运行时资源；金钱按 `initial_money` 初始化，已用时间
-初始为 0，初始没有安全帽。`Stamina::MAX` 保持硬编码为 100。
+`CommuteTime.elapsed` 仍是运行时资源；每次进入 `Playing`，金钱按 `initial_money`
+初始化，已用时间重置为 0、体力恢复至上限、初始没有安全帽。`Stamina::MAX` 保持硬编码为 100。
 体力、安全帽和金钱保存在全局资源中，切换路段或重新生成 Player 不会重置。
-计时系统只在 `Running` 状态执行；初始地图为 `Paused`，选择首个实际 Road 后才开始计时。
+计时系统只在 `Playing` 且通勤状态为 `Running` 时执行；进入初始 Road 后即开始计时。
 后续进入目的地选择 UI 时请求 `Paused`，选择普通 Road 后恢复 `Running`，进入 Court 后保持 `Paused`。
 状态请求由 Bevy 在下一次状态切换调度中应用，不影响物理和玩家移动。
 超时后已用时间继续增长，`remaining(limit)` 接收配置中的通勤时限，返回时限减去
@@ -90,7 +95,8 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 每次新按下 E 向与玩家重叠的可交互目标发送一次 `InteractRequested` EntityEvent，
 事件包含目标和玩家实体，不处理多个交互区域重叠的情况。各类建筑和切换点通过 BSN 的 `on(...)` 绑定自己的
 Observer；路段切换由 `navigation.rs` 处理，目的地选择界面位于 `ui.rs`。
-暂不包含随机路网生成、路段解锁、周末限制、每日猫咪刷新、跨场景救援状态保存、
+当前原型进入初始 Road 后统一按通勤规则计时，暂不区分工作日与周末。
+暂不包含随机路网生成、路段解锁、每日猫咪刷新、跨场景救援状态保存、
 公交站或实际判案逻辑。
 
 验证：`cargo test`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`。
