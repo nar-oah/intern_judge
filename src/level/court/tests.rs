@@ -40,7 +40,10 @@ impl Hearing {
         .init_asset_loader::<FontLoader>()
         .init_resource::<PresentedChoices>()
         .add_plugins(CourtPlugin)
-        .add_systems(PostUpdate, interaction::interact)
+        .add_systems(
+            PostUpdate,
+            interaction::interact.before(DialogueSystem::Runner),
+        )
         .add_systems(PostUpdate, collect_choices.after(DialogueSystem::Commands));
         let (court, player, npcs) = spawn_court(app.world_mut());
         app.finish();
