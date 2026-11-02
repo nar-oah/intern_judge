@@ -1,3 +1,5 @@
+mod court;
+mod dialogue_ui;
 mod interaction;
 mod map;
 mod menu;
@@ -77,7 +79,8 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<InitialRoad>()
+        app.add_plugins(court::CourtPlugin)
+            .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
             .add_systems(OnEnter(GameState::Playing), |world: &mut World| {

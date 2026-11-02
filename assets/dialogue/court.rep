@@ -1,0 +1,21 @@
+:= prosecution
+公诉方: 我们认为被告有罪，请法官依法判决。
+>> heard(true)
+=> verdict_if_ready
+---
+
+:= defense
+辩护方: 我们认为证据不足，请法官判决无罪。
+>> heard(false)
+=> verdict_if_ready
+---
+
+:= verdict_if_ready
+[if ready_for_verdict()]
+    -> 判决有罪
+        >> record_verdict(true)
+        => END
+    -> 判决无罪
+        >> record_verdict(false)
+        => END
+---
