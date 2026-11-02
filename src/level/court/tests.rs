@@ -7,7 +7,10 @@ use bevy::{
     platform::time::Instant as InputInstant,
     scene::ScenePlugin,
     text::{FontCx, FontLoader},
-    ui::{sync_font_size_to_em_size, ui_layout_system, ui_surface::UiSurface, update::propagate_ui_target_cameras},
+    ui::{
+        sync_font_size_to_em_size, ui_layout_system, ui_surface::UiSurface,
+        update::propagate_ui_target_cameras,
+    },
     ui_widgets::Activate,
 };
 use std::time::{Duration, Instant};
@@ -179,13 +182,26 @@ impl Hearing {
         let panel = self.state().panel.unwrap();
         let world = self.app.world_mut();
         let camera = world.get::<ComputedUiTargetCamera>(panel).unwrap();
-        assert_eq!(camera.get(), Some(self.camera), "dialogue must reach the UI camera");
+        assert_eq!(
+            camera.get(),
+            Some(self.camera),
+            "dialogue must reach the UI camera"
+        );
         let size = world.get::<ComputedNode>(panel).unwrap().size();
-        assert!(size.x > 1000.0 && size.y > 0.0, "dialogue must have a visible viewport layout: {size:?}");
+        assert!(
+            size.x > 1000.0 && size.y > 0.0,
+            "dialogue must have a visible viewport layout: {size:?}"
+        );
         for (entity, _) in world.query::<(Entity, &DialogueButton)>().iter(world) {
-            assert_eq!(world.get::<ComputedUiTargetCamera>(entity).unwrap().get(), Some(self.camera));
+            assert_eq!(
+                world.get::<ComputedUiTargetCamera>(entity).unwrap().get(),
+                Some(self.camera)
+            );
             let size = world.get::<ComputedNode>(entity).unwrap().size();
-            assert!(size.x > 0.0 && size.y > 0.0, "dialogue button must be laid out: {size:?}");
+            assert!(
+                size.x > 0.0 && size.y > 0.0,
+                "dialogue button must be laid out: {size:?}"
+            );
         }
     }
 
@@ -240,7 +256,11 @@ fn setup_ui_layout(app: &mut App) -> Entity {
         )
         .add_systems(
             PostUpdate,
-            (propagate_ui_target_cameras, sync_font_size_to_em_size, ui_layout_system)
+            (
+                propagate_ui_target_cameras,
+                sync_font_size_to_em_size,
+                ui_layout_system,
+            )
                 .chain()
                 .after(show_dialogue),
         );
