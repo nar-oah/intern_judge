@@ -21,6 +21,9 @@ pub(crate) struct Stunned {
     pub remaining: f32,
 }
 
+#[derive(Component)]
+pub(crate) struct DialogueLocked;
+
 #[derive(Actionlike, Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
 pub(crate) enum PlayerAction {
     Left,
@@ -67,11 +70,16 @@ fn player_movement(
             &ActionState<PlayerAction>,
             &ShapeHits,
             &mut LinearVelocity,
+            Option<&DialogueLocked>,
         ),
         Without<Stunned>,
     >,
 ) {
-    for (player, actions, hits, mut velocity) in &mut players {
+    for (player, actions, hits, mut velocity, dialogue_locked) in &mut players {
+        if dialogue_locked.is_some() {
+            velocity.x = 0.0;
+            continue;
+        }
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
         let direction = i8::from(right) - i8::from(left);

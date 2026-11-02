@@ -1,5 +1,5 @@
 use super::{InteractRequested, Interactable, interaction};
-use crate::player::{Player, PlayerAction};
+use crate::player::{DialogueLocked, Player, PlayerAction};
 use avian2d::prelude::CollidingEntities;
 use bevy::{platform::time::Instant, prelude::*};
 use leafwing_input_manager::prelude::*;
@@ -89,6 +89,28 @@ fn interaction_requires_overlap_at_the_time_of_a_fresh_press() {
         app.world().resource::<Requests>().0,
         [(target, player), (target, player)]
     );
+}
+
+#[test]
+fn dialogue_blocks_interaction_until_unlocked_and_pressed_again() {
+    let mut app = interaction_app();
+    let player = player(&mut app);
+    let target = target(&mut app, &[player]);
+    app.world_mut().entity_mut(player).insert(DialogueLocked);
+
+    interact(&mut app, player, true);
+    frame(&mut app);
+    assert!(app.world().resource::<Requests>().0.is_empty());
+
+    app.world_mut().entity_mut(player).remove::<DialogueLocked>();
+    frame(&mut app);
+    assert!(app.world().resource::<Requests>().0.is_empty());
+
+    interact(&mut app, player, false);
+    frame(&mut app);
+    interact(&mut app, player, true);
+    frame(&mut app);
+    assert_eq!(app.world().resource::<Requests>().0, [(target, player)]);
 }
 
 #[test]

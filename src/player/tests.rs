@@ -191,6 +191,41 @@ fn holding_an_airborne_jump_does_not_jump_on_landing() {
 }
 
 #[test]
+fn dialogue_blocks_movement_sprint_and_jump_until_unlocked() {
+    let mut movement = Movement::new(50.0);
+    movement.contacts(&[Vec2::Y]);
+    movement.actions(&[PlayerAction::Right]);
+    movement.step(0.25);
+    assert_eq!(movement.velocity().x, WALK_SPEED);
+
+    movement
+        .world
+        .entity_mut(movement.player)
+        .insert(DialogueLocked);
+    for direction in [PlayerAction::Left, PlayerAction::Right] {
+        movement.actions(&[direction, PlayerAction::Sprint, PlayerAction::Jump]);
+        movement.step(0.25);
+
+        assert_eq!(movement.velocity(), Vec2::new(0.0, -70.0));
+        assert_eq!(movement.stamina(), 50.0);
+    }
+
+    movement
+        .world
+        .entity_mut(movement.player)
+        .remove::<DialogueLocked>();
+    movement.actions(&[
+        PlayerAction::Right,
+        PlayerAction::Sprint,
+        PlayerAction::Jump,
+    ]);
+    movement.step(0.25);
+
+    assert_eq!(movement.velocity(), Vec2::new(500.0, JUMP_SPEED));
+    assert_eq!(movement.stamina(), 48.0);
+}
+
+#[test]
 fn stun_blocks_movement_sprint_and_jump_without_spending_stamina() {
     let mut movement = Movement::new(50.0);
     movement
