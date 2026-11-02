@@ -4,7 +4,7 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 启动流程为 Loading → MainMenu → Playing（初始 Road）；配置加载后显示标题
 “Intern Judge”和“Start Game”按钮，点击按钮开始本局游戏。
 
-- A / D：移动；空格：跳跃；E：与碰撞箱重叠的建筑或切换点交互。
+- A / D：移动；空格：跳跃；E：与碰撞箱重叠的建筑、NPC 或切换点交互。
 - 按住左 Shift 并水平移动时以 1.5 倍速度加速，每秒消耗 5 点体力。
   体力初始值和上限为 100，不会自然恢复；耗尽后仍可正常移动和跳跃。
   松开左 Shift 或停止水平移动时不消耗体力。
@@ -40,12 +40,21 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 开始菜单、Road 和地图 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体
 及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成右上角通勤 HUD，
 之后切换 Road 与地图 UI 时保留。
-每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
+每个 Road 通过 `player_scene(position)` 定义自己的 Player
 子场景和出生位置；进入新 Road 时生成新的 Player，移动、跳跃和物理逻辑照常运行。
 Player 不存在时，移动和交互系统自然跳过。
 法院通过 `court_scene()` 定义为普通路段，根实体标识为 `RoadId::Court`，
-目前仅有一个地面平台；进入后可正常移动和跳跃。
-UI 使用英文标签和 Bevy 默认字体，无需额外字体资源。
+玩家在中央出生，左侧为公诉方（红色），右侧为辩护方（绿色）。靠近 NPC 按 E
+开始对话；底部 BSN 对话框显示说话者和台词，按 E 或点击继续按钮读完。
+对话和判决选择期间禁止移动、跳跃、冲刺及场景交互，结束后恢复；重力照常运行。
+双方交谈顺序任意，重复找同一方不会解锁判决。读完双方台词后，点击“判决有罪”
+或“判决无罪”；结果记录在法院的 `CourtHearing` 组件中，并输出日志，随后关闭对话。
+本次法院交互结束后不再启动对话；卸载法院场景时清理进度、runner 和 UI。
+
+`assets/dialogue/court.rep` 独立保存 Replique 台词、完成标志命令及判决选项，
+由 `src/level/court.rs` 接入 ECS，`src/level/dialogue_ui.rs` 仅负责可复用的 BSN
+对话框和输入事件。法院中文使用 `assets/fonts/CourtDialogueSans.otf`，字体来源、
+许可和扩展台词后重新生成子集的方法见 `assets/fonts/README.md`；其余 UI 使用默认字体。
 
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
 
