@@ -102,7 +102,9 @@ fn dialogue_blocks_interaction_until_unlocked_and_pressed_again() {
     frame(&mut app);
     assert!(app.world().resource::<Requests>().0.is_empty());
 
-    app.world_mut().entity_mut(player).remove::<DialogueLocked>();
+    app.world_mut()
+        .entity_mut(player)
+        .remove::<DialogueLocked>();
     frame(&mut app);
     assert!(app.world().resource::<Requests>().0.is_empty());
 
