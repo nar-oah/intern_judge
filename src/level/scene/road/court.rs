@@ -65,5 +65,14 @@ fn npc_scene(npc: CourtNpc, x: f32, color: Color) -> impl Scene {
         Sensor
         CollidingEntities::default()
         on(begin_dialogue)
+        Children [
+            Text2d::new(format!("{name}\n靠近按 E 对话"))
+            TextFont {
+                font: "fonts/CourtDialogueSans.otf",
+                font_size: FontSize::Px(18.0),
+            }
+            TextColor(Color::srgb(0.95, 0.96, 1.0))
+            Transform::from_xyz(0.0, 65.0, 1.0)
+        ]
     }
 }

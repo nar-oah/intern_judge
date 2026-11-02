@@ -38,7 +38,7 @@ enum Waiting {
     Choices(DialogueToken),
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Clone, Default)]
 pub(super) struct CourtHearing {
     heard: [bool; 2],
     verdict: Option<Verdict>,
@@ -48,7 +48,7 @@ pub(super) struct CourtHearing {
 }
 
 #[derive(Resource)]
-struct CourtAssets {
+pub(super) struct CourtAssets {
     dialogue: Handle<RepliqueDialogue>,
     font: Handle<Font>,
 }

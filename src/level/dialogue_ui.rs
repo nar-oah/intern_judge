@@ -66,9 +66,10 @@ pub(super) fn dialogue_box_scene(
 
 fn text_scene(font: Handle<Font>, text: &str, size: f32) -> impl Scene + use<> {
     let text = Text::new(text);
+    let text_font = TextFont::from_font(font).with_font_size(size);
     bsn! {
         text
-        TextFont::from_font(font).with_font_size(size)
+        text_font
         TextColor(Color::srgb(0.95, 0.96, 1.0))
         Pickable::IGNORE
     }
@@ -80,9 +81,10 @@ fn button_scene(
     token: DialogueToken,
     choice: Option<usize>,
 ) -> impl Scene + use<> {
+    let action = DialogueButton { token, choice };
     bsn! {
         Button
-        DialogueButton { token, choice }
+        action
         Node {
             padding: UiRect::axes(px(20), px(10)),
             border_radius: BorderRadius::all(px(6)),

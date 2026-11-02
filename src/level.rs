@@ -94,7 +94,9 @@ impl Plugin for LevelPlugin {
             })
             .add_systems(
                 PostUpdate,
-                interaction::interact.run_if(in_state(GameState::Playing)),
+                interaction::interact
+                    .before(bevy_replique::prelude::DialogueSystem::Runner)
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
