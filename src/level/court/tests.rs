@@ -1,8 +1,14 @@
 use super::*;
 use crate::level::{RoadId, dialogue_ui::DialogueButton, interaction, scene};
 use bevy::{
-    asset::AssetPlugin, platform::time::Instant as InputInstant, scene::ScenePlugin,
-    text::FontLoader, ui_widgets::Activate,
+    app::{HierarchyPropagatePlugin, PropagateSet},
+    asset::AssetPlugin,
+    camera::{ComputedCameraValues, RenderTargetInfo},
+    platform::time::Instant as InputInstant,
+    scene::ScenePlugin,
+    text::{FontCx, FontLoader},
+    ui::{sync_font_size_to_em_size, ui_layout_system, ui_surface::UiSurface, update::propagate_ui_target_cameras},
+    ui_widgets::Activate,
 };
 use std::time::{Duration, Instant};
 
@@ -20,6 +26,7 @@ fn collect_choices(
 
 struct Hearing {
     app: App,
+    camera: Entity,
     court: Entity,
     player: Entity,
     npcs: [Entity; 2],
@@ -45,11 +52,13 @@ impl Hearing {
             interaction::interact.before(DialogueSystem::Runner),
         )
         .add_systems(PostUpdate, collect_choices.after(DialogueSystem::Commands));
+        let camera = setup_ui_layout(&mut app);
         let (court, player, npcs) = spawn_court(app.world_mut());
         app.finish();
         app.cleanup();
         let mut hearing = Self {
             app,
+            camera,
             court,
             player,
             npcs,
@@ -143,6 +152,7 @@ impl Hearing {
             self.app.world().get::<ChildOf>(panel).unwrap().parent(),
             court
         );
+        self.assert_panel_layout();
         let expected = match npc {
             CourtNpc::Prosecution => ("公诉方", "我们认为被告有罪，请法官依法判决。"),
             CourtNpc::Defense => ("辩护方", "我们认为证据不足，请法官判决无罪。"),
@@ -163,6 +173,20 @@ impl Hearing {
 
     fn state(&self) -> &CourtHearing {
         self.app.world().get::<CourtHearing>(self.court).unwrap()
+    }
+
+    fn assert_panel_layout(&mut self) {
+        let panel = self.state().panel.unwrap();
+        let world = self.app.world_mut();
+        let camera = world.get::<ComputedUiTargetCamera>(panel).unwrap();
+        assert_eq!(camera.get(), Some(self.camera), "dialogue must reach the UI camera");
+        let size = world.get::<ComputedNode>(panel).unwrap().size();
+        assert!(size.x > 1000.0 && size.y > 0.0, "dialogue must have a visible viewport layout: {size:?}");
+        for (entity, _) in world.query::<(Entity, &DialogueButton)>().iter(world) {
+            assert_eq!(world.get::<ComputedUiTargetCamera>(entity).unwrap().get(), Some(self.camera));
+            let size = world.get::<ComputedNode>(entity).unwrap().size();
+            assert!(size.x > 0.0 && size.y > 0.0, "dialogue button must be laid out: {size:?}");
+        }
     }
 
     fn assert_closed(&mut self) {
@@ -190,6 +214,51 @@ impl Hearing {
         let court = self.court;
         self.wait_until(|world| world.get::<CourtHearing>(court).unwrap().player.is_none());
     }
+}
+
+fn setup_ui_layout(app: &mut App) -> Entity {
+    // Exercise Bevy's actual root discovery, camera propagation and layout without a window or GPU.
+    app.init_resource::<UiScale>()
+        .init_resource::<UiSurface>()
+        .init_resource::<FontCx>()
+        .init_resource::<RemSize>()
+        .add_plugins((
+            HierarchyPropagatePlugin::<ComputedUiTargetCamera>::new(PostUpdate),
+            HierarchyPropagatePlugin::<ComputedUiRenderTargetInfo>::new(PostUpdate),
+        ))
+        .configure_sets(
+            PostUpdate,
+            PropagateSet::<ComputedUiTargetCamera>::default()
+                .after(propagate_ui_target_cameras)
+                .before(ui_layout_system),
+        )
+        .configure_sets(
+            PostUpdate,
+            PropagateSet::<ComputedUiRenderTargetInfo>::default()
+                .after(propagate_ui_target_cameras)
+                .before(ui_layout_system),
+        )
+        .add_systems(
+            PostUpdate,
+            (propagate_ui_target_cameras, sync_font_size_to_em_size, ui_layout_system)
+                .chain()
+                .after(show_dialogue),
+        );
+    app.world_mut()
+        .spawn((
+            Camera2d,
+            Camera {
+                computed: ComputedCameraValues {
+                    target_info: Some(RenderTargetInfo {
+                        physical_size: UVec2::new(1280, 720),
+                        scale_factor: 1.0,
+                    }),
+                    ..default()
+                },
+                ..default()
+            },
+        ))
+        .id()
 }
 
 fn spawn_court(world: &mut World) -> (Entity, Entity, [Entity; 2]) {
@@ -282,6 +351,7 @@ fn either_npc_order_unlocks_both_verdicts_and_each_verdict_finishes_the_hearing(
             [(0, "判决有罪", true), (1, "判决无罪", true)]
         );
         let panel = hearing.state().panel.unwrap();
+        hearing.assert_panel_layout();
         let texts = panel_texts(hearing.app.world_mut(), panel);
         assert!(texts.iter().any(|text| text == "判决有罪"));
         assert!(texts.iter().any(|text| text == "判决无罪"));
