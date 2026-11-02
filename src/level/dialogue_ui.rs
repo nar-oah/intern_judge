@@ -28,9 +28,7 @@ pub(super) fn dialogue_box_scene(
         Some(choices) => choices
             .iter()
             .filter(|choice| choice.available)
-            .map(|choice| {
-                button_scene(font.clone(), &choice.text, token, Some(choice.index))
-            })
+            .map(|choice| button_scene(font.clone(), &choice.text, token, Some(choice.index)))
             .collect::<Vec<_>>(),
         None => vec![button_scene(font.clone(), "按 E 继续", token, None)],
     };
@@ -98,17 +96,15 @@ fn button_scene(
     }
 }
 
-fn respond(
-    activate: On<Activate>,
-    buttons: Query<&DialogueButton>,
-    mut commands: Commands,
-) {
+fn respond(activate: On<Activate>, buttons: Query<&DialogueButton>, mut commands: Commands) {
     let Ok(button) = buttons.get(activate.entity) else {
         return;
     };
     commands.trigger(DialogueResponse {
         entity: button.token.runner(),
         token: button.token,
-        input: button.choice.map_or(ResumeInput::Advance, ResumeInput::Select),
+        input: button
+            .choice
+            .map_or(ResumeInput::Advance, ResumeInput::Select),
     });
 }

@@ -9,8 +9,8 @@ use crate::{
     },
     player::player_scene,
 };
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 use rand::seq::IndexedRandom;
 
 const FALLING_X: [f32; 3] = [-280.0, 0.0, 280.0];

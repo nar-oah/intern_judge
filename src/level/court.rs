@@ -74,10 +74,7 @@ impl Plugin for CourtPlugin {
             .add_dialogue_function(ready_for_verdict)
             .add_observer(respond)
             .add_systems(Update, (prepare_hearing, continue_dialogue).chain())
-            .add_systems(
-                PostUpdate,
-                show_dialogue.after(DialogueSystem::Commands),
-            );
+            .add_systems(PostUpdate, show_dialogue.after(DialogueSystem::Commands));
     }
 }
 
@@ -259,7 +256,11 @@ fn record_verdict(In(guilty): In<bool>, call: DialogueCall, mut courts: Query<&m
         && hearing.heard == [true; 2]
         && hearing.verdict.is_none()
     {
-        let verdict = if guilty { Verdict::Guilty } else { Verdict::NotGuilty };
+        let verdict = if guilty {
+            Verdict::Guilty
+        } else {
+            Verdict::NotGuilty
+        };
         hearing.verdict = Some(verdict);
         info!("Court verdict: {verdict:?}");
     }
