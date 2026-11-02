@@ -60,20 +60,24 @@ fn tick_stun(
     }
 }
 
+type MovingPlayers<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static Player,
+        &'static ActionState<PlayerAction>,
+        &'static ShapeHits,
+        &'static mut LinearVelocity,
+        Option<&'static DialogueLocked>,
+    ),
+    Without<Stunned>,
+>;
+
 fn player_movement(
     time: Res<Time<Fixed>>,
     settings: Res<GameSettings>,
     mut stamina: ResMut<Stamina>,
-    mut players: Query<
-        (
-            &Player,
-            &ActionState<PlayerAction>,
-            &ShapeHits,
-            &mut LinearVelocity,
-            Option<&DialogueLocked>,
-        ),
-        Without<Stunned>,
-    >,
+    mut players: MovingPlayers,
 ) {
     for (player, actions, hits, mut velocity, dialogue_locked) in &mut players {
         if dialogue_locked.is_some() {

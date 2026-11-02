@@ -7,7 +7,7 @@ use super::{
 };
 use crate::player::{DialogueLocked, Player, PlayerAction, Stunned};
 use avian2d::prelude::{CollidingEntities, LinearVelocity};
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::*;
 
@@ -99,26 +99,35 @@ fn prepare_hearing(
     }
 }
 
+type DialoguePlayers<'w, 's> = Query<
+    'w,
+    's,
+    (&'static ChildOf, &'static mut LinearVelocity),
+    (With<Player>, Without<DialogueLocked>, Without<Stunned>),
+>;
+
+#[derive(SystemParam)]
+pub(super) struct CourtParticipants<'w, 's> {
+    npcs: Query<'w, 's, (&'static CourtNpc, &'static ChildOf, &'static CollidingEntities)>,
+    courts: Query<'w, 's, &'static mut CourtHearing, With<DialogueRunner>>,
+    players: DialoguePlayers<'w, 's>,
+}
+
 pub(super) fn begin_dialogue(
     request: On<InteractRequested>,
     mut commands: Commands,
     assets: Res<CourtAssets>,
     dialogues: Res<Assets<RepliqueDialogue>>,
-    npcs: Query<(&CourtNpc, &ChildOf, &CollidingEntities)>,
-    mut courts: Query<&mut CourtHearing, With<DialogueRunner>>,
-    mut players: Query<
-        (&ChildOf, &mut LinearVelocity),
-        (With<Player>, Without<DialogueLocked>, Without<Stunned>),
-    >,
+    mut participants: CourtParticipants,
     mut start: MessageWriter<StartDialogue>,
 ) {
-    let Ok((npc, parent, collisions)) = npcs.get(request.entity) else {
+    let Ok((npc, parent, collisions)) = participants.npcs.get(request.entity) else {
         return;
     };
-    let Ok((player_parent, mut velocity)) = players.get_mut(request.player) else {
+    let Ok((player_parent, mut velocity)) = participants.players.get_mut(request.player) else {
         return;
     };
-    let Ok(mut hearing) = courts.get_mut(parent.parent()) else {
+    let Ok(mut hearing) = participants.courts.get_mut(parent.parent()) else {
         return;
     };
     if player_parent.parent() != parent.parent()
