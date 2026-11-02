@@ -202,16 +202,14 @@ fn show_dialogue(
         hearing.waiting = Some(Waiting::Line(line.token));
         hearing.panel = Some(
             commands
-                .spawn_scene(bsn! {
-                    @dialogue_box_scene(
-                        assets.font.clone(),
-                        line.speaker.as_deref().unwrap_or_default(),
-                        &line.text,
-                        line.token,
-                        None,
-                    )
-                    DialoguePanelOf(runner)
-                })
+                .spawn_scene(dialogue_box_scene(
+                    assets.font.clone(),
+                    line.speaker.as_deref().unwrap_or_default(),
+                    &line.text,
+                    line.token,
+                    None,
+                ))
+                .insert(DialoguePanelOf(runner))
                 .id(),
         );
     }
@@ -223,12 +221,14 @@ fn show_dialogue(
         hearing.waiting = Some(Waiting::Choices(group.token));
         hearing.panel = Some(
             commands
-                .spawn_scene(bsn! {
-                    @dialogue_box_scene(
-                        assets.font.clone(), "", "", group.token, Some(&group.choices),
-                    )
-                    DialoguePanelOf(runner)
-                })
+                .spawn_scene(dialogue_box_scene(
+                    assets.font.clone(),
+                    "",
+                    "",
+                    group.token,
+                    Some(&group.choices),
+                ))
+                .insert(DialoguePanelOf(runner))
                 .id(),
         );
     }
