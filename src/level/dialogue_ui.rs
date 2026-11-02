@@ -66,7 +66,7 @@ pub(super) fn dialogue_box_scene(
 
 fn text_scene(font: Handle<Font>, text: &str, size: f32) -> impl Scene + use<> {
     let text = Text::new(text);
-    let text_font = TextFont::from_font(font).with_font_size(size);
+    let text_font = TextFont::from_font_size(size).with_font(font);
     bsn! {
         text
         text_font

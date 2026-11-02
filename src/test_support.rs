@@ -18,7 +18,9 @@ const FIXED_TIMESTEP: Duration = Duration::from_micros(15_625);
 /// Scene spawning needs assets, but does not need rendering or physics.
 pub(crate) fn scene_app() -> App {
     let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
+        .init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>();
     app
 }
 

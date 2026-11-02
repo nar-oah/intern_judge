@@ -13,7 +13,9 @@ fn scene_app() -> App {
         TaskPoolPlugin::default(),
         AssetPlugin::default(),
         ScenePlugin,
-    ));
+    ))
+    .init_asset::<Font>()
+    .init_asset_loader::<bevy::text::FontLoader>();
     app.finish();
     app.cleanup();
     app
