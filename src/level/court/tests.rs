@@ -152,7 +152,7 @@ impl Hearing {
         );
         let panel = self.state().panel.unwrap();
         assert_eq!(
-            self.app.world().get::<ChildOf>(panel).unwrap().parent(),
+            self.app.world().get::<DialoguePanelOf>(panel).unwrap().0,
             court
         );
         self.assert_panel_layout();

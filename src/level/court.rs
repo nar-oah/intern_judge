@@ -47,6 +47,15 @@ pub(super) struct CourtHearing {
     waiting: Option<Waiting>,
 }
 
+// Panels must be UI roots, so use a separate relationship for scene cleanup.
+#[derive(Component, Clone)]
+#[relationship(relationship_target = DialoguePanels)]
+struct DialoguePanelOf(Entity);
+
+#[derive(Component)]
+#[relationship_target(relationship = DialoguePanelOf, linked_spawn)]
+struct DialoguePanels(Vec<Entity>);
+
 #[derive(Resource)]
 pub(super) struct CourtAssets {
     dialogue: Handle<RepliqueDialogue>,
@@ -201,7 +210,7 @@ fn show_dialogue(
                         line.token,
                         None,
                     )
-                    ChildOf(runner)
+                    DialoguePanelOf(runner)
                 })
                 .id(),
         );
@@ -218,7 +227,7 @@ fn show_dialogue(
                     @dialogue_box_scene(
                         assets.font.clone(), "", "", group.token, Some(&group.choices),
                     )
-                    ChildOf(runner)
+                    DialoguePanelOf(runner)
                 })
                 .id(),
         );
