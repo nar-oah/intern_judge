@@ -108,7 +108,15 @@ type DialoguePlayers<'w, 's> = Query<
 
 #[derive(SystemParam)]
 pub(super) struct CourtParticipants<'w, 's> {
-    npcs: Query<'w, 's, (&'static CourtNpc, &'static ChildOf, &'static CollidingEntities)>,
+    npcs: Query<
+        'w,
+        's,
+        (
+            &'static CourtNpc,
+            &'static ChildOf,
+            &'static CollidingEntities,
+        ),
+    >,
     courts: Query<'w, 's, &'static mut CourtHearing, With<DialogueRunner>>,
     players: DialoguePlayers<'w, 's>,
 }
