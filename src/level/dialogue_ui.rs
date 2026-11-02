@@ -69,7 +69,7 @@ fn text_scene(font: Handle<Font>, text: &str, size: f32) -> impl Scene + use<> {
     bsn! {
         text
         TextFont {
-            font: bevy::text::FontSource::Handle(font),
+            font: bevy::text::FontSourceTemplate::Handle(font.into()),
             font_size: FontSize::Px(size),
         }
         TextColor(Color::srgb(0.95, 0.96, 1.0))
