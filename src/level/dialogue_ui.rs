@@ -66,10 +66,12 @@ pub(super) fn dialogue_box_scene(
 
 fn text_scene(font: Handle<Font>, text: &str, size: f32) -> impl Scene + use<> {
     let text = Text::new(text);
-    let text_font = TextFont::from_font_size(size).with_font(font);
     bsn! {
         text
-        text_font
+        TextFont {
+            font: bevy::text::FontSource::Handle(font),
+            font_size: FontSize::Px(size),
+        }
         TextColor(Color::srgb(0.95, 0.96, 1.0))
         Pickable::IGNORE
     }

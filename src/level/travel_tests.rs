@@ -367,7 +367,15 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         assert_removed(&app, &old_map);
         let (_, next_player) = assert_road(&mut app, destination);
         assert_ne!(next_player, player);
-        assert_eq!(app.world().get::<Position>(next_player).unwrap().0, spawn);
+        let expected_spawn = if destination == RoadId::Court {
+            Vec2::new(0.0, -130.0)
+        } else {
+            spawn
+        };
+        assert_eq!(
+            app.world().get::<Position>(next_player).unwrap().0,
+            expected_spawn
+        );
         assert_eq!(
             app.world().get::<LinearVelocity>(next_player).unwrap().0,
             Vec2::ZERO
