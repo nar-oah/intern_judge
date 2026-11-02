@@ -1,5 +1,5 @@
 use super::*;
-use crate::level::{dialogue_ui::DialogueButton, interaction, scene, RoadId};
+use crate::level::{RoadId, dialogue_ui::DialogueButton, interaction, scene};
 use bevy::{
     asset::AssetPlugin, platform::time::Instant as InputInstant, scene::ScenePlugin,
     text::FontLoader, ui_widgets::Activate,
@@ -41,10 +41,7 @@ impl Hearing {
         .init_resource::<PresentedChoices>()
         .add_plugins(CourtPlugin)
         .add_systems(PostUpdate, interaction::interact)
-        .add_systems(
-            PostUpdate,
-            collect_choices.after(DialogueSystem::Commands),
-        );
+        .add_systems(PostUpdate, collect_choices.after(DialogueSystem::Commands));
         let (court, player, npcs) = spawn_court(app.world_mut());
         app.finish();
         app.cleanup();
@@ -124,13 +121,25 @@ impl Hearing {
                 Some(Waiting::Line(_))
             )
         });
-        assert!(self.app.world().get::<DialogueLocked>(self.player).is_some());
+        assert!(
+            self.app
+                .world()
+                .get::<DialogueLocked>(self.player)
+                .is_some()
+        );
         assert_eq!(
-            self.app.world().get::<LinearVelocity>(self.player).unwrap().x,
+            self.app
+                .world()
+                .get::<LinearVelocity>(self.player)
+                .unwrap()
+                .x,
             0.0
         );
         let panel = self.state().panel.unwrap();
-        assert_eq!(self.app.world().get::<ChildOf>(panel).unwrap().parent(), court);
+        assert_eq!(
+            self.app.world().get::<ChildOf>(panel).unwrap().parent(),
+            court
+        );
         let expected = match npc {
             CourtNpc::Prosecution => ("公诉方", "我们认为被告有罪，请法官依法判决。"),
             CourtNpc::Defense => ("辩护方", "我们认为证据不足，请法官判决无罪。"),
@@ -157,7 +166,12 @@ impl Hearing {
         assert!(self.state().player.is_none());
         assert!(self.state().panel.is_none());
         assert!(self.state().waiting.is_none());
-        assert!(self.app.world().get::<DialogueLocked>(self.player).is_none());
+        assert!(
+            self.app
+                .world()
+                .get::<DialogueLocked>(self.player)
+                .is_none()
+        );
         let world = self.app.world_mut();
         assert_eq!(world.query::<&DialogueButton>().iter(world).count(), 0);
     }
@@ -217,20 +231,45 @@ fn panel_texts(world: &mut World, panel: Entity) -> Vec<String> {
 fn either_npc_order_unlocks_both_verdicts_and_each_verdict_finishes_the_hearing() {
     for (first, second, choice, expected) in [
         (CourtNpc::Prosecution, CourtNpc::Defense, 0, Verdict::Guilty),
-        (CourtNpc::Defense, CourtNpc::Prosecution, 1, Verdict::NotGuilty),
+        (
+            CourtNpc::Defense,
+            CourtNpc::Prosecution,
+            1,
+            Verdict::NotGuilty,
+        ),
     ] {
         let mut hearing = Hearing::new();
         hearing.start(first);
         assert_eq!(hearing.state().heard, [false; 2]);
         hearing.finish_line();
         hearing.assert_closed();
-        assert!(hearing.app.world().resource::<PresentedChoices>().0.is_empty());
+        assert!(
+            hearing
+                .app
+                .world()
+                .resource::<PresentedChoices>()
+                .0
+                .is_empty()
+        );
 
         hearing.start(second);
-        assert!(hearing.app.world().resource::<PresentedChoices>().0.is_empty());
+        assert!(
+            hearing
+                .app
+                .world()
+                .resource::<PresentedChoices>()
+                .0
+                .is_empty()
+        );
         hearing.finish_line();
         assert_eq!(hearing.state().heard, [true; 2]);
-        assert!(hearing.app.world().get::<DialogueLocked>(hearing.player).is_some());
+        assert!(
+            hearing
+                .app
+                .world()
+                .get::<DialogueLocked>(hearing.player)
+                .is_some()
+        );
         let choices = &hearing.app.world().resource::<PresentedChoices>().0;
         assert_eq!(
             choices
@@ -279,7 +318,14 @@ fn holding_e_does_not_skip_a_line_and_repeating_one_npc_does_not_unlock_verdicts
     hearing.finish_line();
     hearing.assert_closed();
     assert_eq!(hearing.state().heard, [true, false]);
-    assert!(hearing.app.world().resource::<PresentedChoices>().0.is_empty());
+    assert!(
+        hearing
+            .app
+            .world()
+            .resource::<PresentedChoices>()
+            .0
+            .is_empty()
+    );
 }
 
 #[test]
