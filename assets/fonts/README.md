@@ -9,6 +9,8 @@ used by the court dialogue:
 ← 左方向键：有罪
 → 右方向键：无罪
 E 键：离开
+公诉方：请求判决有罪。
+辩护方：请求判决无罪。
 ```
 
 Source: `NotoSansCJK-VF.otf.ttc` from the installed `noto-fonts-cjk-sans-2.004`
