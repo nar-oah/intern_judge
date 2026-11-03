@@ -6,7 +6,7 @@ use bevy::{
 };
 use bevy_replique::prelude::{ResumeDialogue, ResumeInput};
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Default)]
 pub(super) struct DialogueChoiceButton(pub(super) usize);
 
 pub(in crate::level) fn dialogue_box_scene() -> impl Scene {
