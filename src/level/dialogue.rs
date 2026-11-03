@@ -1,15 +1,11 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{InteractRequested, RoadEffect, RoadEffects, RoadId};
+use super::{RoadEffect, RoadEffects, RoadId};
 use crate::player::{Player, PlayerAction};
-use avian2d::prelude::LinearVelocity;
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
-
-#[derive(Component, Clone, Copy, Default)]
-pub(super) struct CourtDialogue(pub(super) &'static str);
 
 #[derive(Component, Clone, Default)]
 struct DialogueBox {
@@ -37,29 +33,6 @@ pub(super) fn setup(app: &mut App) {
                 .chain()
                 .after(DialogueSystem::Commands),
         );
-}
-
-pub(super) fn start_court_dialogue(
-    request: On<InteractRequested>,
-    targets: Query<&CourtDialogue>,
-    mut commands: Commands,
-    assets: Res<AssetServer>,
-    mut players: Query<&mut LinearVelocity, (With<Player>, Without<DialogueRunner>)>,
-    mut start: MessageWriter<StartDialogue>,
-) {
-    let Ok(mut velocity) = players.get_mut(request.player) else {
-        return;
-    };
-    let node = targets.get(request.entity).unwrap().0;
-    velocity.x = 0.0;
-    commands
-        .entity(request.player)
-        .insert(DialogueRunner::new(assets.load("dialogue/court.rep")));
-    commands.spawn_scene(ui::dialogue_box_scene());
-    start.write(StartDialogue {
-        runner: request.player,
-        node: node.into(),
-    });
 }
 
 fn show_dialogue(
