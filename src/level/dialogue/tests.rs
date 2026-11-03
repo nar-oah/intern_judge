@@ -14,6 +14,7 @@ use bevy::{
 };
 use leafwing_input_manager::prelude::*;
 use std::{
+    collections::HashMap,
     path::Path,
     time::{Duration, Instant},
 };
@@ -235,12 +236,10 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
     let (mut app, player, bench) = court_app();
     approach(&mut app, player, bench);
-    let mut expected_effects = [
+    let mut expected_effects = HashMap::from([
         (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
-        (RoadId::ExampleRoad, vec![RoadEffect::ConstructionDetour]),
         (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
-    ]
-    .into();
+    ]);
     app.world_mut().resource_mut::<RoadEffects>().0 = expected_effects.clone();
     for (index, expected) in [
         (0, Some(true)),
@@ -265,10 +264,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 assert_eq!(commands[0].name, "verdict");
                 assert_eq!(commands[0].args, [Value::Bool(result)]);
                 let (road, effects) = if result {
-                    (
-                        RoadId::ExampleRoad,
-                        vec![RoadEffect::ConstructionDetour, RoadEffect::FallingObject],
-                    )
+                    (RoadId::ExampleRoad, vec![RoadEffect::FallingObject])
                 } else {
                     (
                         RoadId::MarketRoad,
