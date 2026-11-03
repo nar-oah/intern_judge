@@ -2,10 +2,10 @@ use super::*;
 use crate::{
     game::{CommuteState, Stamina},
     level::{InitialRoad, LevelPlugin, RoadId},
-    player::PlayerPlugin,
+    player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
-use avian2d::prelude::{CollidingEntities, Position, ShapeHits};
+use avian2d::prelude::{CollidingEntities, LinearVelocity, Position, ShapeHits};
 use leafwing_input_manager::prelude::*;
 use std::time::{Duration, Instant};
 

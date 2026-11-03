@@ -1,10 +1,8 @@
 #[cfg(test)]
 mod tests;
+pub(super) mod ui;
 
-use super::InteractRequested;
-use crate::player::Player;
-use avian2d::prelude::LinearVelocity;
-use bevy::{prelude::*, text::FontSourceTemplate};
+use bevy::prelude::*;
 use bevy_replique::prelude::*;
 
 const CHOICE_KEYS: [(KeyCode, &str); 3] = [
@@ -39,70 +37,6 @@ pub(super) fn setup(app: &mut App) {
                 .chain()
                 .after(DialogueSystem::Commands),
         );
-}
-
-pub(super) fn open_dialogue(
-    request: On<InteractRequested>,
-    mut commands: Commands,
-    assets: Res<AssetServer>,
-    mut players: Query<&mut LinearVelocity, (With<Player>, Without<DialogueRunner>)>,
-    mut start: MessageWriter<StartDialogue>,
-) {
-    let Ok(mut velocity) = players.get_mut(request.player) else {
-        return;
-    };
-    velocity.x = 0.0;
-    commands
-        .entity(request.player)
-        .insert(DialogueRunner::new(assets.load("dialogue/court.rep")));
-    commands.spawn_scene(dialogue_box_scene(request.player));
-    start.write(StartDialogue {
-        runner: request.player,
-        node: "verdict".into(),
-    });
-}
-
-fn dialogue_box_scene(runner: Entity) -> impl Scene {
-    let dialog = DialogueBox {
-        runner,
-        choices: None,
-    };
-    bsn! {
-        #DialogueBox
-        dialog
-        Node {
-            position_type: PositionType::Absolute,
-            left: percent(10),
-            right: percent(10),
-            bottom: px(24),
-            padding: UiRect::all(px(24)),
-            flex_direction: FlexDirection::Column,
-            row_gap: px(16),
-            border_radius: BorderRadius::all(px(8)),
-        }
-        GlobalZIndex(300)
-        BackgroundColor(Color::srgb(0.08, 0.1, 0.16))
-        Pickable::IGNORE
-        Children [
-            DialoguePrompt
-            @dialogue_text_scene(28.0)
-            --
-            DialogueOptions
-            @dialogue_text_scene(22.0)
-        ]
-    }
-}
-
-fn dialogue_text_scene(size: f32) -> impl Scene {
-    bsn! {
-        Text::default()
-        TextFont {
-            font: FontSourceTemplate::Handle("fonts/court-dialogue.ttf"),
-            font_size: FontSize::Px(size),
-        }
-        TextColor(Color::srgb(0.95, 0.96, 1.0))
-        Pickable::IGNORE
-    }
 }
 
 fn show_dialogue(
