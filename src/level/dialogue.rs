@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Default)]
 pub(super) struct CourtDialogue(pub(super) &'static str);
 
 #[derive(Component, Clone, Default)]
