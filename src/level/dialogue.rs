@@ -100,7 +100,7 @@ fn dialogue_text_scene(font: Handle<Font>, size: f32) -> impl Scene {
     bsn! {
         Text::default()
         TextFont {
-            font,
+            font: bevy::text::FontSource::Handle(font),
             font_size: FontSize::Px(size),
         }
         TextColor(Color::srgb(0.95, 0.96, 1.0))
