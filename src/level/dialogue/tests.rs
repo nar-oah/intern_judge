@@ -24,6 +24,7 @@ fn court_app() -> (App, Entity, Entity) {
     let mut app = headless_app(Vec2::ZERO);
     app.init_state::<CommuteState>()
         .init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>()
         .insert_resource(InitialRoad(RoadId::Court))
         .init_resource::<CommandsRun>()
         .add_plugins((PlayerPlugin, LevelPlugin))
@@ -117,7 +118,7 @@ fn bench_requires_a_fresh_interaction_and_holding_e_keeps_the_prompt_open() {
 
     let choices = app.world().get::<DialogueBox>(dialog).unwrap();
     assert_eq!(choices.runner, player);
-    assert_eq!(app.world().get::<ChildOf>(dialog).unwrap().parent(), player);
+    assert!(app.world().get::<ChildOf>(dialog).is_none());
     assert_eq!(
         choices
             .choices
@@ -137,6 +138,13 @@ fn bench_requires_a_fresh_interaction_and_holding_e_keeps_the_prompt_open() {
         "← 左方向键：有罪    → 右方向键：无罪    E 键：离开"
     );
     assert!(app.world().resource::<CommandsRun>().0.is_empty());
+
+    // Removing the runner's player must also clean up its independent UI root.
+    app.world_mut().despawn(player);
+    app.world_mut().flush();
+    app.update();
+    assert_closed(&mut app, player);
+    assert!(app.world().get_entity(bench).is_ok());
 }
 
 #[test]
