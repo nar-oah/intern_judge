@@ -1,12 +1,12 @@
 use super::super::{
+    building::judge_bench_scene,
     effect::{construction_detour_scene, falling_object_scene},
     platform::platform_scene,
 };
 use crate::{
-    level::{Interactable, RoadEffect, RoadId, SceneRoot, dialogue::open_dialogue},
+    level::{RoadEffect, RoadId, SceneRoot},
     player::player_scene,
 };
-use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::seq::IndexedRandom;
 
@@ -32,28 +32,11 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
             --
-            @judge_bench_scene()
+            @judge_bench_scene(Vec2::new(0.0, -127.5))
             --
             {falling_object}
             --
             {construction_detour}
         ]
-    }
-}
-
-fn judge_bench_scene() -> impl Scene {
-    let size = Vec2::new(120.0, 70.0);
-    bsn! {
-        #JudgeBench
-        Interactable
-        Sprite {
-            color: Color::srgb(0.65, 0.45, 0.2),
-            custom_size: Option::Some(size),
-        }
-        Transform::from_xyz(0.0, -127.5, -1.0)
-        Collider::rectangle(size.x, size.y)
-        Sensor
-        CollidingEntities::default()
-        on(open_dialogue)
     }
 }
