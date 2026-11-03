@@ -33,7 +33,7 @@ fn interact(
     commands
         .entity(request.player)
         .insert(DialogueRunner::new(assets.load("dialogue/court.rep")));
-    commands.spawn_scene(dialogue_box_scene(request.player));
+    commands.spawn_scene(dialogue_box_scene());
     start.write(StartDialogue {
         runner: request.player,
         node: "verdict".into(),
