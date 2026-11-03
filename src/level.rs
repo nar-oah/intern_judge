@@ -1,3 +1,4 @@
+mod dialogue;
 mod interaction;
 mod map;
 mod menu;
@@ -10,6 +11,7 @@ mod travel_tests;
 mod ui;
 use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
+use bevy_replique::prelude::DialogueSystem;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -77,6 +79,7 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
+        dialogue::setup(app);
         app.init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
@@ -91,7 +94,9 @@ impl Plugin for LevelPlugin {
             })
             .add_systems(
                 PostUpdate,
-                interaction::interact.run_if(in_state(GameState::Playing)),
+                interaction::interact
+                    .before(DialogueSystem::Runner)
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }

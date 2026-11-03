@@ -7,6 +7,7 @@ use crate::{
 };
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_replique::prelude::DialogueRunner;
 use leafwing_input_manager::prelude::*;
 pub(crate) use scene::player_scene;
 
@@ -67,11 +68,16 @@ fn player_movement(
             &ActionState<PlayerAction>,
             &ShapeHits,
             &mut LinearVelocity,
+            Has<DialogueRunner>,
         ),
         Without<Stunned>,
     >,
 ) {
-    for (player, actions, hits, mut velocity) in &mut players {
+    for (player, actions, hits, mut velocity, in_dialogue) in &mut players {
+        if in_dialogue {
+            velocity.x = 0.0;
+            continue;
+        }
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
         let direction = i8::from(right) - i8::from(left);

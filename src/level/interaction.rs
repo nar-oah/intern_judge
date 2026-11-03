@@ -2,9 +2,10 @@ use super::{InteractRequested, Interactable};
 use crate::player::{Player, PlayerAction, Stunned};
 use avian2d::prelude::CollidingEntities;
 use bevy::prelude::*;
+use bevy_replique::prelude::DialogueRunner;
 use leafwing_input_manager::prelude::*;
 
-type InteractablePlayerFilter = (With<Player>, Without<Stunned>);
+type InteractablePlayerFilter = (With<Player>, Without<Stunned>, Without<DialogueRunner>);
 
 pub(super) fn interact(
     mut commands: Commands,
