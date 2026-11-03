@@ -95,10 +95,7 @@ fn advance_dialogue(
     }
 }
 
-fn close_dialogue(
-    mut commands: Commands,
-    mut finished: MessageReader<DialogueFinished>,
-) {
+fn close_dialogue(mut commands: Commands, mut finished: MessageReader<DialogueFinished>) {
     for finished in finished.read() {
         commands.entity(finished.runner).remove::<DialogueRunner>();
     }

@@ -6,9 +6,15 @@ use crate::{
     test_support::{advance, finish_app, headless_app},
 };
 use avian2d::prelude::{Collider, CollidingEntities, LinearVelocity, Position, Sensor, ShapeHits};
-use bevy::{asset::io::embedded::EmbeddedAssetRegistry, ui_widgets::{Activate, Button}};
+use bevy::{
+    asset::io::embedded::EmbeddedAssetRegistry,
+    ui_widgets::{Activate, Button},
+};
 use leafwing_input_manager::prelude::*;
-use std::{path::Path, time::{Duration, Instant}};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 #[derive(Resource, Default)]
 struct CommandsRun(Vec<DialogueCommand>);
@@ -18,7 +24,10 @@ struct OtherInteractions(usize);
 
 fn single<C: Component>(app: &mut App) -> Entity {
     let world = app.world_mut();
-    world.query_filtered::<Entity, With<C>>().single(world).unwrap()
+    world
+        .query_filtered::<Entity, With<C>>()
+        .single(world)
+        .unwrap()
 }
 
 fn court_app() -> (App, Entity, Entity) {
@@ -34,13 +43,16 @@ fn court_app() -> (App, Entity, Entity) {
             PostUpdate,
             (|mut messages: MessageReader<DialogueCommand>, mut ran: ResMut<CommandsRun>| {
                 ran.0.extend(messages.read().cloned());
-            }).after(DialogueSystem::Commands),
+            })
+            .after(DialogueSystem::Commands),
         );
     finish_app(&mut app);
     let player = single::<Player>(&mut app);
     let bench = {
         let world = app.world_mut();
-        world.query::<(Entity, &Name)>().iter(world)
+        world
+            .query::<(Entity, &Name)>()
+            .iter(world)
             .find_map(|(entity, name)| (name.as_str() == "JudgeBench").then_some(entity))
             .unwrap()
     };
@@ -50,11 +62,19 @@ fn court_app() -> (App, Entity, Entity) {
 fn approach(app: &mut App, player: Entity, bench: Entity) {
     // Place the player on the court's floor, inside the real bench sensor.
     let position = Vec2::new(0.0, -137.5);
-    app.world_mut().get_mut::<Transform>(player).unwrap().translation = position.extend(0.0);
+    app.world_mut()
+        .get_mut::<Transform>(player)
+        .unwrap()
+        .translation = position.extend(0.0);
     app.world_mut().get_mut::<Position>(player).unwrap().0 = position;
     app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::ZERO;
     advance(app, 3);
-    assert!(app.world().get::<CollidingEntities>(bench).unwrap().contains(&player));
+    assert!(
+        app.world()
+            .get::<CollidingEntities>(bench)
+            .unwrap()
+            .contains(&player)
+    );
 }
 
 fn press_e(app: &mut App) {
@@ -68,9 +88,15 @@ fn wait_for_dialogue(app: &mut App, choices: bool) -> Entity {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         let world = app.world_mut();
-        if let Some(entity) = world.query::<(Entity, &DialogueBox)>().iter(world)
+        if let Some(entity) = world
+            .query::<(Entity, &DialogueBox)>()
+            .iter(world)
             .find_map(|(entity, dialog)| {
-                let ready = if choices { dialog.choices.is_some() } else { dialog.line.is_some() };
+                let ready = if choices {
+                    dialog.choices.is_some()
+                } else {
+                    dialog.line.is_some()
+                };
                 ready.then_some(entity)
             })
         {
@@ -89,18 +115,25 @@ fn assert_prompt(app: &mut App, expected: &str) {
 
 fn buttons(app: &mut App) -> Vec<(usize, String, Entity)> {
     let world = app.world_mut();
-    let mut buttons = world.query::<(Entity, &DialogueChoiceButton, &Children)>().iter(world)
+    let mut buttons = world
+        .query::<(Entity, &DialogueChoiceButton, &Children)>()
+        .iter(world)
         .map(|(entity, choice, children)| {
             assert!(world.get::<Button>(entity).is_some());
             let text = world.get::<Text>(children[0]).unwrap().0.clone();
             (choice.0, text, entity)
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     buttons.sort_by_key(|(index, _, _)| *index);
     buttons
 }
 
 fn select(app: &mut App, index: usize) {
-    let button = buttons(app).into_iter().find(|(choice, _, _)| *choice == index).unwrap().2;
+    let button = buttons(app)
+        .into_iter()
+        .find(|(choice, _, _)| *choice == index)
+        .unwrap()
+        .2;
     // The observer must consume this suspension once even if activation repeats.
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().trigger(Activate { entity: button });
@@ -111,9 +144,17 @@ fn assert_closed(app: &mut App, player: Entity) {
     assert!(app.world().get::<DialogueRunner>(player).is_none());
     let world = app.world_mut();
     assert!(world.query::<&DialogueBox>().iter(world).next().is_none());
-    assert!(world.query_filtered::<Entity, Or<(
-        With<DialoguePrompt>, With<DialogueOptions>, With<DialogueChoiceButton>
-    )>>().iter(world).next().is_none());
+    assert!(
+        world
+            .query_filtered::<Entity, Or<(
+                With<DialoguePrompt>,
+                With<DialogueOptions>,
+                With<DialogueChoiceButton>
+            )>>()
+            .iter(world)
+            .next()
+            .is_none()
+    );
 }
 
 #[test]
@@ -129,15 +170,32 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     let dialog = wait_for_dialogue(&mut app, false);
     advance(&mut app, 4);
     assert_prompt(&mut app, "请作出你的判决");
-    assert!(app.world().get::<DialogueBox>(dialog).unwrap().line.is_some());
-    assert!(app.world().get::<DialogueBox>(dialog).unwrap().choices.is_none());
+    assert!(
+        app.world()
+            .get::<DialogueBox>(dialog)
+            .unwrap()
+            .line
+            .is_some()
+    );
+    assert!(
+        app.world()
+            .get::<DialogueBox>(dialog)
+            .unwrap()
+            .choices
+            .is_none()
+    );
     assert!(app.world().get::<ChildOf>(dialog).is_none());
     assert!(buttons(&mut app).is_empty());
 
     press_e(&mut app);
     wait_for_dialogue(&mut app, true);
-    assert_eq!(buttons(&mut app).into_iter().map(|(index, text, _)| (index, text)).collect::<Vec<_>>(),
-        [(0, "有罪".into()), (1, "无罪".into()), (2, "离开".into())]);
+    assert_eq!(
+        buttons(&mut app)
+            .into_iter()
+            .map(|(index, text, _)| (index, text))
+            .collect::<Vec<_>>(),
+        [(0, "有罪".into()), (1, "无罪".into()), (2, "离开".into())]
+    );
     let options = single::<DialogueOptions>(&mut app);
     assert!(app.world().get::<Node>(options).is_some());
     assert!(app.world().get::<Text>(options).is_none());
@@ -147,7 +205,13 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     KeyCode::ArrowRight.press(app.world_mut());
     press_e(&mut app);
     advance(&mut app, 4);
-    assert!(app.world().get::<DialogueBox>(dialog).unwrap().choices.is_some());
+    assert!(
+        app.world()
+            .get::<DialogueBox>(dialog)
+            .unwrap()
+            .choices
+            .is_some()
+    );
     assert!(app.world().resource::<CommandsRun>().0.is_empty());
 
     // The UI root is independent of the player hierarchy and still cleans up.
@@ -203,13 +267,27 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
     => END
 ---
 ";
-    app.world().resource::<EmbeddedAssetRegistry>().insert_asset(
-        "fixture.rep".into(), Path::new("fixture.rep"), source.as_bytes().to_vec(),
-    );
-    let dialogue = app.world().resource::<AssetServer>().load("embedded://fixture.rep");
-    app.world_mut().entity_mut(player).insert(DialogueRunner::new(dialogue));
-    app.world_mut().spawn_scene(ui::dialogue_box_scene()).unwrap();
-    app.world_mut().write_message(StartDialogue { runner: player, node: "start".into() });
+    app.world()
+        .resource::<EmbeddedAssetRegistry>()
+        .insert_asset(
+            "fixture.rep".into(),
+            Path::new("fixture.rep"),
+            source.as_bytes().to_vec(),
+        );
+    let dialogue = app
+        .world()
+        .resource::<AssetServer>()
+        .load("embedded://fixture.rep");
+    app.world_mut()
+        .entity_mut(player)
+        .insert(DialogueRunner::new(dialogue));
+    app.world_mut()
+        .spawn_scene(ui::dialogue_box_scene())
+        .unwrap();
+    app.world_mut().write_message(StartDialogue {
+        runner: player,
+        node: "start".into(),
+    });
     wait_for_dialogue(&mut app, false);
 
     for expected in ["第一句", "第二句", "第三句"] {
@@ -247,8 +325,13 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
 fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
     let (mut app, player, bench) = court_app();
     approach(&mut app, player, bench);
-    assert!(app.world().get::<ShapeHits>(player).unwrap().iter()
-        .any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7));
+    assert!(
+        app.world()
+            .get::<ShapeHits>(player)
+            .unwrap()
+            .iter()
+            .any(|hit| (-hit.normal2).dot(Vec2::Y) > 0.7)
+    );
 
     KeyCode::KeyD.press(app.world_mut());
     KeyCode::ShiftLeft.press(app.world_mut());
@@ -262,22 +345,36 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
 
     // Replace the nearby interaction target while the dialogue stays on the player.
     app.world_mut().entity_mut(bench).remove::<Interactable>();
-    let other_building = app.world_mut().spawn((
-        Interactable,
-        Collider::rectangle(240.0, 70.0),
-        Sensor,
-        CollidingEntities::default(),
-        Transform::from_xyz(0.0, -127.5, -1.0),
-    )).observe(|_: On<InteractRequested>, mut requests: ResMut<OtherInteractions>| {
-        requests.0 += 1;
-    }).id();
+    let other_building = app
+        .world_mut()
+        .spawn((
+            Interactable,
+            Collider::rectangle(240.0, 70.0),
+            Sensor,
+            CollidingEntities::default(),
+            Transform::from_xyz(0.0, -127.5, -1.0),
+        ))
+        .observe(
+            |_: On<InteractRequested>, mut requests: ResMut<OtherInteractions>| {
+                requests.0 += 1;
+            },
+        )
+        .id();
     advance(&mut app, 4);
-    assert!(app.world().get::<CollidingEntities>(other_building).unwrap().contains(&player));
+    assert!(
+        app.world()
+            .get::<CollidingEntities>(other_building)
+            .unwrap()
+            .contains(&player)
+    );
     press_e(&mut app);
     wait_for_dialogue(&mut app, true);
     press_e(&mut app);
     advance(&mut app, 4);
-    assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().0, Vec2::ZERO);
+    assert_eq!(
+        app.world().get::<LinearVelocity>(player).unwrap().0,
+        Vec2::ZERO
+    );
     assert_eq!(app.world().resource::<Stamina>().0, stamina);
     assert_eq!(app.world().resource::<OtherInteractions>().0, 0);
 

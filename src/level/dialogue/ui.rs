@@ -1,5 +1,9 @@
 use super::{DialogueBox, DialogueOptions, DialoguePrompt};
-use bevy::{prelude::*, text::FontSourceTemplate, ui_widgets::{Activate, Button}};
+use bevy::{
+    prelude::*,
+    text::FontSourceTemplate,
+    ui_widgets::{Activate, Button},
+};
 use bevy_replique::prelude::{ResumeDialogue, ResumeInput};
 
 #[derive(Component, Clone, Copy)]
