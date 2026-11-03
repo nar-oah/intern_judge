@@ -1,5 +1,5 @@
 use super::super::{
-    building::{CourtParticipant, court_participant_scene},
+    building::{CourtParty, court_party_scene, judge_bench_scene},
     effect::{construction_detour_scene, falling_object_scene},
     platform::platform_scene,
 };
@@ -32,11 +32,11 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
             --
-            @court_participant_scene(Vec2::new(-220.0, -127.5), CourtParticipant::Prosecution)
+            @court_party_scene(Vec2::new(-220.0, -127.5), CourtParty::Prosecution)
             --
-            @court_participant_scene(Vec2::new(0.0, -127.5), CourtParticipant::Judge)
+            @judge_bench_scene(Vec2::new(0.0, -127.5))
             --
-            @court_participant_scene(Vec2::new(220.0, -127.5), CourtParticipant::Defense)
+            @court_party_scene(Vec2::new(220.0, -127.5), CourtParty::Defense)
             --
             {falling_object}
             --
