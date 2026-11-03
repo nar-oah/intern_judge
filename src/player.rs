@@ -68,16 +68,11 @@ fn player_movement(
             &ActionState<PlayerAction>,
             &ShapeHits,
             &mut LinearVelocity,
-            Has<DialogueRunner>,
         ),
-        Without<Stunned>,
+        (Without<Stunned>, Without<DialogueRunner>),
     >,
 ) {
-    for (player, actions, hits, mut velocity, in_dialogue) in &mut players {
-        if in_dialogue {
-            velocity.x = 0.0;
-            continue;
-        }
+    for (player, actions, hits, mut velocity) in &mut players {
         let left = actions.pressed(&PlayerAction::Left);
         let right = actions.pressed(&PlayerAction::Right);
         let direction = i8::from(right) - i8::from(left);
