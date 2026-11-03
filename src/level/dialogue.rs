@@ -13,7 +13,7 @@ const CHOICE_KEYS: [(KeyCode, &str); 3] = [
     (KeyCode::KeyE, "E 键"),
 ];
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct DialogueBox {
     runner: Entity,
     choices: Option<DialogueChoices>,
