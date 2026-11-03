@@ -1,6 +1,6 @@
 mod cat;
 mod convenience_store;
-mod judge_bench;
+mod court_participant;
 mod lottery_store;
 #[cfg(test)]
 mod tests;
@@ -10,7 +10,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 pub(super) use cat::cat_scene;
 pub(super) use convenience_store::convenience_store_scene;
-pub(super) use judge_bench::judge_bench_scene;
+pub(super) use court_participant::{CourtParticipant, court_participant_scene};
 pub(super) use lottery_store::lottery_store_scene;
 pub(super) use tool_store::tool_store_scene;
 

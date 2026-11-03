@@ -34,17 +34,8 @@ pub enum RoadEffect {
     ConstructionDetour,
 }
 
-#[derive(Resource, Debug, PartialEq, Eq)]
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
 pub struct RoadEffects(pub HashMap<RoadId, Vec<RoadEffect>>);
-
-impl Default for RoadEffects {
-    fn default() -> Self {
-        Self(HashMap::from([
-            (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
-            (RoadId::MarketRoad, vec![RoadEffect::ConstructionDetour]),
-        ]))
-    }
-}
 
 #[derive(Resource, Default)]
 pub struct InitialRoad(pub RoadId);
