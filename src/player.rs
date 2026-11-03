@@ -11,6 +11,19 @@ use bevy_replique::prelude::DialogueRunner;
 use leafwing_input_manager::prelude::*;
 pub(crate) use scene::player_scene;
 
+type MovablePlayerFilter = (Without<Stunned>, Without<DialogueRunner>);
+type MovablePlayerQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static Player,
+        &'static ActionState<PlayerAction>,
+        &'static ShapeHits,
+        &'static mut LinearVelocity,
+    ),
+    MovablePlayerFilter,
+>;
+
 #[derive(Component, Clone, Default)]
 pub(crate) struct Player {
     move_speed: f32,
@@ -62,15 +75,7 @@ fn player_movement(
     time: Res<Time<Fixed>>,
     settings: Res<GameSettings>,
     mut stamina: ResMut<Stamina>,
-    mut players: Query<
-        (
-            &Player,
-            &ActionState<PlayerAction>,
-            &ShapeHits,
-            &mut LinearVelocity,
-        ),
-        (Without<Stunned>, Without<DialogueRunner>),
-    >,
+    mut players: MovablePlayerQuery,
 ) {
     for (player, actions, hits, mut velocity) in &mut players {
         let left = actions.pressed(&PlayerAction::Left);
