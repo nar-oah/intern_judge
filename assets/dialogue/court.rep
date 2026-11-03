@@ -1,10 +1,20 @@
+:= prosecution
+Prosecution: 有罪 adds a roadblock to the previous road.
+-> 离开
+    => END
+---
+:= defense
+Defense: 无罪 adds falling objects to the previous road.
+-> 离开
+    => END
+---
 := verdict
 请作出你的判决
 -> 有罪
-    >> verdict("有罪")
+    >> verdict(true)
     => END
 -> 无罪
-    >> verdict("无罪")
+    >> verdict(false)
     => END
 -> 离开
     => END

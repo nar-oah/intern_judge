@@ -1,5 +1,6 @@
 use super::{
-    BuildingType, InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+    BuildingType, CaseRoad, InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects,
+    RoadId,
     SceneRoot, SwitchPoint,
     map::MapLayout,
     navigation::{open_destinations, select_destination},
@@ -127,7 +128,9 @@ fn level_app() -> App {
 fn navigation_app() -> App {
     let mut app = level_app();
     let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
-    app.insert_resource(layout).init_resource::<RoadEffects>();
+    app.insert_resource(layout)
+        .init_resource::<RoadEffects>()
+        .init_resource::<CaseRoad>();
     finish_app(&mut app);
     app.world_mut()
         .spawn_scene(scene::road_scene(RoadId::ExampleRoad, &[]))
@@ -146,18 +149,11 @@ fn new_game_initializes_road_effects_and_resets_the_previous_games_changes() {
         .set(GameState::Playing);
     app.update();
 
-    let expected = [
-        (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
-        (RoadId::MarketRoad, vec![RoadEffect::ConstructionDetour]),
-    ]
-    .into();
+    let expected = std::collections::HashMap::new();
     assert_eq!(app.world().resource::<RoadEffects>().0, expected);
     let (root, _) = assert_road(&mut app, RoadId::ExampleRoad);
-    let falling_object = single::<FallingObject>(&mut app);
-    assert_eq!(
-        app.world().get::<ChildOf>(falling_object).unwrap().parent(),
-        root
-    );
+    assert_absent::<FallingObject>(&mut app);
+    assert_absent::<ConstructionDetour>(&mut app);
 
     app.world_mut().resource_mut::<RoadEffects>().0.clear();
     app.world_mut()
@@ -181,8 +177,9 @@ fn new_game_initializes_road_effects_and_resets_the_previous_games_changes() {
 
     assert_eq!(app.world().resource::<RoadEffects>().0, expected);
     assert_road(&mut app, RoadId::ExampleRoad);
-    single::<FallingObject>(&mut app);
+    assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
+    assert_eq!(app.world().resource::<CaseRoad>().0, None);
 }
 
 #[test]
@@ -190,12 +187,14 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
     let mut app = level_app();
     app.add_plugins(LevelPlugin);
     finish_app(&mut app);
-    app.world_mut()
-        .resource_mut::<RoadEffects>()
-        .0
-        .get_mut(&RoadId::MarketRoad)
-        .unwrap()
-        .push(RoadEffect::FallingObject);
+    app.world_mut().resource_mut::<RoadEffects>().0.insert(
+        RoadId::ExampleRoad,
+        vec![RoadEffect::FallingObject],
+    );
+    app.world_mut().resource_mut::<RoadEffects>().0.insert(
+        RoadId::MarketRoad,
+        vec![RoadEffect::ConstructionDetour, RoadEffect::FallingObject],
+    );
     // A test graph permits revisiting roads to check per-entry scene creation.
     app.world_mut()
         .resource_mut::<RoadGraph>()
@@ -274,6 +273,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     finish_app(&mut app);
 
     let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_eq!(app.world().resource::<CaseRoad>().0, None);
     let spawn = app.world().get::<Position>(player).unwrap().0;
     assert_commute(&app, CommuteState::Running);
     let initial_elapsed = app.world().resource::<CommuteTime>().elapsed;
@@ -365,6 +365,12 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
 
         activate(&mut app, destination);
         assert_removed(&app, &old_map);
+        let previous_road = if destination == RoadId::Court {
+            RoadId::MarketRoad
+        } else {
+            RoadId::ExampleRoad
+        };
+        assert_eq!(app.world().resource::<CaseRoad>().0, Some(previous_road));
         let (_, next_player) = assert_road(&mut app, destination);
         assert_ne!(next_player, player);
         assert_eq!(app.world().get::<Position>(next_player).unwrap().0, spawn);

@@ -43,13 +43,15 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
 子场景和出生位置；进入新 Road 时生成新的 Player，移动、跳跃和物理逻辑照常运行。
 Player 不存在时，移动和交互系统自然跳过。
-法院通过 `court_scene()` 定义为普通路段，根实体标识为 `RoadId::Court`，
-中央棕色法官席复用建筑的碰撞感应区域与 E 键交互。靠近后按 E，底部显示
-“请作出你的判决”：← 左方向键选择有罪、→ 右方向键选择无罪、E 键离开。
-判决只输出日志并关闭对话，离开直接关闭；关闭后可以再次交互。
+法院通过 `court_scene()` 定义为普通路段，根实体标识为 `RoadId::Court`。
+左侧红色公诉席、右侧蓝色辩护席和中央棕色法官席都复用建筑的 E 键交互。
+在两侧按 E 可查看对应判决的示例后果；在法官席按 E 后由 UI 按钮选择有罪、
+无罪或离开。有罪向进入法院前的路段添加 `ConstructionDetour`，无罪添加
+`FallingObject`。同一案件只能生效一次，离开不应用效果；
+本原型尚未实现每日随机涉案路段。
 对话期间停止水平移动、跳跃和冲刺消耗，保留重力与物理模拟，关闭后恢复操作。
-`assets/dialogue/court.rep` 通过 `bevy_replique` 管理文案、分支、日志命令和结束，
-`src/level/dialogue.rs` 负责可复用的 BSN 对话框及键盘选择。
+`assets/dialogue/court.rep` 通过 `bevy_replique` 管理文案、分支、布尔判决命令和结束，
+`src/level/dialogue.rs` 负责可复用的 BSN 对话框和选择按钮。
 对话框使用随项目提供的中文子集字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
 
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
@@ -89,8 +91,8 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 路段效果的数据、布局和行为分别维护：
 
 - `RoadEffects(HashMap<RoadId, Vec<RoadEffect>>)` 保存本局永久生效的效果。
-  每次开始新局时初始化，默认 ExampleRoad 有 `FallingObject`（高空抛物），
-  MarketRoad 有 `ConstructionDetour`（施工绕道）；切换路段或打开地图不会改变这些数据。
+  每次开始新局时初始化为空，法官席的判决将效果写入涉案路段；
+  切换路段或打开地图不会改变这些数据。
 - `src/level/scene/road/` 中每个路段独立定义布局，接收该路段的效果数组，
   自行指定坠落物候选横坐标、路障位置及效果场景组合。
 - `src/level/scene/effect/` 复用 BSN 效果场景及坠落碰撞行为。方块外观和 Collider
@@ -99,7 +101,7 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 
 玩家的 `Stunned` 组件只记录剩余眩晕时间，原移动系统通过 `Without<Stunned>`
 跳过眩晕玩家，倒计时结束移除组件后自动恢复操作。
-当前不包含效果判决、每日概率、效果数量上限、坠落预警或每日触发次数限制。
+当前已支持最小布尔判决写入效果，但仍不包含每日概率、坠落预警或每日触发次数限制。
 
 `platform_scene(position, size)` 的尺寸写入 `Platform` 组件，并同时用于 Sprite
 和 Collider，方便以后替换为九切片或平铺贴图。便利店、工具店、彩票店和猫咪

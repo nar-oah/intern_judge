@@ -34,17 +34,12 @@ pub enum RoadEffect {
     ConstructionDetour,
 }
 
-#[derive(Resource, Debug, PartialEq, Eq)]
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
 pub struct RoadEffects(pub HashMap<RoadId, Vec<RoadEffect>>);
 
-impl Default for RoadEffects {
-    fn default() -> Self {
-        Self(HashMap::from([
-            (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
-            (RoadId::MarketRoad, vec![RoadEffect::ConstructionDetour]),
-        ]))
-    }
-}
+// The prototype targets the last road visited before reaching the court.
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
+pub(super) struct CaseRoad(pub Option<RoadId>);
 
 #[derive(Resource, Default)]
 pub struct InitialRoad(pub RoadId);
@@ -81,10 +76,12 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         dialogue::setup(app);
         app.init_resource::<InitialRoad>()
+            .init_resource::<CaseRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
             .add_systems(OnEnter(GameState::Playing), |world: &mut World| {
                 world.insert_resource(RoadEffects::default());
+                world.insert_resource(CaseRoad::default());
                 let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
                 world.insert_resource(layout);
                 let road = world.resource::<InitialRoad>().0;

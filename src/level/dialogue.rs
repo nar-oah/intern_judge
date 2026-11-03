@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
+use super::{CaseRoad, RoadEffect, RoadEffects};
 use crate::player::{Player, PlayerAction};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
@@ -110,6 +111,22 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(In(result): In<String>) {
-    info!("判决结果：{result}");
+fn verdict(
+    In(guilty): In<bool>,
+    mut case_road: ResMut<CaseRoad>,
+    mut road_effects: ResMut<RoadEffects>,
+) {
+    let Some(road) = case_road.0.take() else {
+        return;
+    };
+    let effect = if guilty {
+        RoadEffect::ConstructionDetour
+    } else {
+        RoadEffect::FallingObject
+    };
+    let effects = road_effects.0.entry(road).or_default();
+    if !effects.contains(&effect) {
+        effects.push(effect);
+    }
+    info!("判决路段：{road:?}，结果：{guilty}，效果：{effect:?}");
 }

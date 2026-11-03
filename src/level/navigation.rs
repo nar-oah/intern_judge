@@ -1,5 +1,5 @@
 use super::{
-    RoadEffects, RoadId, SceneRoot, SwitchPoint,
+    CaseRoad, RoadEffects, RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
     scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
@@ -30,6 +30,7 @@ pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity
         }
     }
     if !destinations.is_empty() {
+        world.resource_mut::<CaseRoad>().0 = Some(road);
         let next = ui::travel_ui_scene(
             road,
             destinations,

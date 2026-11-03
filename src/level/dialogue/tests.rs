@@ -1,7 +1,7 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     game::{CommuteState, Stamina},
-    level::{InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadId},
+    level::{CaseRoad, InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId},
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
@@ -59,9 +59,9 @@ fn court_app() -> (App, Entity, Entity) {
     (app, player, bench)
 }
 
-fn approach(app: &mut App, player: Entity, bench: Entity) {
-    // Place the player on the court's floor, inside the real bench sensor.
-    let position = Vec2::new(0.0, -137.5);
+fn approach(app: &mut App, player: Entity, target: Entity) {
+    // Place the player inside the target's real sensor.
+    let position = app.world().get::<Transform>(target).unwrap().translation.truncate();
     app.world_mut()
         .get_mut::<Transform>(player)
         .unwrap()
@@ -71,7 +71,7 @@ fn approach(app: &mut App, player: Entity, bench: Entity) {
     advance(app, 3);
     assert!(
         app.world()
-            .get::<CollidingEntities>(bench)
+            .get::<CollidingEntities>(target)
             .unwrap()
             .contains(&player)
     );
@@ -226,8 +226,14 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
     let (mut app, player, bench) = court_app();
     approach(&mut app, player, bench);
-    for (index, expected) in [(0, Some("有罪")), (1, Some("无罪")), (2, None)] {
+    for (index, expected) in [
+        (0, Some((true, RoadEffect::ConstructionDetour))),
+        (1, Some((false, RoadEffect::FallingObject))),
+        (2, None),
+    ] {
         app.world_mut().resource_mut::<CommandsRun>().0.clear();
+        app.world_mut().resource_mut::<CaseRoad>().0 = Some(RoadId::ExampleRoad);
+        let before = app.world().resource::<RoadEffects>().0.clone();
         press_e(&mut app);
         wait_for_dialogue(&mut app, false);
         press_e(&mut app);
@@ -237,13 +243,20 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 
         let commands = &app.world().resource::<CommandsRun>().0;
         match expected {
-            Some(result) => {
+            Some((guilty, effect)) => {
                 assert_eq!(commands.len(), 1);
                 assert_eq!(commands[0].token.runner(), player);
                 assert_eq!(commands[0].name, "verdict");
-                assert_eq!(commands[0].args, [Value::String(result.into())]);
+                assert_eq!(commands[0].args, [Value::Bool(guilty)]);
+                assert!(
+                    app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad].contains(&effect)
+                );
+                assert_eq!(app.world().resource::<CaseRoad>().0, None);
             }
-            None => assert!(commands.is_empty(), "leaving must not issue a verdict"),
+            None => {
+                assert!(commands.is_empty(), "leaving must not issue a verdict");
+                assert_eq!(app.world().resource::<RoadEffects>().0, before);
+            }
         }
         advance(&mut app, 4);
         assert_closed(&mut app, player);
@@ -259,11 +272,11 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
 第二句
 第三句
 -> 不可用 [if false]
-    >> verdict(\"错误\")
+    >> verdict(false)
     => END
 -> 继续
     已选择
-    >> verdict(\"选择成功\")
+    >> verdict(true)
     => END
 ---
 ";
@@ -318,7 +331,7 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
     assert_closed(&mut app, player);
     let commands = &app.world().resource::<CommandsRun>().0;
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].args, [Value::String("选择成功".into())]);
+    assert_eq!(commands[0].args, [Value::Bool(true)]);
 }
 
 #[test]
@@ -391,4 +404,62 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
     KeyCode::Space.press(app.world_mut());
     app.update();
     assert!(app.world().get::<LinearVelocity>(player).unwrap().y > 0.0);
+}
+
+#[test]
+fn court_parties_explain_effects_without_issuing_verdicts() {
+    let (mut app, player, _) = court_app();
+    for (x, expected) in [
+        (-265.0, "Prosecution: 有罪 adds a roadblock to the previous road."),
+        (265.0, "Defense: 无罪 adds falling objects to the previous road."),
+    ] {
+        let party = {
+            let world = app.world_mut();
+            world
+                .query::<(Entity, &Name, &Transform)>()
+                .iter(world)
+                .find_map(|(entity, name, transform)| {
+                    (name.as_str() == "CourtParty" && transform.translation.x == x)
+                        .then_some(entity)
+                })
+                .unwrap()
+        };
+        approach(&mut app, player, party);
+        press_e(&mut app);
+        wait_for_dialogue(&mut app, false);
+        assert_prompt(&mut app, expected);
+        press_e(&mut app);
+        wait_for_dialogue(&mut app, true);
+        assert_eq!(
+            buttons(&mut app)
+                .into_iter()
+                .map(|(index, text, _)| (index, text))
+                .collect::<Vec<_>>(),
+            [(0, "离开".into())]
+        );
+        select(&mut app, 0);
+        assert_closed(&mut app, player);
+    }
+    assert!(app.world().resource::<CommandsRun>().0.is_empty());
+    assert!(app.world().resource::<RoadEffects>().0.is_empty());
+}
+
+#[test]
+fn a_case_can_only_apply_one_verdict_to_its_target_road() {
+    let (mut app, player, bench) = court_app();
+    approach(&mut app, player, bench);
+    app.world_mut().resource_mut::<CaseRoad>().0 = Some(RoadId::MarketRoad);
+    for index in [0, 1] {
+        press_e(&mut app);
+        wait_for_dialogue(&mut app, false);
+        press_e(&mut app);
+        wait_for_dialogue(&mut app, true);
+        select(&mut app, index);
+        assert_closed(&mut app, player);
+    }
+    assert_eq!(
+        app.world().resource::<RoadEffects>().0[&RoadId::MarketRoad],
+        [RoadEffect::ConstructionDetour]
+    );
+    assert_eq!(app.world().resource::<CaseRoad>().0, None);
 }
