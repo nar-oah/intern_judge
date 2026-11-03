@@ -1,7 +1,10 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     game::{CommuteState, Stamina},
-    level::{CaseRoad, InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId},
+    level::{
+        CaseRoad, InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects,
+        RoadId,
+    },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };

@@ -1,7 +1,6 @@
 use super::{
     BuildingType, CaseRoad, InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects,
-    RoadId,
-    SceneRoot, SwitchPoint,
+    RoadId, SceneRoot, SwitchPoint,
     map::MapLayout,
     navigation::{open_destinations, select_destination},
     scene,
