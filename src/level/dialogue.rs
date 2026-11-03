@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-
+use crate::player::{Player, PlayerAction};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
-
-use crate::player::{Player, PlayerAction};
 
 #[derive(Component, Clone, Default)]
 struct DialogueBox {
