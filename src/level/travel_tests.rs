@@ -186,10 +186,10 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
     let mut app = level_app();
     app.add_plugins(LevelPlugin);
     finish_app(&mut app);
-    app.world_mut().resource_mut::<RoadEffects>().0.insert(
-        RoadId::ExampleRoad,
-        vec![RoadEffect::FallingObject],
-    );
+    app.world_mut()
+        .resource_mut::<RoadEffects>()
+        .0
+        .insert(RoadId::ExampleRoad, vec![RoadEffect::FallingObject]);
     app.world_mut().resource_mut::<RoadEffects>().0.insert(
         RoadId::MarketRoad,
         vec![RoadEffect::ConstructionDetour, RoadEffect::FallingObject],

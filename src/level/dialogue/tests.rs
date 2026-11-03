@@ -2,8 +2,8 @@ use super::{ui::DialogueChoiceButton, *};
 use crate::{
     game::{CommuteState, Stamina},
     level::{
-        CaseRoad, InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects,
-        RoadId,
+        CaseRoad, InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect,
+        RoadEffects, RoadId,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -64,7 +64,12 @@ fn court_app() -> (App, Entity, Entity) {
 
 fn approach(app: &mut App, player: Entity, target: Entity) {
     // Place the player inside the target's real sensor.
-    let position = app.world().get::<Transform>(target).unwrap().translation.truncate();
+    let position = app
+        .world()
+        .get::<Transform>(target)
+        .unwrap()
+        .translation
+        .truncate();
     app.world_mut()
         .get_mut::<Transform>(player)
         .unwrap()
@@ -413,8 +418,14 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
 fn court_parties_explain_effects_without_issuing_verdicts() {
     let (mut app, player, _) = court_app();
     for (x, expected) in [
-        (-265.0, "Prosecution: 有罪 adds a roadblock to the previous road."),
-        (265.0, "Defense: 无罪 adds falling objects to the previous road."),
+        (
+            -265.0,
+            "Prosecution: 有罪 adds a roadblock to the previous road.",
+        ),
+        (
+            265.0,
+            "Defense: 无罪 adds falling objects to the previous road.",
+        ),
     ] {
         let party = {
             let world = app.world_mut();
