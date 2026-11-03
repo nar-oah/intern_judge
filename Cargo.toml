@@ -5,9 +5,10 @@ edition = "2024"
 
 [dependencies]
 avian2d = "0.8"
-bevy = "0.20"
+bevy = { version = "0.20", features = ["complex_script_segmentation"] }
 bevy_asset_loader = "0.28.1"
 bevy_common_assets = { version = "0.18.0", features = ["ron"] }
+bevy_replique = "0.3"
 leafwing-input-manager = "0.22"
 rand = "0.10"
 serde = { version = "1.0.229", features = ["derive"] }

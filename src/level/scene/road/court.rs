@@ -1,4 +1,5 @@
 use super::super::{
+    building::judge_bench_scene,
     effect::{construction_detour_scene, falling_object_scene},
     platform::platform_scene,
 };
@@ -30,6 +31,8 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
             @player_scene(Vec2::new(-460.0, -130.0))
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
+            --
+            @judge_bench_scene(Vec2::new(0.0, -127.5))
             --
             {falling_object}
             --
