@@ -28,6 +28,7 @@ struct DialogueOptions;
 pub(super) fn setup(app: &mut App) {
     app.add_plugins(RepliquePlugin)
         .add_dialogue_command(verdict)
+        .add_observer(cleanup_dialogue)
         .add_systems(
             Update,
             choose_dialogue.run_if(any_with_component::<DialogueBox>),
@@ -69,7 +70,6 @@ fn dialogue_box_scene(runner: Entity) -> impl Scene {
     bsn! {
         #DialogueBox
         dialog
-        ChildOf(runner)
         Node {
             position_type: PositionType::Absolute,
             left: percent(10),
@@ -174,14 +174,23 @@ fn choose_dialogue(
 fn close_dialogue(
     mut commands: Commands,
     mut finished: MessageReader<DialogueFinished>,
-    dialogs: Query<(Entity, &DialogueBox)>,
+    dialogs: Query<&DialogueBox>,
 ) {
     for finished in finished.read() {
-        for (entity, dialog) in &dialogs {
-            if dialog.runner == finished.runner {
-                commands.entity(dialog.runner).remove::<DialogueRunner>();
-                commands.entity(entity).despawn();
-            }
+        if dialogs.iter().any(|dialog| dialog.runner == finished.runner) {
+            commands.entity(finished.runner).remove::<DialogueRunner>();
+        }
+    }
+}
+
+fn cleanup_dialogue(
+    removed: On<Remove<DialogueRunner>>,
+    mut commands: Commands,
+    dialogs: Query<(Entity, &DialogueBox)>,
+) {
+    for (entity, dialog) in &dialogs {
+        if dialog.runner == removed.entity {
+            commands.entity(entity).despawn();
         }
     }
 }
