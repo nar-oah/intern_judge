@@ -4,7 +4,7 @@ mod tests;
 use super::InteractRequested;
 use crate::player::Player;
 use avian2d::prelude::LinearVelocity;
-use bevy::prelude::*;
+use bevy::{prelude::*, text::FontSourceTemplate};
 use bevy_replique::prelude::*;
 
 const CHOICE_KEYS: [(KeyCode, &str); 3] = [
@@ -54,17 +54,14 @@ pub(super) fn open_dialogue(
     commands
         .entity(request.player)
         .insert(DialogueRunner::new(assets.load("dialogue/court.rep")));
-    commands.spawn_scene(dialogue_box_scene(
-        request.player,
-        assets.load("fonts/court-dialogue.ttf"),
-    ));
+    commands.spawn_scene(dialogue_box_scene(request.player));
     start.write(StartDialogue {
         runner: request.player,
         node: "verdict".into(),
     });
 }
 
-fn dialogue_box_scene(runner: Entity, font: Handle<Font>) -> impl Scene {
+fn dialogue_box_scene(runner: Entity) -> impl Scene {
     let dialog = DialogueBox {
         runner,
         choices: None,
@@ -88,23 +85,21 @@ fn dialogue_box_scene(runner: Entity, font: Handle<Font>) -> impl Scene {
         Pickable::IGNORE
         Children [
             DialoguePrompt
-            @dialogue_text_scene(font.clone(), 28.0)
+            @dialogue_text_scene(28.0)
             --
             DialogueOptions
-            @dialogue_text_scene(font, 22.0)
+            @dialogue_text_scene(22.0)
         ]
     }
 }
 
-fn dialogue_text_scene(font: Handle<Font>, size: f32) -> impl Scene {
-    let text_font = TextFont {
-        font: font.into(),
-        font_size: FontSize::Px(size),
-        ..default()
-    };
+fn dialogue_text_scene(size: f32) -> impl Scene {
     bsn! {
         Text::default()
-        text_font
+        TextFont {
+            font: FontSourceTemplate::Handle("fonts/court-dialogue.ttf"),
+            font_size: FontSize::Px(size),
+        }
         TextColor(Color::srgb(0.95, 0.96, 1.0))
         Pickable::IGNORE
     }
