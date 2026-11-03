@@ -1,11 +1,21 @@
 := verdict
 请作出你的判决
 -> 有罪
-    >> verdict("有罪")
+    >> verdict(true)
     => END
 -> 无罪
-    >> verdict("无罪")
+    >> verdict(false)
     => END
 -> 离开
     => END
+---
+
+:= prosecution
+公诉方：请求判决有罪。
+=> END
+---
+
+:= defense
+辩护方：请求判决无罪。
+=> END
 ---

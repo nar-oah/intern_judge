@@ -1,7 +1,9 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     game::{CommuteState, Stamina},
-    level::{InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadId},
+    level::{
+        InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+    },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
 };
@@ -12,6 +14,7 @@ use bevy::{
 };
 use leafwing_input_manager::prelude::*;
 use std::{
+    collections::HashMap,
     path::Path,
     time::{Duration, Instant},
 };
@@ -27,6 +30,15 @@ fn single<C: Component>(app: &mut App) -> Entity {
     world
         .query_filtered::<Entity, With<C>>()
         .single(world)
+        .unwrap()
+}
+
+fn named(app: &mut App, expected: &str) -> Entity {
+    let world = app.world_mut();
+    world
+        .query::<(Entity, &Name)>()
+        .iter(world)
+        .find_map(|(entity, name)| (name.as_str() == expected).then_some(entity))
         .unwrap()
 }
 
@@ -48,20 +60,18 @@ fn court_app() -> (App, Entity, Entity) {
         );
     finish_app(&mut app);
     let player = single::<Player>(&mut app);
-    let bench = {
-        let world = app.world_mut();
-        world
-            .query::<(Entity, &Name)>()
-            .iter(world)
-            .find_map(|(entity, name)| (name.as_str() == "JudgeBench").then_some(entity))
-            .unwrap()
-    };
+    let bench = named(&mut app, "JudgeBench");
     (app, player, bench)
 }
 
-fn approach(app: &mut App, player: Entity, bench: Entity) {
-    // Place the player on the court's floor, inside the real bench sensor.
-    let position = Vec2::new(0.0, -137.5);
+fn approach(app: &mut App, player: Entity, target: Entity) {
+    // Place the player on the court's floor, inside the real building sensor.
+    let center = app
+        .world()
+        .get::<GlobalTransform>(target)
+        .unwrap()
+        .translation();
+    let position = Vec2::new(center.x, -137.5);
     app.world_mut()
         .get_mut::<Transform>(player)
         .unwrap()
@@ -71,7 +81,7 @@ fn approach(app: &mut App, player: Entity, bench: Entity) {
     advance(app, 3);
     assert!(
         app.world()
-            .get::<CollidingEntities>(bench)
+            .get::<CollidingEntities>(target)
             .unwrap()
             .contains(&player)
     );
@@ -226,7 +236,18 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
     let (mut app, player, bench) = court_app();
     approach(&mut app, player, bench);
-    for (index, expected) in [(0, Some("有罪")), (1, Some("无罪")), (2, None)] {
+    let mut expected_effects = HashMap::from([
+        (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
+        (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
+    ]);
+    app.world_mut().resource_mut::<RoadEffects>().0 = expected_effects.clone();
+    for (index, expected) in [
+        (0, Some(true)),
+        (0, Some(true)),
+        (1, Some(false)),
+        (1, Some(false)),
+        (2, None),
+    ] {
         app.world_mut().resource_mut::<CommandsRun>().0.clear();
         press_e(&mut app);
         wait_for_dialogue(&mut app, false);
@@ -241,12 +262,55 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 assert_eq!(commands.len(), 1);
                 assert_eq!(commands[0].token.runner(), player);
                 assert_eq!(commands[0].name, "verdict");
-                assert_eq!(commands[0].args, [Value::String(result.into())]);
+                assert_eq!(commands[0].args, [Value::Bool(result)]);
+                let (road, effects) = if result {
+                    (RoadId::ExampleRoad, vec![RoadEffect::FallingObject])
+                } else {
+                    (
+                        RoadId::MarketRoad,
+                        vec![RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
+                    )
+                };
+                expected_effects.insert(road, effects);
             }
             None => assert!(commands.is_empty(), "leaving must not issue a verdict"),
         }
+        assert_eq!(app.world().resource::<RoadEffects>().0, expected_effects);
         advance(&mut app, 4);
         assert_closed(&mut app, player);
+    }
+}
+
+#[test]
+fn court_participants_use_nearby_e_dialogue_and_restore_movement() {
+    for (name, expected) in [
+        ("Prosecution", "公诉方：请求判决有罪。"),
+        ("Defense", "辩护方：请求判决无罪。"),
+    ] {
+        let (mut app, player, _) = court_app();
+        let participant = named(&mut app, name);
+        press_e(&mut app);
+        assert_closed(&mut app, player);
+        approach(&mut app, player, participant);
+        assert_closed(&mut app, player);
+
+        KeyCode::KeyD.press(app.world_mut());
+        app.update();
+        assert!(app.world().get::<LinearVelocity>(player).unwrap().x > 0.0);
+        press_e(&mut app);
+        wait_for_dialogue(&mut app, false);
+        assert_prompt(&mut app, expected);
+        advance(&mut app, 4);
+        assert_prompt(&mut app, expected);
+        assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().x, 0.0);
+        assert!(buttons(&mut app).is_empty());
+
+        press_e(&mut app);
+        advance(&mut app, 4);
+        assert_closed(&mut app, player);
+        assert!(app.world().get::<LinearVelocity>(player).unwrap().x > 0.0);
+        assert!(app.world().resource::<CommandsRun>().0.is_empty());
+        assert!(app.world().resource::<RoadEffects>().0.is_empty());
     }
 }
 
@@ -259,11 +323,11 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
 第二句
 第三句
 -> 不可用 [if false]
-    >> verdict(\"错误\")
+    >> verdict(false)
     => END
 -> 继续
     已选择
-    >> verdict(\"选择成功\")
+    >> verdict(true)
     => END
 ---
 ";
@@ -318,7 +382,7 @@ fn consecutive_lines_each_need_e_and_available_buttons_keep_original_indices() {
     assert_closed(&mut app, player);
     let commands = &app.world().resource::<CommandsRun>().0;
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].args, [Value::String("选择成功".into())]);
+    assert_eq!(commands[0].args, [Value::Bool(true)]);
 }
 
 #[test]

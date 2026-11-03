@@ -136,7 +136,7 @@ fn navigation_app() -> App {
 }
 
 #[test]
-fn new_game_initializes_road_effects_and_resets_the_previous_games_changes() {
+fn new_game_starts_without_road_effects_and_clears_the_previous_games_changes() {
     let mut app = level_app();
     app.insert_state(GameState::Loading)
         .add_plugins(LevelPlugin);
@@ -146,20 +146,11 @@ fn new_game_initializes_road_effects_and_resets_the_previous_games_changes() {
         .set(GameState::Playing);
     app.update();
 
-    let expected = [
-        (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
-        (RoadId::MarketRoad, vec![RoadEffect::ConstructionDetour]),
-    ]
-    .into();
-    assert_eq!(app.world().resource::<RoadEffects>().0, expected);
+    assert!(app.world().resource::<RoadEffects>().0.is_empty());
     let (root, _) = assert_road(&mut app, RoadId::ExampleRoad);
-    let falling_object = single::<FallingObject>(&mut app);
-    assert_eq!(
-        app.world().get::<ChildOf>(falling_object).unwrap().parent(),
-        root
-    );
+    assert_absent::<FallingObject>(&mut app);
+    assert_absent::<ConstructionDetour>(&mut app);
 
-    app.world_mut().resource_mut::<RoadEffects>().0.clear();
     app.world_mut()
         .resource_mut::<RoadEffects>()
         .0
@@ -179,9 +170,9 @@ fn new_game_initializes_road_effects_and_resets_the_previous_games_changes() {
         .set(GameState::Playing);
     app.update();
 
-    assert_eq!(app.world().resource::<RoadEffects>().0, expected);
+    assert!(app.world().resource::<RoadEffects>().0.is_empty());
     assert_road(&mut app, RoadId::ExampleRoad);
-    single::<FallingObject>(&mut app);
+    assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
 }
 
@@ -190,12 +181,22 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
     let mut app = level_app();
     app.add_plugins(LevelPlugin);
     finish_app(&mut app);
+    app.world_mut().resource_mut::<RoadEffects>().0 = [
+        (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
+        (
+            RoadId::MarketRoad,
+            vec![RoadEffect::ConstructionDetour, RoadEffect::FallingObject],
+        ),
+    ]
+    .into();
+    let root = single::<SceneRoot>(&mut app);
+    app.world_mut().despawn(root);
     app.world_mut()
-        .resource_mut::<RoadEffects>()
-        .0
-        .get_mut(&RoadId::MarketRoad)
-        .unwrap()
-        .push(RoadEffect::FallingObject);
+        .spawn_scene(scene::road_scene(
+            RoadId::ExampleRoad,
+            &[RoadEffect::FallingObject],
+        ))
+        .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
     app.world_mut()
         .resource_mut::<RoadGraph>()
