@@ -61,11 +61,12 @@ fn show_dialogue(
     }
     for choices in choices.read() {
         if let Ok(options) = options.single() {
-            commands.entity(options).despawn_children().with_children(|parent| {
-                for choice in choices.choices.iter().filter(|choice| choice.available) {
-                    parent.spawn_scene(ui::dialogue_choice_scene(&choice.text, choice.index));
-                }
-            });
+            commands.entity(options).despawn_children();
+            for choice in choices.choices.iter().filter(|choice| choice.available) {
+                commands
+                    .spawn_scene(ui::dialogue_choice_scene(&choice.text, choice.index))
+                    .insert(ChildOf(options));
+            }
         }
         dialog.line = None;
         dialog.choices = Some(choices.token);
