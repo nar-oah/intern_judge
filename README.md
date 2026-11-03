@@ -53,7 +53,7 @@ Player 不存在时，移动和交互系统自然跳过。
 对话期间停止水平移动、跳跃和冲刺消耗，保留重力与物理模拟，关闭后恢复操作。
 `assets/dialogue/court.rep` 通过 `bevy_replique` 管理文案、分支、布尔参数判决命令和结束，
 `src/level/dialogue.rs` 和 `src/level/dialogue/ui.rs` 负责共用对话逻辑与 BSN 对话框。
-对话框使用随项目提供的中文子集字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话框使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
 
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
 
