@@ -177,7 +177,10 @@ fn close_dialogue(
     dialogs: Query<&DialogueBox>,
 ) {
     for finished in finished.read() {
-        if dialogs.iter().any(|dialog| dialog.runner == finished.runner) {
+        if dialogs
+            .iter()
+            .any(|dialog| dialog.runner == finished.runner)
+        {
             commands.entity(finished.runner).remove::<DialogueRunner>();
         }
     }

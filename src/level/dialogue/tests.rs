@@ -197,7 +197,10 @@ fn dialogue_blocks_movement_sprinting_and_jumping_then_restores_player_controls(
     KeyCode::Space.press(app.world_mut());
     wait_for_choices(&mut app);
     advance(&mut app, 4);
-    assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().0, Vec2::ZERO);
+    assert_eq!(
+        app.world().get::<LinearVelocity>(player).unwrap().0,
+        Vec2::ZERO
+    );
     assert_eq!(app.world().resource::<Stamina>().0, stamina);
 
     press_e(&mut app);
