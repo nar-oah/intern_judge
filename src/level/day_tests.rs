@@ -277,12 +277,8 @@ fn friday_bill_waits_for_dialogue_cleanup_and_a_fresh_confirm_before_changing_mo
         .iter()
         .find_map(|&entity| app.world().get::<Text>(entity))
         .unwrap();
-    for expected in [
-        "当前余额：12",
-        "本周工资：31",
-        "房租：47",
-        "结算后余额：-4",
-    ] {
+    for expected in ["当前余额：12", "本周工资：31", "房租：47", "结算后余额：-4"]
+    {
         assert!(summary.0.contains(expected));
     }
 
