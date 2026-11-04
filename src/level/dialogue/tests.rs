@@ -1,8 +1,9 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
-    game::{CommuteState, Stamina},
+    game::{CommuteState, GameCalendar, GamePlugin, Stamina},
     level::{
-        InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+        InitialRoad, InteractRequested, Interactable, InternshipEnded, LevelPlugin, RoadEffect,
+        RoadEffects, RoadId, SceneRoot,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -44,13 +45,12 @@ fn named(app: &mut App, expected: &str) -> Entity {
 
 fn court_app() -> (App, Entity, Entity) {
     let mut app = headless_app(Vec2::ZERO);
-    app.init_state::<CommuteState>()
-        .init_asset::<Font>()
+    app.init_asset::<Font>()
         .init_asset_loader::<bevy::text::FontLoader>()
         .insert_resource(InitialRoad(RoadId::Court))
         .init_resource::<CommandsRun>()
         .init_resource::<OtherInteractions>()
-        .add_plugins((PlayerPlugin, LevelPlugin))
+        .add_plugins((GamePlugin, PlayerPlugin, LevelPlugin))
         .add_systems(
             PostUpdate,
             (|mut messages: MessageReader<DialogueCommand>, mut ran: ResMut<CommandsRun>| {
@@ -234,8 +234,7 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 
 #[test]
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
-    let (mut app, player, bench) = court_app();
-    approach(&mut app, player, bench);
+    let (mut app, mut player, mut bench) = court_app();
     let mut expected_effects = HashMap::from([
         (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
         (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
@@ -248,6 +247,8 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
         (1, Some(false)),
         (2, None),
     ] {
+        approach(&mut app, player, bench);
+        let elapsed_days = app.world().resource::<GameCalendar>().elapsed_days;
         app.world_mut().resource_mut::<CommandsRun>().0.clear();
         press_e(&mut app);
         wait_for_dialogue(&mut app, false);
@@ -278,7 +279,102 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
         assert_eq!(app.world().resource::<RoadEffects>().0, expected_effects);
         advance(&mut app, 4);
         assert_closed(&mut app, player);
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days + u32::from(expected.is_some())
+        );
+        if expected.is_some() {
+            assert!(app.world().get_entity(player).is_err());
+            assert!(app.world().get_entity(bench).is_err());
+            player = single::<Player>(&mut app);
+            bench = named(&mut app, "JudgeBench");
+        } else {
+            assert!(app.world().get_entity(player).is_ok());
+            assert!(app.world().get_entity(bench).is_ok());
+        }
     }
+}
+
+#[test]
+fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
+    let (mut app, player, _) = court_app();
+    let root = single::<SceneRoot>(&mut app);
+    let source = "\
+:= start
+>> verdict(true)
+判决后的对话
+=> END
+---
+";
+    app.world()
+        .resource::<EmbeddedAssetRegistry>()
+        .insert_asset(
+            "after-verdict.rep".into(),
+            Path::new("after-verdict.rep"),
+            source.as_bytes().to_vec(),
+        );
+    let dialogue = app
+        .world()
+        .resource::<AssetServer>()
+        .load("embedded://after-verdict.rep");
+    app.world_mut()
+        .entity_mut(player)
+        .insert(DialogueRunner::new(dialogue));
+    app.world_mut()
+        .spawn_scene(ui::dialogue_box_scene())
+        .unwrap();
+    app.world_mut().write_message(StartDialogue {
+        runner: player,
+        node: "start".into(),
+    });
+    wait_for_dialogue(&mut app, false);
+    advance(&mut app, 4);
+
+    assert_prompt(&mut app, "判决后的对话");
+    assert!(app.world().get_entity(root).is_ok());
+    assert!(app.world().get::<DialogueRunner>(player).is_some());
+    assert!(app.world().contains_resource::<DayEndRequested>());
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);
+    assert_eq!(
+        app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
+        [RoadEffect::FallingObject]
+    );
+
+    press_e(&mut app);
+    advance(&mut app, 4);
+    assert_closed(&mut app, player);
+    assert!(app.world().get_entity(root).is_err());
+    assert!(!app.world().contains_resource::<DayEndRequested>());
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
+    assert_eq!(
+        app.world().resource::<State<GameState>>().get(),
+        &GameState::Playing
+    );
+}
+
+#[test]
+fn final_verdict_closes_dialogue_and_ends_the_internship() {
+    let (mut app, player, bench) = court_app();
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 27;
+    approach(&mut app, player, bench);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, false);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, true);
+    select(&mut app, 1);
+
+    assert_closed(&mut app, player);
+    assert!(app.world().get_entity(player).is_err());
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
+    single::<InternshipEnded>(&mut app);
+    assert_eq!(
+        app.world().resource::<RoadEffects>().0[&RoadId::MarketRoad],
+        [RoadEffect::ConstructionDetour]
+    );
+    assert_eq!(
+        app.world().resource::<State<CommuteState>>().get(),
+        &CommuteState::Paused
+    );
 }
 
 #[test]
