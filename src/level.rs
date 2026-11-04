@@ -16,6 +16,7 @@ use crate::{
     game::{CommuteState, CommuteTime, GameCalendar, Stamina},
 };
 use bevy::prelude::*;
+use bevy::text::FontSourceTemplate;
 use bevy_replique::prelude::{DialogueRunner, DialogueSystem};
 use serde::Deserialize;
 use std::collections::HashMap;
