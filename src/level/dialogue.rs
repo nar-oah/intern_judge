@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{RoadEffect, RoadEffects, RoadId, day::DayEndRequested, ui::UiAction};
+use super::{
+    RoadEffect, RoadEffects, RoadId,
+    day::DayEndRequested,
+    ui::{ConfirmArmed, UiAction},
+};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -72,13 +76,13 @@ fn show_dialogue(
 }
 
 fn advance_dialogue(
-    mut dialogs: Query<(&ActionState<UiAction>, &mut DialogueBox)>,
+    mut dialogs: Query<(&ActionState<UiAction>, &mut ConfirmArmed, &mut DialogueBox)>,
     mut resume: MessageWriter<ResumeDialogue>,
 ) {
-    let Ok((actions, mut dialog)) = dialogs.single_mut() else {
+    let Ok((actions, mut confirm, mut dialog)) = dialogs.single_mut() else {
         return;
     };
-    if !actions.just_pressed(&UiAction::Confirm) {
+    if !confirm.just_pressed(actions) {
         return;
     }
     if let Some(token) = dialog.line.take() {
