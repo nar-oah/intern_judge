@@ -74,4 +74,3 @@ fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
         entity = world.get::<ChildOf>(entity)?.parent();
     }
 }
-

@@ -1,6 +1,6 @@
+mod day;
 #[cfg(test)]
 mod day_tests;
-mod day;
 mod dialogue;
 mod interaction;
 mod map;
@@ -102,4 +102,3 @@ impl Plugin for LevelPlugin {
             );
     }
 }
-
