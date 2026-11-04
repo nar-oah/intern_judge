@@ -1,10 +1,10 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     config::GameState,
-    game::{CommuteState, GamePlugin, Stamina, calendar::GameCalendar},
+    game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
         InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-        SceneRoot, scene::ending::InternshipEnded,
+        SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -196,6 +196,9 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
             .is_none()
     );
     assert!(app.world().get::<ChildOf>(dialog).is_none());
+    assert!(app.world().get::<InputMap<UiAction>>(dialog).is_some());
+    assert!(app.world().get::<ActionState<UiAction>>(dialog).is_some());
+    assert!(app.world().get::<InputMap<UiAction>>(player).is_none());
     assert!(buttons(&mut app).is_empty());
 
     press_e(&mut app);
@@ -354,7 +357,7 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
 }
 
 #[test]
-fn final_verdict_closes_dialogue_and_ends_the_internship() {
+fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship() {
     let (mut app, player, bench) = court_app();
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 27;
     approach(&mut app, player, bench);
@@ -366,6 +369,15 @@ fn final_verdict_closes_dialogue_and_ends_the_internship() {
 
     assert_closed(&mut app, player);
     assert!(app.world().get_entity(player).is_err());
+    let balance = app.world().resource::<Money>().0;
+    let settings = app.world().resource::<crate::config::GameSettings>();
+    let payment = settings.weekly_salary - settings.weekly_rent;
+    let bill = single::<WeeklyBill>(&mut app);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 27);
+    press_e(&mut app);
+    advance(&mut app, 4);
+    assert!(app.world().get_entity(bill).is_err());
+    assert_eq!(app.world().resource::<Money>().0, balance + payment);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
     single::<InternshipEnded>(&mut app);
     assert_eq!(
@@ -376,6 +388,30 @@ fn final_verdict_closes_dialogue_and_ends_the_internship() {
         app.world().resource::<State<CommuteState>>().get(),
         &CommuteState::Paused
     );
+}
+
+#[test]
+fn dialogue_confirm_uses_the_ui_root_mapping_independently_of_player_input() {
+    let (mut app, player, participant) = court_app();
+    approach(&mut app, player, participant);
+    press_e(&mut app);
+    let dialog = wait_for_dialogue(&mut app, false);
+    app.world_mut()
+        .entity_mut(player)
+        .remove::<InputMap<crate::player::PlayerAction>>()
+        .remove::<ActionState<crate::player::PlayerAction>>();
+    app.world_mut()
+        .entity_mut(dialog)
+        .insert(InputMap::new([(UiAction::Confirm, KeyCode::Enter)]));
+    press_e(&mut app);
+    advance(&mut app, 2);
+    assert_prompt(&mut app, "请作出你的判决");
+    assert!(buttons(&mut app).is_empty());
+
+    KeyCode::Enter.press(app.world_mut());
+    app.update();
+    wait_for_dialogue(&mut app, true);
+    assert_eq!(buttons(&mut app).len(), 3);
 }
 
 #[test]

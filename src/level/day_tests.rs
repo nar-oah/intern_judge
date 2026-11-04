@@ -1,12 +1,13 @@
 use super::{
     InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
+    bill::{WeeklyBill, confirm_bill},
     day::{DayEndRequested, begin_next_day},
     navigation::{open_destinations, select_destination},
     scene::{
         effect::{ConstructionDetour, FallingObject},
         ending::InternshipEnded,
     },
-    ui::{TravelButtonAction, TravelUiRoot},
+    ui::{TravelButtonAction, TravelUiRoot, UiAction},
 };
 use crate::{
     config::{GameSettings, GameState},
@@ -19,7 +20,7 @@ use crate::{
 use avian2d::prelude::{LinearVelocity, Position};
 use bevy::prelude::*;
 use bevy_replique::prelude::{DialogueFinished, DialogueRunner};
-use leafwing_input_manager::prelude::ActionState;
+use leafwing_input_manager::prelude::{ActionState, Buttonlike, InputMap};
 
 fn day_app(total_days: u32) -> App {
     let mut app = headless_app(Vec2::ZERO);
@@ -222,6 +223,125 @@ fn requested_day_end_waits_for_dialogue_cleanup_and_runs_only_once() {
     advance(&mut app, 3);
     assert_eq!(single::<SceneRoot>(&mut app), new_root);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
+}
+
+#[test]
+fn friday_bill_waits_for_dialogue_cleanup_and_a_fresh_confirm_before_changing_money_or_date() {
+    let mut app = day_app(28);
+    let (root, player) = assert_road(&mut app, RoadId::ExampleRoad);
+    let old_scene = scene_entities(app.world(), root);
+    let (hud, text, _) = calendar_hud(&mut app);
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 6;
+    app.world_mut().resource_mut::<Money>().0 = 12;
+    app.world_mut().resource_mut::<HasHelmet>().0 = true;
+    app.world_mut()
+        .resource_mut::<NextState<CommuteState>>()
+        .set(CommuteState::Paused);
+    app.update();
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
+    app.world_mut().resource_mut::<Stamina>().0 = 4.0;
+    app.world_mut()
+        .entity_mut(player)
+        .insert(DialogueRunner::new(Handle::default()));
+    app.world_mut().insert_resource(DayEndRequested);
+    KeyCode::KeyE.press(app.world_mut());
+    advance(&mut app, 2);
+
+    assert_absent::<WeeklyBill>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), root);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+    assert!(app.world().contains_resource::<DayEndRequested>());
+
+    app.world_mut()
+        .write_message(DialogueFinished { runner: player });
+    advance(&mut app, 4);
+
+    assert_removed(&app, &old_scene);
+    assert_absent::<DialogueRunner>(&mut app);
+    assert_absent::<Player>(&mut app);
+    let bill = single::<WeeklyBill>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    assert!(app.world().get::<InputMap<UiAction>>(bill).is_some());
+    assert!(app.world().get::<ActionState<UiAction>>(bill).is_some());
+    assert!(!app.world().contains_resource::<DayEndRequested>());
+    assert_commute(&app, CommuteState::Paused);
+    assert_eq!(app.world().resource::<Money>().0, 12);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 17.0);
+    assert_eq!(app.world().resource::<Stamina>().0, 4.0);
+    let (new_hud, new_text, date) = calendar_hud(&mut app);
+    assert_eq!((new_hud, new_text), (hud, text));
+    assert!(date.contains("Friday"));
+    let bill_entities = scene_entities(app.world(), bill);
+    let summary = bill_entities
+        .iter()
+        .find_map(|&entity| app.world().get::<Text>(entity))
+        .unwrap();
+    for expected in [
+        "当前余额：12",
+        "本周工资：31",
+        "房租：47",
+        "结算后余额：-4",
+    ] {
+        assert!(summary.0.contains(expected));
+    }
+
+    // Repeated day-end requests cannot recreate the bill or settle it early.
+    app.world_mut().insert_resource(DayEndRequested);
+    app.update();
+    assert_eq!(single::<WeeklyBill>(&mut app), bill);
+    assert_eq!(app.world().resource::<Money>().0, 12);
+    assert!(!app.world().contains_resource::<DayEndRequested>());
+    KeyCode::KeyE.release(app.world_mut());
+    app.update();
+    KeyCode::KeyE.press(app.world_mut());
+    app.update();
+
+    assert_removed(&app, &bill_entities);
+    assert_absent::<WeeklyBill>(&mut app);
+    assert_road(&mut app, RoadId::ExampleRoad);
+    assert_eq!(app.world().resource::<Money>().0, -4);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 7);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
+    assert!(app.world().resource::<HasHelmet>().0);
+    confirm_bill(app.world_mut());
+    advance(&mut app, 4);
+    assert_eq!(app.world().resource::<Money>().0, -4);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 7);
+    assert_commute(&app, CommuteState::Running);
+}
+
+#[test]
+fn each_friday_settles_once_and_other_days_advance_without_billing() {
+    let mut app = day_app(28);
+    let mut balance = app.world().resource::<Money>().0;
+    for day in 0..28 {
+        let friday = app.world().resource::<GameCalendar>().weekday() == 5;
+        app.world_mut().insert_resource(DayEndRequested);
+        app.update();
+        if friday {
+            single::<WeeklyBill>(&mut app);
+            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
+            assert_eq!(app.world().resource::<Money>().0, balance);
+            KeyCode::KeyE.release(app.world_mut());
+            app.update();
+            KeyCode::KeyE.press(app.world_mut());
+            app.update();
+            let settings = app.world().resource::<GameSettings>();
+            balance += settings.weekly_salary - settings.weekly_rent;
+        }
+        advance(&mut app, 2);
+        assert_absent::<WeeklyBill>(&mut app);
+        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day + 1);
+        assert_eq!(app.world().resource::<Money>().0, balance);
+    }
+    single::<InternshipEnded>(&mut app);
+    app.world_mut().insert_resource(DayEndRequested);
+    advance(&mut app, 3);
+    assert_absent::<WeeklyBill>(&mut app);
+    assert_eq!(app.world().resource::<Money>().0, balance);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
 }
 
 #[test]
