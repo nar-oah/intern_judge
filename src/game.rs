@@ -106,8 +106,7 @@ impl Plugin for GamePlugin {
                             .or_eager(resource_exists_and_changed::<Stamina>)
                             .or_eager(resource_exists_and_changed::<GameSettings>),
                     ),
-                    update_calendar_hud
-                        .run_if(resource_exists_and_changed::<GameCalendar>),
+                    update_calendar_hud.run_if(resource_exists_and_changed::<GameCalendar>),
                 )
                     .chain()
                     .run_if(in_state(GameState::Playing)),
