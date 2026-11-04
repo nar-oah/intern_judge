@@ -38,7 +38,7 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 路段之间单向前进，不能返回已走过的路段；流程为初始 Road → 地图 UI → Road → Court，
 也可从初始 Road 经地图直接前往 Court。
 开始菜单、Road 和地图 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体
-及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成右上角通勤 HUD，
+及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成左上角日期 HUD 和右上角通勤 HUD，
 之后切换 Road 与地图 UI 时保留。
 每个 Road 通过 `player_scene(Vec2::new(-460.0, -130.0))` 定义自己的 Player
 子场景和出生位置；进入新 Road 时生成新的 Player，移动、跳跃和物理逻辑照常运行。
@@ -50,15 +50,16 @@ Player 不存在时，移动和交互系统自然跳过。
 再次按 E 结束陈述。三者由 `CourtParticipant` 枚举区分，在同一模块中共用场景实现、
 建筑感应区和对话启动 Observer。
 有罪判决为 ExampleRoad 添加高空抛物，无罪判决为 MarketRoad 添加施工绕道，
-同一种效果不会重复添加；离开直接关闭，关闭后可以再次交互。
+同一种效果不会重复添加。判决先保存效果并请求结束当天，等待 Replique 对话结束及清理后再换天；
+“离开”仅关闭对话，可以再次交互，不结束当天。
 对话期间停止水平移动、跳跃和冲刺消耗，保留重力与物理模拟，关闭后恢复操作。
 `assets/dialogue/court.rep` 通过 `bevy_replique` 管理文案、分支、布尔参数判决命令和结束，
 `src/level/dialogue.rs` 和 `src/level/dialogue/ui.rs` 负责共用对话逻辑与 BSN 对话框。
-对话框使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话框和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
 
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
 
-- `game.settings.ron`：`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
+- `game.settings.ron`：`total_days` 为实习总天数，默认 28；`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
   `multiplier` 为冲刺速度倍率，`per_second` 为每秒体力消耗。
 - `roads.graph.ron`：`roads` 按 `RoadId` 枚举值配置下一路段数组；空数组表示没有目的地。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
@@ -74,7 +75,7 @@ Player 不存在时，移动和交互系统自然跳过。
 `GameSettings`、`RoadGraph`、`BuildingValues`，无需反复查询 `Assets<T>`。
 
 `src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina`、
-`HasHelmet` 和 `CommuteState`。固定参数直接读取配置，`Money` 和
+`HasHelmet`、`GameCalendar` 和 `CommuteState`。固定参数直接读取配置，`Money` 和
 `CommuteTime.elapsed` 仍是运行时资源；每次进入 `Playing`，金钱按 `initial_money`
 初始化，已用时间重置为 0、体力恢复至上限、初始没有安全帽。`Stamina::MAX` 保持硬编码为 100。
 体力、安全帽和金钱保存在全局资源中，切换路段或重新生成 Player 不会重置。
@@ -85,6 +86,14 @@ Player 不存在时，移动和交互系统自然跳过。
 已用时间，可为负数。
 HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力条，
 在全屏目的地 UI 上也保持可见。
+
+`GameCalendar` 保存 `total_days` 和 `elapsed_days`，新局从已过 0 天、周六开始；
+`weekday()` 根据已过天数返回周一至周日的 1～7，`remaining_days()` 返回剩余天数，
+`is_weekend()` 判断周末。独立的左上角日期 HUD 随日期变化更新，切换关卡或换天时保留。
+`src/level.rs` 的统一 `begin_next_day` 消费换天请求，将已过天数加 1、通勤时间清零、体力恢复上限，
+替换当前 `SceneRoot` 并生成 `InitialRoad` 及全新 Player，保留金钱、安全帽和道路效果。
+换天保持 `GameState::Playing`，通过恢复 `CommuteState::Running` 重新计时。
+最后一天结束后改为显示“实习结束”并暂停计时，不再生成关卡或玩家，暂不判定正式胜败。
 
 关卡场景按平台、共用建筑、各类建筑、切换点、效果和路段组合拆分到
 `src/level/scene/`，由 `scene.rs` 组织模块。场景使用 Bevy 0.20 的 `bsn!`、
