@@ -29,4 +29,3 @@ pub(in crate::level) fn confirm_input_scene() -> impl Scene {
         ConfirmArmed::default()
     }
 }
-
