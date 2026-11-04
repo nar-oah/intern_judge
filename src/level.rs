@@ -12,9 +12,7 @@ mod tests;
 #[cfg(test)]
 mod travel_tests;
 mod ui;
-use crate::{
-    config::{GameState, RoadGraph},
-};
+use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
 use bevy_replique::prelude::{DialogueRunner, DialogueSystem};
 use serde::Deserialize;

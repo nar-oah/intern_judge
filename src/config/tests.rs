@@ -1,5 +1,5 @@
 use super::*;
-use crate::game::{CommuteTime, GameCalendar, GamePlugin, HasHelmet, Money, Stamina};
+use crate::game::{CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar};
 use bevy::{asset::AssetPlugin, state::app::StatesPlugin};
 use std::time::{Duration, Instant};
 

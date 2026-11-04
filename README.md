@@ -87,13 +87,15 @@ Player 不存在时，移动和交互系统自然跳过。
 HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力条，
 在全屏目的地 UI 上也保持可见。
 
-`GameCalendar` 保存 `total_days` 和 `elapsed_days`，新局从已过 0 天、周六开始；
+`src/game/calendar.rs` 集中日期资源和日期 HUD。`GameCalendar` 保存 `total_days` 和 `elapsed_days`，新局从已过 0 天、周六开始；
 `weekday()` 根据已过天数返回周一至周日的 1～7，`remaining_days()` 返回剩余天数，
 `is_weekend()` 判断周末。独立的左上角日期 HUD 随日期变化更新，切换关卡或换天时保留。
-`src/level.rs` 的统一 `begin_next_day` 消费换天请求，将已过天数加 1、通勤时间清零、体力恢复上限，
+`src/level/day.rs` 的统一 `begin_next_day` 在 `Last` 消费换天请求，等待 `PostUpdate` 完成对话清理，
+将已过天数加 1、通勤时间清零、体力恢复上限，
 替换当前 `SceneRoot` 并生成 `InitialRoad` 及全新 Player，保留金钱、安全帽和道路效果。
 换天保持 `GameState::Playing`，通过恢复 `CommuteState::Running` 重新计时。
 最后一天结束后改为显示“实习结束”并暂停计时，不再生成关卡或玩家，暂不判定正式胜败。
+结束场景及其标记组件位于 `src/level/scene/ending.rs`；导航和换天共用 `scene.rs` 的 `replace_scene`。
 
 关卡场景按平台、共用建筑、各类建筑、切换点、效果和路段组合拆分到
 `src/level/scene/`，由 `scene.rs` 组织模块。场景使用 Bevy 0.20 的 `bsn!`、

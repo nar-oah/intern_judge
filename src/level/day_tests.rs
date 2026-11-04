@@ -1,13 +1,18 @@
 use super::{
-    DayEndRequested, InitialRoad, InternshipEnded, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-    SceneRoot, SwitchPoint, begin_next_day,
+    InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
+    day::{DayEndRequested, begin_next_day},
     navigation::{open_destinations, select_destination},
-    scene::effect::{ConstructionDetour, FallingObject},
+    scene::{
+        effect::{ConstructionDetour, FallingObject},
+        ending::InternshipEnded,
+    },
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
     config::{GameSettings, GameState},
-    game::{CommuteState, CommuteTime, GameCalendar, GamePlugin, HasHelmet, Money, Stamina},
+    game::{
+        CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar,
+    },
     player::{Player, PlayerAction, PlayerPlugin, Stunned},
     test_support::{advance, finish_app, headless_app},
 };

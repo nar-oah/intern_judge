@@ -1,10 +1,10 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     config::GameState,
-    game::{CommuteState, GameCalendar, GamePlugin, Stamina},
+    game::{CommuteState, GamePlugin, Stamina, calendar::GameCalendar},
     level::{
-        InitialRoad, InteractRequested, Interactable, InternshipEnded, LevelPlugin, RoadEffect,
-        RoadEffects, RoadId, SceneRoot,
+        InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+        SceneRoot, scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
