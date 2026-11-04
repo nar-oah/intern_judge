@@ -2,7 +2,6 @@ use super::{InitialRoad, RoadEffects, SceneRoot, bill, scene};
 use crate::game::{CommuteState, CommuteTime, Stamina, calendar::GameCalendar};
 use bevy::prelude::*;
 
-/// Kept until dialogue cleanup has completed, then consumed by `finish_day`.
 #[derive(Resource)]
 pub(super) struct DayEndRequested;
 
@@ -16,7 +15,6 @@ pub(super) fn finish_day(world: &mut World) {
     }
 }
 
-/// Finish the current day without entering `Playing` again or resetting session data.
 pub(super) fn begin_next_day(world: &mut World) {
     world.remove_resource::<DayEndRequested>();
     let mut calendar = world.resource_mut::<GameCalendar>();
@@ -39,7 +37,6 @@ pub(super) fn begin_next_day(world: &mut World) {
         .query_filtered::<Entity, With<SceneRoot>>()
         .iter(world)
         .collect::<Vec<_>>();
-    // SceneRoot has the same lifetime for roads, destination maps and the ending UI.
     if let Some((&root, others)) = roots.split_first() {
         for &other in others {
             world.despawn(other);
