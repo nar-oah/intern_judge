@@ -66,6 +66,12 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
 #[test]
 fn empty_unlock_map_still_displays_the_full_network_and_can_end_the_day() {
     let mut app = crate::test_support::scene_app();
+    app.insert_resource(crate::game::calendar::GameCalendar {
+        total_days: 1,
+        elapsed_days: 0,
+    })
+    .init_resource::<crate::level::InitialRoad>()
+    .init_resource::<NextState<crate::game::CommuteState>>();
     let graph = RoadGraph {
         roads: [
             (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
@@ -76,9 +82,10 @@ fn empty_unlock_map_still_displays_the_full_network_and_can_end_the_day() {
     };
     let layout = MapLayout::from_graph(&graph);
     let world = app.world_mut();
-    world
+    let root = world
         .spawn_scene(travel_ui_scene(None, vec![], &graph, &layout))
-        .unwrap();
+        .unwrap()
+        .id();
     assert_eq!(world.query::<&MapRoadNode>().iter(world).count(), 3);
     assert_eq!(world.query::<&MapConnection>().iter(world).count(), 2);
     assert_eq!(world.query::<&TravelButtonAction>().iter(world).count(), 0);
@@ -88,5 +95,8 @@ fn empty_unlock_map_still_displays_the_full_network_and_can_end_the_day() {
         .unwrap();
     world.trigger(Activate { entity: button });
     world.flush();
-    assert!(world.contains_resource::<crate::level::day::DayEndRequested>());
+    assert_eq!(world.resource::<crate::game::calendar::GameCalendar>().elapsed_days, 1);
+    assert!(world.get_entity(root).is_err());
+    assert_eq!(world.query::<&crate::level::scene::ending::InternshipEnded>().iter(world).count(), 1);
+    assert!(!world.contains_resource::<crate::level::day::DayEndRequested>());
 }

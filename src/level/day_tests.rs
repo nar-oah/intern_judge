@@ -179,8 +179,9 @@ fn new_game_starts_with_the_weekend_unlock_map_and_resets_unlock_progress() {
             app.world().resource::<RoadGraph>().initial_unlocks
         );
         assert_commute(&app, CommuteState::Paused);
+        let paused_at = app.world().resource::<CommuteTime>().elapsed;
         advance(&mut app, 4);
-        assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+        assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
     }
 }
 

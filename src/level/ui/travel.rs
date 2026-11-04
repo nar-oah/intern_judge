@@ -264,5 +264,5 @@ fn activate_button(activate: On<Activate>, mut commands: Commands) {
 }
 
 fn end_day(_: On<Activate>, mut commands: Commands) {
-    commands.insert_resource(crate::level::day::DayEndRequested);
+    commands.queue(crate::level::day::finish_day);
 }

@@ -42,7 +42,7 @@ ExampleRoad 和 Court 为 `true`，MarketRoad 为 `false`。解锁状态跨天�
 ExampleRoad 可前往法院，MarketRoad 解锁后也可从 ExampleRoad 前往，再前往法院。
 周末地图展示完整路网，只允许选择已解锁路网的相邻未解锁路段；选择后立即解锁并进入该路段，
 保持 `CommuteState::Paused`，正常移动和交互，停止通勤计时。
-没有可解锁路段时，地图提供“End day”按钮继续换天。
+没有可解锁路段时，地图提供“End day”按钮，复用 `Activate` 点击事件直接调用 `finish_day` 换天。
 开始菜单、Road 和地图 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体
 及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成左上角日期 HUD 和右上角通勤 HUD，
 之后切换 Road 与地图 UI 时保留。
