@@ -9,12 +9,13 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
             (RoadId::MarketRoad, vec![RoadId::Court]),
         ]
         .into(),
+        initial_unlocks: default(),
     };
     let layout = MapLayout::from_graph(&graph);
     let world = app.world_mut();
     world
         .spawn_scene(travel_ui_scene(
-            RoadId::ExampleRoad,
+            Some(RoadId::ExampleRoad),
             graph.roads[&RoadId::ExampleRoad].clone(),
             &graph,
             &layout,
