@@ -253,4 +253,3 @@ fn activate_button(activate: On<Activate>, mut commands: Commands) {
     let button = activate.entity;
     commands.queue(move |world: &mut World| navigation::select_destination(world, button));
 }
-
