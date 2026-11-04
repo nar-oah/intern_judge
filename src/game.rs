@@ -86,6 +86,8 @@ struct CalendarHudText;
 #[derive(Component)]
 struct StaminaBar;
 
+type HudRootFilter = Or<(With<CommuteHud>, With<CalendarHud>)>;
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -212,7 +214,7 @@ fn setup_hud(mut commands: Commands) {
 
 fn cleanup_hud(
     mut commands: Commands,
-    roots: Query<Entity, Or<(With<CommuteHud>, With<CalendarHud>)>>,
+    roots: Query<Entity, HudRootFilter>,
 ) {
     for root in &roots {
         commands.entity(root).despawn();
