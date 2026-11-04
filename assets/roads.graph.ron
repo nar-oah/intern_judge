@@ -9,4 +9,9 @@
         ],
         Court: [],
     },
+    initial_unlocks: {
+        ExampleRoad: true,
+        MarketRoad: false,
+        Court: true,
+    },
 )

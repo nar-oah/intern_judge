@@ -3,6 +3,7 @@ use super::*;
 fn graph(roads: impl IntoIterator<Item = (RoadId, Vec<RoadId>)>) -> RoadGraph {
     RoadGraph {
         roads: roads.into_iter().collect(),
+        initial_unlocks: HashMap::new(),
     }
 }
 

@@ -40,7 +40,14 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     // loaders without pinning balance values or the shipped road topology.
     let world = app.world();
     assert_eq!(world.resource::<GameSettings>().total_days, 28);
-    world.resource::<RoadGraph>();
+    assert_eq!(
+        world.resource::<RoadGraph>().initial_unlocks,
+        HashMap::from([
+            (RoadId::ExampleRoad, true),
+            (RoadId::MarketRoad, false),
+            (RoadId::Court, true),
+        ])
+    );
     world.resource::<BuildingValues>();
     assert!(!world.contains_resource::<Money>());
     assert!(!world.contains_resource::<CommuteTime>());
