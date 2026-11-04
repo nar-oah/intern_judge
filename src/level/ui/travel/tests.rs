@@ -67,12 +67,12 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
 fn empty_unlock_map_still_displays_the_full_network_and_can_end_the_day() {
     let mut app = crate::test_support::scene_app();
     app.init_asset::<Font>()
-    .insert_resource(crate::game::calendar::GameCalendar {
-        total_days: 1,
-        elapsed_days: 0,
-    })
-    .init_resource::<crate::level::InitialRoad>()
-    .init_resource::<NextState<crate::game::CommuteState>>();
+        .insert_resource(crate::game::calendar::GameCalendar {
+            total_days: 1,
+            elapsed_days: 0,
+        })
+        .init_resource::<crate::level::InitialRoad>()
+        .init_resource::<NextState<crate::game::CommuteState>>();
     let graph = RoadGraph {
         roads: [
             (RoadId::ExampleRoad, vec![RoadId::MarketRoad]),
