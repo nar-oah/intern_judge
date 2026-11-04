@@ -221,9 +221,7 @@ fn new_game_starts_with_the_weekend_unlock_map_and_resets_unlock_progress() {
 fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday() {
     let mut app = configured_day_app(28, |app| {
         let mut graph = app.world_mut().resource_mut::<RoadGraph>();
-        graph
-            .initial_unlocks
-            .insert(RoadId::MarketRoad, false);
+        graph.initial_unlocks.insert(RoadId::MarketRoad, false);
         graph.initial_unlocks.insert(RoadId::EmptyRoad1, false);
         graph
             .roads

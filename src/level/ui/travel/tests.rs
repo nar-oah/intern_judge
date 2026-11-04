@@ -62,4 +62,3 @@ fn map_displays_the_graph_but_only_outgoing_destinations_are_buttons() {
         ]
     );
 }
-
