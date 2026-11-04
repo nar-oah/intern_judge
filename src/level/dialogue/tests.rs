@@ -302,69 +302,75 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
     for elapsed_days in [0, 6] {
-    let (mut app, player, _) = court_app();
-    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
-    let balance = app.world().resource::<Money>().0;
-    let root = single::<SceneRoot>(&mut app);
-    let source = "\
+        let (mut app, player, _) = court_app();
+        app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
+        let balance = app.world().resource::<Money>().0;
+        let root = single::<SceneRoot>(&mut app);
+        let source = "\
 := start
 >> verdict(true)
 判决后的对话
 => END
 ---
 ";
-    app.world()
-        .resource::<EmbeddedAssetRegistry>()
-        .insert_asset(
-            "after-verdict.rep".into(),
-            Path::new("after-verdict.rep"),
-            source.as_bytes().to_vec(),
+        app.world()
+            .resource::<EmbeddedAssetRegistry>()
+            .insert_asset(
+                "after-verdict.rep".into(),
+                Path::new("after-verdict.rep"),
+                source.as_bytes().to_vec(),
+            );
+        let dialogue = app
+            .world()
+            .resource::<AssetServer>()
+            .load("embedded://after-verdict.rep");
+        app.world_mut()
+            .entity_mut(player)
+            .insert(DialogueRunner::new(dialogue));
+        app.world_mut()
+            .spawn_scene(ui::dialogue_box_scene())
+            .unwrap();
+        app.world_mut().write_message(StartDialogue {
+            runner: player,
+            node: "start".into(),
+        });
+        wait_for_dialogue(&mut app, false);
+        advance(&mut app, 4);
+
+        assert_prompt(&mut app, "判决后的对话");
+        assert!(app.world().get_entity(root).is_ok());
+        assert!(app.world().get::<DialogueRunner>(player).is_some());
+        assert!(app.world().contains_resource::<DayEndRequested>());
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days
         );
-    let dialogue = app
-        .world()
-        .resource::<AssetServer>()
-        .load("embedded://after-verdict.rep");
-    app.world_mut()
-        .entity_mut(player)
-        .insert(DialogueRunner::new(dialogue));
-    app.world_mut()
-        .spawn_scene(ui::dialogue_box_scene())
-        .unwrap();
-    app.world_mut().write_message(StartDialogue {
-        runner: player,
-        node: "start".into(),
-    });
-    wait_for_dialogue(&mut app, false);
-    advance(&mut app, 4);
+        assert_eq!(
+            app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
+            [RoadEffect::FallingObject]
+        );
 
-    assert_prompt(&mut app, "判决后的对话");
-    assert!(app.world().get_entity(root).is_ok());
-    assert!(app.world().get::<DialogueRunner>(player).is_some());
-    assert!(app.world().contains_resource::<DayEndRequested>());
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, elapsed_days);
-    assert_eq!(
-        app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
-        [RoadEffect::FallingObject]
-    );
-
-    press_e(&mut app);
-    advance(&mut app, 4);
-    assert_closed(&mut app, player);
-    assert!(app.world().get_entity(root).is_err());
-    assert!(!app.world().contains_resource::<DayEndRequested>());
-    if elapsed_days == 6 {
-        single::<WeeklyBill>(&mut app);
-        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
-        assert_eq!(app.world().resource::<Money>().0, balance);
-        // The E press closing the last line cannot also confirm the new bill.
         press_e(&mut app);
         advance(&mut app, 4);
-    }
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, elapsed_days + 1);
-    assert_eq!(
-        app.world().resource::<State<GameState>>().get(),
-        &GameState::Playing
-    );
+        assert_closed(&mut app, player);
+        assert!(app.world().get_entity(root).is_err());
+        assert!(!app.world().contains_resource::<DayEndRequested>());
+        if elapsed_days == 6 {
+            single::<WeeklyBill>(&mut app);
+            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+            assert_eq!(app.world().resource::<Money>().0, balance);
+            // The E press closing the last line cannot also confirm the new bill.
+            press_e(&mut app);
+            advance(&mut app, 4);
+        }
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days + 1
+        );
+        assert_eq!(
+            app.world().resource::<State<GameState>>().get(),
+            &GameState::Playing
+        );
     }
 }
 
