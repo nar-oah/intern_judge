@@ -1,6 +1,6 @@
-mod dialogue;
 #[cfg(test)]
 mod day_tests;
+mod dialogue;
 mod interaction;
 mod map;
 mod menu;
@@ -145,11 +145,13 @@ pub(crate) fn begin_next_day(world: &mut World) {
     } else {
         world.spawn_scene(next).unwrap();
     }
-    world.resource_mut::<NextState<CommuteState>>().set(if finished {
-        CommuteState::Paused
-    } else {
-        CommuteState::Running
-    });
+    world
+        .resource_mut::<NextState<CommuteState>>()
+        .set(if finished {
+            CommuteState::Paused
+        } else {
+            CommuteState::Running
+        });
 }
 
 fn internship_ended_scene() -> impl Scene {

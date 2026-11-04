@@ -145,7 +145,10 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_ne!(root, old_root);
     assert_ne!(player, old_player);
     assert_eq!(app.world().get::<Position>(player).unwrap().0, spawn);
-    assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().0, Vec2::ZERO);
+    assert_eq!(
+        app.world().get::<LinearVelocity>(player).unwrap().0,
+        Vec2::ZERO
+    );
     assert!(app.world().get::<Stunned>(player).is_none());
     assert!(
         !app.world()
@@ -153,7 +156,10 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
             .unwrap()
             .pressed(&PlayerAction::Right)
     );
-    for effect in [single::<FallingObject>(&mut app), single::<ConstructionDetour>(&mut app)] {
+    for effect in [
+        single::<FallingObject>(&mut app),
+        single::<ConstructionDetour>(&mut app),
+    ] {
         assert_eq!(app.world().get::<ChildOf>(effect).unwrap().parent(), root);
     }
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
@@ -164,7 +170,10 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_eq!(app.world().resource::<RoadEffects>().0, effects);
     assert!(app.world().get_entity(camera).is_ok());
     assert!(app.world().get_entity(unrelated).is_ok());
-    assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Playing);
+    assert_eq!(
+        *app.world().resource::<State<GameState>>().get(),
+        GameState::Playing
+    );
 
     advance(&mut app, 2);
     assert_commute(&app, CommuteState::Running);
@@ -191,7 +200,8 @@ fn requested_day_end_waits_for_dialogue_cleanup_and_runs_only_once() {
     assert!(app.world().get::<DialogueRunner>(player).is_some());
     assert!(app.world().contains_resource::<DayEndRequested>());
 
-    app.world_mut().write_message(DialogueFinished { runner: player });
+    app.world_mut()
+        .write_message(DialogueFinished { runner: player });
     app.update();
 
     assert!(app.world().get_entity(root).is_err());
@@ -250,8 +260,14 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
             app.update();
             assert!(app.world().get_entity(root).is_err());
             assert_road(&mut app, RoadId::ExampleRoad);
-            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, elapsed_days);
-            assert_eq!(app.world().resource::<GameCalendar>().remaining_days(), total_days - elapsed_days);
+            assert_eq!(
+                app.world().resource::<GameCalendar>().elapsed_days,
+                elapsed_days
+            );
+            assert_eq!(
+                app.world().resource::<GameCalendar>().remaining_days(),
+                total_days - elapsed_days
+            );
             assert_commute(&app, CommuteState::Running);
         }
         let old_scene = scene_entities(app.world(), single::<SceneRoot>(&mut app));
@@ -275,9 +291,17 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
         assert_eq!(app.world().resource::<Money>().0, 59);
         assert!(app.world().resource::<HasHelmet>().0);
         assert_commute(&app, CommuteState::Paused);
-        assert_eq!(*app.world().resource::<State<GameState>>().get(), GameState::Playing);
+        assert_eq!(
+            *app.world().resource::<State<GameState>>().get(),
+            GameState::Playing
+        );
         let world = app.world_mut();
-        assert!(world.query::<&Text>().iter(world).any(|text| text.0 == "实习结束"));
+        assert!(
+            world
+                .query::<&Text>()
+                .iter(world)
+                .any(|text| text.0 == "实习结束")
+        );
         assert_eq!(world.get::<Node>(root).unwrap().width, percent(100));
         assert_eq!(world.get::<Node>(root).unwrap().height, percent(100));
 
@@ -288,7 +312,10 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
         assert_eq!(single::<SceneRoot>(&mut app), root);
         assert_absent::<Player>(&mut app);
         assert_absent::<RoadId>(&mut app);
-        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, total_days);
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            total_days
+        );
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
         assert_commute(&app, CommuteState::Paused);
         assert!(!app.world().contains_resource::<DayEndRequested>());
