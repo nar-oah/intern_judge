@@ -14,7 +14,7 @@ use crate::{
     test_support::{advance, finish_app, headless_app, insert_config, scene_app},
 };
 use avian2d::prelude::*;
-use bevy::{prelude::*, state::app::StatesPlugin, ui_widgets::Activate};
+use bevy::{input::InputPlugin, prelude::*, state::app::StatesPlugin, ui_widgets::Activate};
 use leafwing_input_manager::prelude::*;
 
 fn single<C: Component>(app: &mut App) -> Entity {
@@ -118,7 +118,8 @@ fn assert_commute(app: &App, state: CommuteState) {
 
 fn level_app() -> App {
     let mut app = scene_app();
-    app.add_plugins(StatesPlugin).init_state::<CommuteState>();
+    app.add_plugins((StatesPlugin, InputPlugin))
+        .init_state::<CommuteState>();
     insert_config(&mut app);
     app
 }
