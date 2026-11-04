@@ -231,7 +231,10 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
             .single(world)
             .expect("a fully unlocked weekend map offers an end-day button")
     };
-    app.world_mut().trigger(Activate { entity: finish });
+    for _ in 0..2 {
+        app.world_mut().commands().trigger(Activate { entity: finish });
+    }
+    app.world_mut().flush();
     advance(&mut app, 2);
 
     assert!(app.world().get_entity(map).is_err());
