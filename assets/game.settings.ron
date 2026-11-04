@@ -1,4 +1,5 @@
 (
+    total_days: 28,
     commute_limit: 300.0,
     initial_money: 100,
     multiplier: 1.5,

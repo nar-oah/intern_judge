@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{RoadEffect, RoadEffects, RoadId};
+use super::{RoadEffect, RoadEffects, RoadId, day::DayEndRequested};
 use crate::player::{Player, PlayerAction};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
@@ -111,7 +111,7 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>) {
+fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>, mut commands: Commands) {
     let (road, effect) = if guilty {
         (RoadId::ExampleRoad, RoadEffect::FallingObject)
     } else {
@@ -121,4 +121,5 @@ fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>) {
     if !effects.contains(&effect) {
         effects.push(effect);
     }
+    commands.insert_resource(DayEndRequested);
 }

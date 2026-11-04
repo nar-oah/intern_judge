@@ -1,7 +1,9 @@
+pub mod calendar;
 #[cfg(test)]
 mod tests;
 use crate::config::{GameSettings, GameState};
 use bevy::prelude::*;
+use calendar::GameCalendar;
 
 #[derive(Resource, Debug, Default)]
 pub struct CommuteTime {
@@ -62,7 +64,17 @@ impl Plugin for GamePlugin {
         app.init_state::<CommuteState>()
             .add_systems(
                 OnEnter(GameState::Playing),
-                (initialize_game, setup_hud).chain(),
+                (
+                    initialize_game,
+                    calendar::initialize_calendar,
+                    setup_hud,
+                    calendar::setup_calendar_hud,
+                )
+                    .chain(),
+            )
+            .add_systems(
+                OnExit(GameState::Playing),
+                (cleanup_hud, calendar::cleanup_calendar_hud),
             )
             .add_systems(
                 Update,
@@ -74,6 +86,8 @@ impl Plugin for GamePlugin {
                             .or_eager(resource_exists_and_changed::<Stamina>)
                             .or_eager(resource_exists_and_changed::<GameSettings>),
                     ),
+                    calendar::update_calendar_hud
+                        .run_if(resource_exists_and_changed::<GameCalendar>),
                 )
                     .chain()
                     .run_if(in_state(GameState::Playing)),
@@ -146,6 +160,12 @@ fn setup_hud(mut commands: Commands) {
             ),
         ],
     ));
+}
+
+fn cleanup_hud(mut commands: Commands, roots: Query<Entity, With<CommuteHud>>) {
+    for root in &roots {
+        commands.entity(root).despawn();
+    }
 }
 
 fn update_hud(

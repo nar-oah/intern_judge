@@ -17,6 +17,7 @@ impl Movement {
         let mut world = World::new();
         world.insert_resource(Time::<Fixed>::default());
         world.insert_resource(GameSettings {
+            total_days: 28,
             commute_limit: 60.0,
             initial_money: 0,
             multiplier: 2.5,

@@ -17,6 +17,7 @@ pub enum GameState {
 
 #[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize)]
 pub struct GameSettings {
+    pub total_days: u32,
     pub commute_limit: f32,
     pub initial_money: i32,
     pub multiplier: f32,
