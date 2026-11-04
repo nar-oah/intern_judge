@@ -8,6 +8,7 @@ use super::{
 };
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
+use crate::game::calendar::GameCalendar;
 use leafwing_input_manager::prelude::ActionState;
 
 #[derive(Component, Clone, Default)]
@@ -110,7 +111,15 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>, mut commands: Commands) {
+fn verdict(
+    In(guilty): In<bool>,
+    calendar: Res<GameCalendar>,
+    mut effects: ResMut<RoadEffects>,
+    mut commands: Commands,
+) {
+    if calendar.is_weekend() {
+        return;
+    }
     let (road, effect) = if guilty {
         (RoadId::ExampleRoad, RoadEffect::FallingObject)
     } else {

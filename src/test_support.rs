@@ -3,7 +3,7 @@ use crate::{
         BuildingValues, ConvenienceKind, ConvenienceValues, GameSettings, GameState, LotteryPrize,
         LotteryValues, RoadGraph,
     },
-    game::Stamina,
+    game::{Stamina, calendar::GameCalendar},
     level::RoadId,
 };
 use avian2d::prelude::*;
@@ -59,6 +59,16 @@ pub(crate) fn insert_config(app: &mut App) {
                 (RoadId::Court, vec![]),
             ]
             .into(),
+            initial_unlocks: [
+                (RoadId::ExampleRoad, true),
+                (RoadId::MarketRoad, true),
+                (RoadId::Court, true),
+            ]
+            .into(),
+        })
+        .insert_resource(GameCalendar {
+            total_days: 28,
+            elapsed_days: 2,
         })
         .insert_resource(BuildingValues {
             cat_reward: 17,

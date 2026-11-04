@@ -28,7 +28,7 @@ pub(super) struct CalendarHud;
 #[derive(Component)]
 pub(super) struct CalendarHudText;
 
-pub(super) fn initialize_calendar(mut commands: Commands, settings: Res<GameSettings>) {
+pub(crate) fn initialize_calendar(mut commands: Commands, settings: Res<GameSettings>) {
     commands.insert_resource(GameCalendar {
         total_days: settings.total_days,
         elapsed_days: 0,

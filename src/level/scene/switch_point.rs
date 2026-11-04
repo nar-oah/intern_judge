@@ -1,4 +1,7 @@
-use crate::level::{InteractRequested, Interactable, SwitchPoint, navigation};
+use crate::{
+    game::CommuteState,
+    level::{InteractRequested, Interactable, SwitchPoint, day::DayEndRequested, navigation},
+};
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -19,7 +22,15 @@ pub(super) fn switch_point_scene(position: Vec2) -> impl Scene {
     }
 }
 
-fn interact(request: On<InteractRequested>, mut commands: Commands) {
+fn interact(
+    request: On<InteractRequested>,
+    commute: Res<State<CommuteState>>,
+    mut commands: Commands,
+) {
+    if *commute.get() == CommuteState::Paused {
+        commands.insert_resource(DayEndRequested);
+        return;
+    }
     let point = request.entity;
     let player = request.player;
     commands.queue(move |world: &mut World| navigation::open_destinations(world, point, player));
