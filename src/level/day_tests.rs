@@ -1,6 +1,6 @@
 use super::{
     InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
-    bill::{WeeklyBill, confirm_bill},
+    bill::{WeeklyBill, confirm_bill, show_bill},
     day::{DayEndRequested, begin_next_day},
     navigation::{open_destinations, select_destination},
     scene::{
@@ -282,12 +282,16 @@ fn friday_bill_waits_for_dialogue_cleanup_and_a_fresh_confirm_before_changing_mo
         assert!(summary.0.contains(expected));
     }
 
-    // Repeated day-end requests cannot recreate the bill or settle it early.
     app.world_mut().insert_resource(DayEndRequested);
     app.update();
     assert_eq!(single::<WeeklyBill>(&mut app), bill);
     assert_eq!(app.world().resource::<Money>().0, 12);
     assert!(!app.world().contains_resource::<DayEndRequested>());
+    {
+        let mut settings = app.world_mut().resource_mut::<GameSettings>();
+        settings.weekly_salary = 103;
+        settings.weekly_rent = 7;
+    }
     KeyCode::KeyE.release(app.world_mut());
     app.update();
     KeyCode::KeyE.press(app.world_mut());
@@ -306,6 +310,47 @@ fn friday_bill_waits_for_dialogue_cleanup_and_a_fresh_confirm_before_changing_mo
     assert_eq!(app.world().resource::<Money>().0, -4);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 7);
     assert_commute(&app, CommuteState::Running);
+}
+
+#[test]
+fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
+    for billing in [false, true] {
+        for root_count in [0, 2] {
+            let mut app = day_app(28);
+            let old_root = single::<SceneRoot>(&mut app);
+            app.world_mut().despawn(old_root);
+            let camera = app.world_mut().spawn(Camera2d).id();
+            let unrelated = app.world_mut().spawn_empty().id();
+            let (hud, text, _) = calendar_hud(&mut app);
+            let mut previous = Vec::new();
+            for _ in 0..root_count {
+                let root = app.world_mut().spawn(SceneRoot).id();
+                let child = app.world_mut().spawn(ChildOf(root)).id();
+                previous.extend([root, child]);
+            }
+
+            if billing {
+                show_bill(app.world_mut());
+            } else {
+                begin_next_day(app.world_mut());
+            }
+
+            assert_removed(&app, &previous);
+            let root = single::<SceneRoot>(&mut app);
+            if billing {
+                assert_eq!(single::<WeeklyBill>(&mut app), root);
+                assert_absent::<Player>(&mut app);
+                assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);
+            } else {
+                assert_road(&mut app, RoadId::ExampleRoad);
+                assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
+            }
+            assert!(app.world().get_entity(camera).is_ok());
+            assert!(app.world().get_entity(unrelated).is_ok());
+            let (new_hud, new_text, _) = calendar_hud(&mut app);
+            assert_eq!((new_hud, new_text), (hud, text));
+        }
+    }
 }
 
 #[test]
