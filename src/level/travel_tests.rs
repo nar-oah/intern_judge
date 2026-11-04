@@ -143,17 +143,22 @@ fn navigation_app() -> App {
 }
 
 #[test]
-fn new_game_starts_without_road_effects_and_clears_the_previous_games_changes() {
+fn new_game_initializes_road_progress_and_clears_the_previous_games_changes() {
     let mut app = level_app();
     app.insert_state(GameState::Loading)
         .add_plugins(LevelPlugin);
     finish_app(&mut app);
+    app.world_mut()
+        .resource_mut::<RoadGraph>()
+        .initial_unlocks
+        .insert(RoadId::MarketRoad, false);
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
         .set(GameState::Playing);
     app.update();
 
     assert!(app.world().resource::<RoadEffects>().0.is_empty());
+    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     let (root, _) = assert_road(&mut app, RoadId::ExampleRoad);
     assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
@@ -162,6 +167,10 @@ fn new_game_starts_without_road_effects_and_clears_the_previous_games_changes() 
         .resource_mut::<RoadEffects>()
         .0
         .insert(RoadId::Court, vec![RoadEffect::ConstructionDetour]);
+    app.world_mut()
+        .resource_mut::<RoadUnlocks>()
+        .0
+        .insert(RoadId::MarketRoad, true);
     // Ending the old session unloads its scene before the next start.
     app.world_mut().despawn(root);
     app.world_mut()
@@ -178,6 +187,7 @@ fn new_game_starts_without_road_effects_and_clears_the_previous_games_changes() 
     app.update();
 
     assert!(app.world().resource::<RoadEffects>().0.is_empty());
+    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     assert_road(&mut app, RoadId::ExampleRoad);
     assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
@@ -421,6 +431,90 @@ fn missing_and_empty_connections_offer_no_travel() {
         assert_eq!(single::<SceneRoot>(&mut app), road);
         assert_eq!(single::<Player>(&mut app), player);
     }
+}
+
+#[test]
+fn weekday_navigation_only_offers_unlocked_neighbors_and_rechecks_before_travel() {
+    let mut app = navigation_app();
+    app.world_mut()
+        .resource_mut::<RoadUnlocks>()
+        .0
+        .insert(RoadId::MarketRoad, false);
+    let player = single::<Player>(&mut app);
+    let point = single::<SwitchPoint>(&mut app);
+    open_destinations(app.world_mut(), point, player);
+    let root = assert_map(&mut app, &[RoadId::Court]);
+    let button = destination_button(&mut app, RoadId::Court);
+    app.world_mut()
+        .resource_mut::<RoadUnlocks>()
+        .0
+        .insert(RoadId::Court, false);
+    select_destination(app.world_mut(), button);
+    assert_eq!(single::<SceneRoot>(&mut app), root);
+    assert_absent::<Player>(&mut app);
+}
+
+#[test]
+fn weekday_with_no_unlocked_neighbors_keeps_the_current_road() {
+    let mut app = navigation_app();
+    app.world_mut().resource_mut::<RoadUnlocks>().0 = [
+        (RoadId::ExampleRoad, true),
+        (RoadId::MarketRoad, false),
+        (RoadId::Court, false),
+    ]
+    .into();
+    let root = single::<SceneRoot>(&mut app);
+    let player = single::<Player>(&mut app);
+    let point = single::<SwitchPoint>(&mut app);
+    open_destinations(app.world_mut(), point, player);
+    assert_eq!(single::<SceneRoot>(&mut app), root);
+    assert_eq!(single::<Player>(&mut app), player);
+    assert_absent::<TravelUiRoot>(&mut app);
+}
+
+#[test]
+fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
+    let mut app = navigation_app();
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 0;
+    app.world_mut().resource_mut::<RoadGraph>().roads = [
+        (RoadId::ExampleRoad, vec![RoadId::MarketRoad, RoadId::MarketRoad]),
+        (RoadId::MarketRoad, vec![RoadId::Court]),
+        (RoadId::Court, vec![]),
+    ]
+    .into();
+    app.world_mut().resource_mut::<RoadUnlocks>().0 = [
+        (RoadId::ExampleRoad, true),
+        (RoadId::MarketRoad, false),
+        (RoadId::Court, false),
+    ]
+    .into();
+    let old_root = single::<SceneRoot>(&mut app);
+    let old_scene = scene_entities(app.world(), old_root);
+    let extra_root = app.world_mut().spawn(SceneRoot).id();
+    let extra_child = app.world_mut().spawn(ChildOf(extra_root)).id();
+    let unrelated = app.world_mut().spawn_empty().id();
+
+    open_unlock_map(app.world_mut());
+
+    assert_removed(&app, &old_scene);
+    assert_removed(&app, &[extra_root, extra_child]);
+    assert!(app.world().get_entity(unrelated).is_ok());
+    assert_map(&mut app, &[RoadId::MarketRoad]);
+    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
+    activate(&mut app, RoadId::MarketRoad);
+    assert_road(&mut app, RoadId::MarketRoad);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
+    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
+    app.update();
+    assert_commute(&app, CommuteState::Paused);
+
+    open_unlock_map(app.world_mut());
+    assert_map(&mut app, &[RoadId::Court]);
+    activate(&mut app, RoadId::Court);
+    assert_road(&mut app, RoadId::Court);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
+    app.update();
+    assert_commute(&app, CommuteState::Paused);
 }
 
 #[test]
