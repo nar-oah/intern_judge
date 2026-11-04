@@ -37,12 +37,14 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
 `InitialRoad` Resource 保存初始路段，目前固定为 `RoadId::ExampleRoad`。
 新游戏从周六开始，点击开始按钮后直接显示路段解锁地图。
 `RoadUnlocks(HashMap<RoadId, bool>)` 保存本局解锁状态，初始值来自 `roads.graph.ron`：
-ExampleRoad 和 Court 为 `true`，MarketRoad 为 `false`。解锁状态跨天保留，新游戏重新初始化。
+ExampleRoad 和 Court 为 `true`，MarketRoad 及 EmptyRoad1～EmptyRoad7 为 `false`。
+解锁状态跨天保留，新游戏重新初始化。
 工作日从初始路段及 Player 开始，只能沿有向路网选择已解锁的相邻路段：
 ExampleRoad 可前往法院，MarketRoad 解锁后也可从 ExampleRoad 前往，再前往法院。
 周末地图展示完整路网，只允许选择已解锁路网的相邻未解锁路段；选择后立即解锁并进入该路段，
 保持 `CommuteState::Paused`，正常移动和交互，停止通勤计时。
-没有可解锁路段时，地图提供“End day”按钮，复用 `Activate` 点击事件直接调用 `finish_day` 换天。
+MarketRoad 与七个空路段直接双向连接；空路段共用只有玩家、地面和切换点的 BSN 场景。
+加上 MarketRoad，默认 28 天的八个周末日各有一个路段可以解锁，通过路段切换点结束当天。
 开始菜单、Road 和地图 UI 的根实体统一由 `SceneRoot` 标记；每次切换删除旧场景根实体
 及全部子实体，再生成新场景。Camera 始终保留；开始游戏时生成左上角日期 HUD 和右上角通勤 HUD，
 之后切换 Road 与地图 UI 时保留。

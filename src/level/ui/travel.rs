@@ -44,21 +44,6 @@ pub(in crate::level) fn travel_ui_scene(
     } else {
         "Road map"
     };
-    let empty_unlock_map = (unlocking && destinations.is_empty()).then(|| {
-        bsn! {
-            Node {
-                position_type: PositionType::Absolute,
-                right: vmin(3),
-                top: vmin(3),
-                padding: UiRect::all(vmin(2)),
-                border_radius: BorderRadius::all(vmin(1)),
-            }
-            Button
-            BackgroundColor(Color::srgb(0.18, 0.38, 0.7))
-            on(end_day)
-            Children [ @text_scene("No roads to unlock. End day", 2.0) ]
-        }
-    });
     let radius = layout
         .positions
         .values()
@@ -131,7 +116,6 @@ pub(in crate::level) fn travel_ui_scene(
                 --
                 @text_scene("Green border: Available", 1.8)
             ]
-            -- {empty_unlock_map}
             --
             Node {
                 position_type: PositionType::Absolute,
@@ -172,6 +156,13 @@ fn road_node_scene(
         RoadId::ExampleRoad => "Example Road",
         RoadId::MarketRoad => "Market Road",
         RoadId::Court => "Court",
+        RoadId::EmptyRoad1 => "Empty Road 1",
+        RoadId::EmptyRoad2 => "Empty Road 2",
+        RoadId::EmptyRoad3 => "Empty Road 3",
+        RoadId::EmptyRoad4 => "Empty Road 4",
+        RoadId::EmptyRoad5 => "Empty Road 5",
+        RoadId::EmptyRoad6 => "Empty Road 6",
+        RoadId::EmptyRoad7 => "Empty Road 7",
     };
     let color = if Some(node.0) == current {
         Color::srgb(0.18, 0.38, 0.7)
@@ -263,6 +254,3 @@ fn activate_button(activate: On<Activate>, mut commands: Commands) {
     commands.queue(move |world: &mut World| navigation::select_destination(world, button));
 }
 
-fn end_day(_: On<Activate>, mut commands: Commands) {
-    commands.queue(crate::level::day::finish_day);
-}
