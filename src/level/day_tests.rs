@@ -85,18 +85,22 @@ fn assert_commute(app: &App, expected: CommuteState) {
 
 fn calendar_hud(app: &mut App) -> (Entity, Entity, String) {
     let world = app.world_mut();
-    let (root, children) = world
-        .query_filtered::<(Entity, &Node, &Children), Without<ChildOf>>()
+    let (text_entity, text) = world
+        .query::<(Entity, &Text)>()
         .iter(world)
-        .find_map(|(entity, node, children)| {
-            (node.left == px(16) && node.top == px(16)).then_some((entity, children))
+        .find_map(|(entity, text)| {
+            text.0
+                .starts_with("Days left: ")
+                .then_some((entity, text.0.clone()))
         })
-        .expect("the calendar has an independent HUD in the top-left corner");
-    let (text_entity, text) = children
-        .iter()
-        .find_map(|entity| world.get::<Text>(entity).map(|text| (entity, text)))
         .expect("the calendar HUD contains its date text");
-    (root, text_entity, text.0.clone())
+    let root = world.get::<ChildOf>(text_entity).unwrap().parent();
+    assert!(world.get::<ChildOf>(root).is_none());
+    assert!(world.get::<SceneRoot>(root).is_none());
+    let node = world.get::<Node>(root).unwrap();
+    assert_eq!(node.left, px(16));
+    assert_eq!(node.top, px(16));
+    (root, text_entity, text)
 }
 
 #[test]
@@ -270,7 +274,8 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
             );
             assert_commute(&app, CommuteState::Running);
         }
-        let old_scene = scene_entities(app.world(), single::<SceneRoot>(&mut app));
+        let old_root = single::<SceneRoot>(&mut app);
+        let old_scene = scene_entities(app.world(), old_root);
         app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
         app.world_mut().resource_mut::<Stamina>().0 = 2.0;
 
