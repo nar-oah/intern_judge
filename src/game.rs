@@ -106,7 +106,19 @@ fn initialize_game(world: &mut World) {
         .set(CommuteState::Running);
 }
 
-fn tick_commute(time: Res<Time>, mut commute: ResMut<CommuteTime>) {
+fn tick_commute(
+    time: Res<Time>,
+    next: Res<NextState<CommuteState>>,
+    mut commute: ResMut<CommuteTime>,
+) {
+    // OnEnter can request a pause before the next state transition schedule runs.
+    if matches!(
+        *next,
+        NextState::Pending(CommuteState::Paused)
+            | NextState::PendingIfDifferent(CommuteState::Paused)
+    ) {
+        return;
+    }
     commute.elapsed += time.delta_secs();
 }
 
