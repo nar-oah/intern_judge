@@ -212,10 +212,7 @@ fn setup_hud(mut commands: Commands) {
     ));
 }
 
-fn cleanup_hud(
-    mut commands: Commands,
-    roots: Query<Entity, HudRootFilter>,
-) {
+fn cleanup_hud(mut commands: Commands, roots: Query<Entity, HudRootFilter>) {
     for root in &roots {
         commands.entity(root).despawn();
     }
