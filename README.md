@@ -51,15 +51,20 @@ Player 不存在时，移动和交互系统自然跳过。
 建筑感应区和对话启动 Observer。
 有罪判决为 ExampleRoad 添加高空抛物，无罪判决为 MarketRoad 添加施工绕道，
 同一种效果不会重复添加。判决先保存效果并请求结束当天，等待 Replique 对话结束及清理后再换天；
+周五先显示账单，列出当前余额、本周工资、房租和结算后余额，按 E 确认后结算并换天。
+每周只结算一次，余额可以为负；最后一天为周五时，也须确认账单后才显示实习结束。
 “离开”仅关闭对话，可以再次交互，不结束当天。
 对话期间停止水平移动、跳跃和冲刺消耗，保留重力与物理模拟，关闭后恢复操作。
 `assets/dialogue/court.rep` 通过 `bevy_replique` 管理文案、分支、布尔参数判决命令和结束，
 `src/level/dialogue.rs` 和 `src/level/dialogue/ui.rs` 负责共用对话逻辑与 BSN 对话框。
-对话框和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话框、账单和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话推进与账单确认共用 `UiAction::Confirm`，默认绑定 E，`InputMap<UiAction>` 位于各自 BSN 根实体。
+新界面会等待前一个界面的 E 松开再接受确认，避免一次按键连续推进。
 
 静态配置位于 `assets/`，修改对应 RON 文件后重新运行即可生效：
 
 - `game.settings.ron`：`total_days` 为实习总天数，默认 28；`commute_limit` 为通勤时限，`initial_money` 为初始金钱，
+  `weekly_salary` 为每周工资（默认 100），`weekly_rent` 为每周房租（默认 80），
   `multiplier` 为冲刺速度倍率，`per_second` 为每秒体力消耗。
 - `roads.graph.ron`：`roads` 按 `RoadId` 枚举值配置下一路段数组；空数组表示没有目的地。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
@@ -90,7 +95,10 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 `src/game/calendar.rs` 集中日期资源和日期 HUD。`GameCalendar` 保存 `total_days` 和 `elapsed_days`，新局从已过 0 天、周六开始；
 `weekday()` 根据已过天数返回周一至周日的 1～7，`remaining_days()` 返回剩余天数，
 `is_weekend()` 判断周末。独立的左上角日期 HUD 随日期变化更新，切换关卡或换天时保留。
-`src/level/day.rs` 的统一 `begin_next_day` 在 `Last` 消费换天请求，等待 `PostUpdate` 完成对话清理，
+`src/level/day.rs` 的 `finish_day` 在 `Last` 消费换天请求，等待 `PostUpdate` 完成对话清理，
+周五进入 `src/level/bill.rs` 的 BSN 账单场景，卸载道路和 Player 并暂停计时。
+按 E 后执行 `Money += weekly_salary - weekly_rent`，复用统一的 `begin_next_day`；其余日期直接换天。
+`begin_next_day` 在换天时
 将已过天数加 1、通勤时间清零、体力恢复上限，
 替换当前 `SceneRoot` 并生成 `InitialRoad` 及全新 Player，保留金钱、安全帽和道路效果。
 换天保持 `GameState::Playing`，通过恢复 `CommuteState::Running` 重新计时。

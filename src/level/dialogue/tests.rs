@@ -301,7 +301,10 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
+    for elapsed_days in [0, 6] {
     let (mut app, player, _) = court_app();
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
+    let balance = app.world().resource::<Money>().0;
     let root = single::<SceneRoot>(&mut app);
     let source = "\
 := start
@@ -338,7 +341,7 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
     assert!(app.world().get_entity(root).is_ok());
     assert!(app.world().get::<DialogueRunner>(player).is_some());
     assert!(app.world().contains_resource::<DayEndRequested>());
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, elapsed_days);
     assert_eq!(
         app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
         [RoadEffect::FallingObject]
@@ -349,11 +352,41 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
     assert_closed(&mut app, player);
     assert!(app.world().get_entity(root).is_err());
     assert!(!app.world().contains_resource::<DayEndRequested>());
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
+    if elapsed_days == 6 {
+        single::<WeeklyBill>(&mut app);
+        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+        assert_eq!(app.world().resource::<Money>().0, balance);
+        // The E press closing the last line cannot also confirm the new bill.
+        press_e(&mut app);
+        advance(&mut app, 4);
+    }
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, elapsed_days + 1);
     assert_eq!(
         app.world().resource::<State<GameState>>().get(),
         &GameState::Playing
     );
+    }
+}
+
+#[test]
+fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
+    let (mut app, player, bench) = court_app();
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 6;
+    let balance = app.world().resource::<Money>().0;
+    approach(&mut app, player, bench);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, false);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, true);
+    select(&mut app, 2);
+
+    assert_closed(&mut app, player);
+    assert!(app.world().get_entity(player).is_ok());
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+    assert_eq!(app.world().resource::<Money>().0, balance);
+    assert!(!app.world().contains_resource::<DayEndRequested>());
+    let world = app.world_mut();
+    assert!(world.query::<&WeeklyBill>().iter(world).next().is_none());
 }
 
 #[test]
