@@ -75,7 +75,7 @@ fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
     }
 }
 
-fn replace_scene(world: &mut World, root: Entity, next: impl Scene) {
+pub(super) fn replace_scene(world: &mut World, root: Entity, next: impl Scene) {
     world.despawn(root);
     world.spawn_scene(next).unwrap();
 }

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{RoadEffect, RoadEffects, RoadId};
+use super::{DayEndRequested, RoadEffect, RoadEffects, RoadId};
 use crate::player::{Player, PlayerAction};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
@@ -94,7 +94,10 @@ fn advance_dialogue(
     }
 }
 
-fn close_dialogue(mut commands: Commands, mut finished: MessageReader<DialogueFinished>) {
+pub(super) fn close_dialogue(
+    mut commands: Commands,
+    mut finished: MessageReader<DialogueFinished>,
+) {
     for finished in finished.read() {
         commands.entity(finished.runner).remove::<DialogueRunner>();
     }
@@ -111,7 +114,7 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>) {
+fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>, mut commands: Commands) {
     let (road, effect) = if guilty {
         (RoadId::ExampleRoad, RoadEffect::FallingObject)
     } else {
@@ -121,4 +124,5 @@ fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>) {
     if !effects.contains(&effect) {
         effects.push(effect);
     }
+    commands.insert_resource(DayEndRequested);
 }

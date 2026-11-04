@@ -44,6 +44,7 @@ pub(crate) fn insert_config(app: &mut App) {
     // does not change their expectations. Config tests exercise the real loader.
     app.insert_state(GameState::Playing)
         .insert_resource(GameSettings {
+            total_days: 28,
             commute_limit: 8.0,
             initial_money: 73,
             multiplier: 2.0,
