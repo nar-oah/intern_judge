@@ -1,16 +1,21 @@
 #[cfg(test)]
 mod tests;
-use super::building_scene;
+use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, LotteryValues};
-use crate::game::Money;
+use crate::game::{CommuteState, Money};
 use crate::level::{BuildingType, InteractRequested};
 use bevy::prelude::*;
 
 pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -> impl Scene {
     bsn! {
-        @building_scene(position, size, Color::srgb(0.65, 0.5, 0.75))
+        @dialogue_building_scene(
+            position,
+            size,
+            Color::srgb(0.65, 0.5, 0.75),
+            BuildingDialogue::new("dialogue/buildings.rep", "lottery_store").when_paused(),
+        )
         BuildingType::LotteryStore
-        on(interact)
+        on(interact.run_if(in_state(CommuteState::Running)))
     }
 }
 

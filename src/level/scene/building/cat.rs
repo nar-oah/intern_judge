@@ -1,14 +1,19 @@
-use super::building_scene;
+use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::BuildingValues;
-use crate::game::Money;
+use crate::game::{CommuteState, Money};
 use crate::level::{BuildingType, InteractRequested};
 use bevy::prelude::*;
 
 pub(in crate::level::scene) fn cat_scene(position: Vec2, size: Vec2) -> impl Scene {
     bsn! {
-        @building_scene(position, size, Color::srgb(0.95, 0.8, 0.55))
+        @dialogue_building_scene(
+            position,
+            size,
+            Color::srgb(0.95, 0.8, 0.55),
+            BuildingDialogue::new("dialogue/buildings.rep", "cat").when_paused(),
+        )
         BuildingType::Cat
-        on(interact)
+        on(interact.run_if(in_state(CommuteState::Running)))
     }
 }
 
