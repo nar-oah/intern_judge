@@ -37,14 +37,7 @@ pub(super) fn begin_next_day(world: &mut World) {
         .query_filtered::<Entity, With<SceneRoot>>()
         .iter(world)
         .collect::<Vec<_>>();
-    if let Some((&root, others)) = roots.split_first() {
-        for &other in others {
-            world.despawn(other);
-        }
-        scene::replace_scene(world, root, next);
-    } else {
-        world.spawn_scene(next).unwrap();
-    }
+    scene::replace_scene(world, roots, next);
     world
         .resource_mut::<NextState<CommuteState>>()
         .set(if finished {

@@ -1,17 +1,22 @@
+mod ui;
+
 use super::{
     SceneRoot,
     day::begin_next_day,
-    ui::{UiAction, confirm_input_scene},
+    scene,
+    ui::{ConfirmArmed, UiAction},
 };
 use crate::{
     config::GameSettings,
     game::{CommuteState, Money},
 };
-use bevy::{prelude::*, text::FontSourceTemplate};
+use bevy::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
 
 #[derive(Component, Clone, Default)]
-pub(super) struct WeeklyBill;
+pub(super) struct WeeklyBill {
+    total: i32,
+}
 
 pub(super) fn show_bill(world: &mut World) {
     if world
@@ -23,66 +28,32 @@ pub(super) fn show_bill(world: &mut World) {
         return;
     }
     let settings = world.resource::<GameSettings>();
-    let next = bill_scene(
-        world.resource::<Money>().0,
-        settings.weekly_salary,
-        settings.weekly_rent,
-    );
+    let balance = world.resource::<Money>().0;
+    let salary = settings.weekly_salary;
+    let rent = settings.weekly_rent;
+    let bill = WeeklyBill {
+        total: balance + salary - rent,
+    };
+    let next = ui::bill_scene(balance, salary, rent, bill);
     let roots = world
         .query_filtered::<Entity, With<SceneRoot>>()
         .iter(world)
         .collect::<Vec<_>>();
-    for root in roots {
-        world.despawn(root);
-    }
-    world.spawn_scene(next).unwrap();
+    scene::replace_scene(world, roots, next);
     world
         .resource_mut::<NextState<CommuteState>>()
         .set(CommuteState::Paused);
 }
 
 pub(super) fn confirm_bill(world: &mut World) {
-    let mut bills = world.query_filtered::<&ActionState<UiAction>, With<WeeklyBill>>();
-    let Ok(actions) = bills.single(world) else {
+    let mut bills = world.query::<(&WeeklyBill, &ActionState<UiAction>, &mut ConfirmArmed)>();
+    let Ok((bill, actions, mut armed)) = bills.single_mut(world) else {
         return;
     };
-    if !actions.just_pressed(&UiAction::Confirm) {
+    if !armed.just_pressed(actions) {
         return;
     }
-    let settings = world.resource::<GameSettings>();
-    let payment = settings.weekly_salary - settings.weekly_rent;
-    world.resource_mut::<Money>().0 += payment;
-    // Advancing the date also removes the bill, so this week cannot settle again.
+    let total = bill.total;
+    world.resource_mut::<Money>().0 = total;
     begin_next_day(world);
-}
-
-fn bill_scene(balance: i32, salary: i32, rent: i32) -> impl Scene {
-    let summary = format!(
-        "周五账单\n当前余额：{balance}\n本周工资：{salary}\n房租：{rent}\n结算后余额：{}\n按 E 确认",
-        balance + salary - rent,
-    );
-    bsn! {
-        #WeeklyBill
-        SceneRoot
-        WeeklyBill
-        @confirm_input_scene()
-        Node {
-            width: percent(100),
-            height: percent(100),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-        }
-        GlobalZIndex(300)
-        BackgroundColor(Color::srgb(0.04, 0.05, 0.08))
-        Pickable::default()
-        Children [
-            Text::new(summary)
-            TextFont {
-                font: FontSourceTemplate::Handle("fonts/court-dialogue.ttf"),
-                font_size: FontSize::Px(28.0),
-            }
-            TextColor(Color::srgb(0.95, 0.96, 1.0))
-            Pickable::IGNORE
-        ]
-    }
 }

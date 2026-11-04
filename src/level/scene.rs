@@ -8,8 +8,14 @@ mod switch_point;
 use super::{RoadEffect, RoadId};
 use bevy::prelude::*;
 
-pub(super) fn replace_scene(world: &mut World, root: Entity, next: impl Scene) {
-    world.despawn(root);
+pub(super) fn replace_scene(
+    world: &mut World,
+    roots: impl IntoIterator<Item = Entity>,
+    next: impl Scene,
+) {
+    for root in roots {
+        world.despawn(root);
+    }
     world.spawn_scene(next).unwrap();
 }
 
