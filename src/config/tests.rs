@@ -1,5 +1,5 @@
 use super::*;
-use crate::game::{CommuteTime, GamePlugin, HasHelmet, Money, Stamina};
+use crate::game::{CommuteTime, GameCalendar, GamePlugin, HasHelmet, Money, Stamina};
 use bevy::{asset::AssetPlugin, state::app::StatesPlugin};
 use std::time::{Duration, Instant};
 
@@ -22,6 +22,7 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     );
     assert!(!app.world().contains_resource::<GameSettings>());
     assert!(!app.world().contains_resource::<Money>());
+    assert!(!app.world().contains_resource::<GameCalendar>());
     app.finish();
     app.cleanup();
 
@@ -38,13 +39,14 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     // Successful deserialization and transition exercise all three real asset
     // loaders without pinning balance values or the shipped road topology.
     let world = app.world();
-    world.resource::<GameSettings>();
+    assert_eq!(world.resource::<GameSettings>().total_days, 28);
     world.resource::<RoadGraph>();
     world.resource::<BuildingValues>();
     assert!(!world.contains_resource::<Money>());
     assert!(!world.contains_resource::<CommuteTime>());
     assert!(!world.contains_resource::<Stamina>());
     assert!(!world.contains_resource::<HasHelmet>());
+    assert!(!world.contains_resource::<GameCalendar>());
 
     for _ in 0..3 {
         app.update();
@@ -64,4 +66,6 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
         world.resource::<Money>().0,
         world.resource::<GameSettings>().initial_money
     );
+    assert_eq!(world.resource::<GameCalendar>().total_days, 28);
+    assert_eq!(world.resource::<GameCalendar>().elapsed_days, 0);
 }

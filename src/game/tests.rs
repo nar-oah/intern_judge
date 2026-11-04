@@ -25,6 +25,39 @@ fn hud_text(app: &mut App) -> String {
         .clone()
 }
 
+fn calendar_hud_text(app: &mut App) -> String {
+    let world = app.world_mut();
+    world
+        .query_filtered::<&Text, With<CalendarHudText>>()
+        .single(world)
+        .unwrap()
+        .0
+        .clone()
+}
+
+#[test]
+fn calendar_counts_from_saturday_and_clamps_remaining_days() {
+    let mut calendar = GameCalendar {
+        total_days: 28,
+        elapsed_days: 0,
+    };
+    for elapsed_days in 0..28 {
+        calendar.elapsed_days = elapsed_days;
+        let weekday = [6, 7, 1, 2, 3, 4, 5][(elapsed_days % 7) as usize];
+        assert_eq!(calendar.weekday(), weekday);
+        assert_eq!(calendar.remaining_days(), 28 - elapsed_days);
+        assert_eq!(calendar.is_weekend(), matches!(weekday, 6 | 7));
+        assert!(!calendar.is_finished());
+    }
+
+    for elapsed_days in [28, 29, u32::MAX] {
+        calendar.elapsed_days = elapsed_days;
+        assert_eq!(calendar.remaining_days(), 0);
+        assert!(calendar.is_finished());
+        assert!((1..=7).contains(&calendar.weekday()));
+    }
+}
+
 #[test]
 fn new_game_uses_configured_money_and_starts_with_full_stamina_and_running_time() {
     let mut app = game();
@@ -33,6 +66,13 @@ fn new_game_uses_configured_money_and_starts_with_full_stamina_and_running_time(
         app.world().resource::<GameSettings>().initial_money
     );
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
+    let calendar = app.world().resource::<GameCalendar>();
+    assert_eq!(
+        calendar.total_days,
+        app.world().resource::<GameSettings>().total_days
+    );
+    assert_eq!(calendar.elapsed_days, 0);
+    assert_eq!(calendar.weekday(), 6);
     assert!(!app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
     assert_eq!(
@@ -54,6 +94,7 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     app.world_mut().resource_mut::<Stamina>().0 = 12.0;
     app.world_mut().resource_mut::<HasHelmet>().0 = true;
     app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.5;
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 4;
     app.world_mut()
         .resource_mut::<NextState<CommuteState>>()
         .set(CommuteState::Paused);
@@ -64,6 +105,7 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 4.5);
 
     app.world_mut().resource_mut::<GameSettings>().initial_money = 91;
+    app.world_mut().resource_mut::<GameSettings>().total_days = 14;
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
         .set(GameState::Playing);
@@ -73,10 +115,51 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
     assert!(!app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    let calendar = app.world().resource::<GameCalendar>();
+    assert_eq!(calendar.total_days, 14);
+    assert_eq!(calendar.elapsed_days, 0);
     assert_eq!(
         *app.world().resource::<State<CommuteState>>().get(),
         CommuteState::Running
     );
+    let world = app.world_mut();
+    assert_eq!(world.query::<&CalendarHud>().iter(world).count(), 1);
+    assert_eq!(world.query::<&CommuteHud>().iter(world).count(), 1);
+}
+
+#[test]
+fn calendar_hud_is_independent_and_refreshes_when_dates_change_while_paused() {
+    let mut app = game();
+    app.world_mut()
+        .resource_mut::<NextState<CommuteState>>()
+        .set(CommuteState::Paused);
+    app.update();
+    let world = app.world_mut();
+    let hud = world
+        .query_filtered::<Entity, With<CalendarHud>>()
+        .single(world)
+        .unwrap();
+    assert!(!world.entity(hud).contains::<ChildOf>());
+    let node = world.get::<Node>(hud).unwrap();
+    assert_eq!(node.left, px(16));
+    assert_eq!(node.top, px(16));
+    assert_eq!(
+        calendar_hud_text(&mut app),
+        "Days left: 28\nSaturday (Weekend)"
+    );
+
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 1;
+    app.update();
+    assert_eq!(
+        calendar_hud_text(&mut app),
+        "Days left: 27\nSunday (Weekend)"
+    );
+
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
+    app.update();
+    assert_eq!(calendar_hud_text(&mut app), "Days left: 26\nMonday");
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    assert!(app.world().get_entity(hud).is_ok());
 }
 
 #[test]

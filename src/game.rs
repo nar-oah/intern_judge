@@ -235,9 +235,14 @@ fn update_calendar_hud(
     ];
     for mut text in &mut hud {
         text.0 = format!(
-            "Days left: {}\n{}",
+            "Days left: {}\n{}{}",
             calendar.remaining_days(),
             weekdays[(calendar.weekday() - 1) as usize],
+            if calendar.is_weekend() {
+                " (Weekend)"
+            } else {
+                ""
+            },
         );
     }
 }
