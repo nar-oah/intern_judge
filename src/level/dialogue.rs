@@ -6,9 +6,9 @@ use super::{
     day::DayEndRequested,
     ui::{ConfirmArmed, UiAction},
 };
+use crate::game::calendar::GameCalendar;
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
-use crate::game::calendar::GameCalendar;
 use leafwing_input_manager::prelude::ActionState;
 
 #[derive(Component, Clone, Default)]

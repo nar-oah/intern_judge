@@ -525,15 +525,27 @@ fn verdict_commands_have_no_effect_on_weekends_even_if_a_script_requests_them() 
         let (mut app, player, _) = court_app();
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 1;
         let source = format!(":= start\n>> verdict({guilty})\n周末不作判决\n=> END\n---\n");
-        app.world().resource::<EmbeddedAssetRegistry>().insert_asset(
-            "weekend-verdict.rep".into(),
-            Path::new("weekend-verdict.rep"),
-            source.into_bytes(),
-        );
-        let dialogue = app.world().resource::<AssetServer>().load("embedded://weekend-verdict.rep");
-        app.world_mut().entity_mut(player).insert(DialogueRunner::new(dialogue));
-        app.world_mut().spawn_scene(ui::dialogue_box_scene()).unwrap();
-        app.world_mut().write_message(StartDialogue { runner: player, node: "start".into() });
+        app.world()
+            .resource::<EmbeddedAssetRegistry>()
+            .insert_asset(
+                "weekend-verdict.rep".into(),
+                Path::new("weekend-verdict.rep"),
+                source.into_bytes(),
+            );
+        let dialogue = app
+            .world()
+            .resource::<AssetServer>()
+            .load("embedded://weekend-verdict.rep");
+        app.world_mut()
+            .entity_mut(player)
+            .insert(DialogueRunner::new(dialogue));
+        app.world_mut()
+            .spawn_scene(ui::dialogue_box_scene())
+            .unwrap();
+        app.world_mut().write_message(StartDialogue {
+            runner: player,
+            node: "start".into(),
+        });
         wait_for_dialogue(&mut app, false);
         assert_prompt(&mut app, "周末不作判决");
         assert!(app.world().resource::<RoadEffects>().0.is_empty());
