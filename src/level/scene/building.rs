@@ -52,10 +52,13 @@ pub(in crate::level::scene) fn dialogue_building_scene(
     color: Color,
     dialogue: BuildingDialogue,
 ) -> impl Scene {
+    let paused_only = dialogue.paused_only;
     bsn! {
         @building_scene(position, size, color)
         dialogue
-        on(start_building_dialogue)
+        on(start_building_dialogue.run_if(move |commute: Res<State<CommuteState>>| {
+            !paused_only || *commute.get() == CommuteState::Paused
+        }))
     }
 }
 
@@ -76,7 +79,6 @@ fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
 fn start_building_dialogue(
     request: On<InteractRequested>,
     buildings: Query<&BuildingDialogue>,
-    commute: Res<State<CommuteState>>,
     calendar: Res<GameCalendar>,
     assets: Res<AssetServer>,
     mut commands: Commands,
@@ -86,9 +88,6 @@ fn start_building_dialogue(
     let Ok(dialogue) = buildings.get(request.entity) else {
         return;
     };
-    if dialogue.paused_only && *commute.get() != CommuteState::Paused {
-        return;
-    }
     let Ok(mut velocity) = players.get_mut(request.player) else {
         return;
     };

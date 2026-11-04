@@ -2,9 +2,10 @@ use super::*;
 use crate::config::{
     BuildingValues, ConvenienceKind, ConvenienceValues, LotteryPrize, LotteryValues,
 };
-use crate::game::{HasHelmet, Money, Stamina};
+use crate::game::{CommuteState, HasHelmet, Money, Stamina, calendar::GameCalendar};
 use crate::level::InteractRequested;
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, scene::ScenePlugin};
+use bevy_replique::prelude::RepliqueDialogue;
 
 fn building_app() -> App {
     let mut app = App::new();
@@ -13,6 +14,14 @@ fn building_app() -> App {
         AssetPlugin::default(),
         ScenePlugin,
     ))
+    .init_asset::<RepliqueDialogue>()
+    .init_asset::<Font>()
+    .add_message::<StartDialogue>()
+    .insert_resource(State::new(CommuteState::Running))
+    .insert_resource(GameCalendar {
+        total_days: 28,
+        elapsed_days: 2,
+    })
     .insert_resource(BuildingValues {
         cat_reward: 37,
         lottery: LotteryValues {
@@ -168,4 +177,110 @@ fn rescuing_a_cat_pays_the_reward_and_removes_only_that_cat() {
     assert_eq!(app.world().resource::<Money>().0, 137);
     assert!(app.world().get_entity(cat).is_err());
     assert!(app.world().get_entity(other_cat).is_ok());
+}
+
+#[test]
+fn paused_buildings_start_dialogue_without_running_their_effects() {
+    for building in [
+        BuildingType::ConvenienceStore,
+        BuildingType::ToolStore,
+        BuildingType::LotteryStore,
+        BuildingType::Cat,
+    ] {
+        let mut app = building_app();
+        app.insert_resource(State::new(CommuteState::Paused));
+        app.world_mut().resource_mut::<Stamina>().0 = 35.0;
+        let entity = match building {
+            BuildingType::ConvenienceStore => app
+                .world_mut()
+                .spawn_scene(convenience_store_scene(
+                    Vec2::ZERO,
+                    Vec2::ONE,
+                    ConvenienceKind::Small,
+                ))
+                .unwrap()
+                .id(),
+            BuildingType::ToolStore => app
+                .world_mut()
+                .spawn_scene(tool_store_scene(Vec2::ZERO, Vec2::ONE))
+                .unwrap()
+                .id(),
+            BuildingType::LotteryStore => app
+                .world_mut()
+                .spawn_scene(lottery_store_scene(Vec2::ZERO, Vec2::ONE))
+                .unwrap()
+                .id(),
+            BuildingType::Cat => app
+                .world_mut()
+                .spawn_scene(cat_scene(Vec2::ZERO, Vec2::ONE))
+                .unwrap()
+                .id(),
+        };
+        let player = app
+            .world_mut()
+            .spawn((Player, LinearVelocity(Vec2::new(42.0, 7.0))))
+            .id();
+
+        app.world_mut()
+            .trigger(InteractRequested { entity, player });
+        app.world_mut().flush();
+
+        assert!(app.world().get::<DialogueRunner>(player).is_some());
+        assert_eq!(
+            app.world().get::<LinearVelocity>(player).unwrap().0,
+            Vec2::new(0.0, 7.0)
+        );
+        assert_eq!(app.world().resource::<Money>().0, 100, "{building:?}");
+        assert_eq!(app.world().resource::<Stamina>().0, 35.0, "{building:?}");
+        assert!(!app.world().resource::<HasHelmet>().0, "{building:?}");
+        assert!(app.world().get_entity(entity).is_ok(), "{building:?}");
+        let requests = app
+            .world_mut()
+            .resource_mut::<Messages<StartDialogue>>()
+            .drain()
+            .collect::<Vec<_>>();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].runner, player);
+        assert_eq!(
+            requests[0].node.as_str(),
+            match building {
+                BuildingType::ConvenienceStore => "convenience_store",
+                BuildingType::ToolStore => "tool_store",
+                BuildingType::LotteryStore => "lottery_store",
+                BuildingType::Cat => "cat",
+            }
+        );
+    }
+}
+
+#[test]
+fn weekend_dialogue_uses_the_information_node_even_when_court_is_paused() {
+    let mut app = building_app();
+    app.insert_resource(State::new(CommuteState::Paused));
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 0;
+    let entity = app
+        .world_mut()
+        .spawn_scene(dialogue_building_scene(
+            Vec2::ZERO,
+            Vec2::ONE,
+            Color::WHITE,
+            BuildingDialogue::new("dialogue/court.rep", "verdict")
+                .with_weekend_node("weekend_verdict"),
+        ))
+        .unwrap()
+        .id();
+    let player = app.world_mut().spawn((Player, LinearVelocity::ZERO)).id();
+
+    app.world_mut()
+        .trigger(InteractRequested { entity, player });
+    app.world_mut().flush();
+
+    assert!(app.world().get::<DialogueRunner>(player).is_some());
+    let requests = app
+        .world_mut()
+        .resource_mut::<Messages<StartDialogue>>()
+        .drain()
+        .collect::<Vec<_>>();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].node.as_str(), "weekend_verdict");
 }
