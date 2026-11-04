@@ -1,10 +1,11 @@
 use crate::level::{
-    BuildingType, RoadEffect, RoadId,
+    BuildingType, Platform, RoadEffect, RoadId, SceneRoot, SwitchPoint,
     scene::{
         effect::{ConstructionDetour, FallingObject},
         road_scene,
     },
 };
+use crate::player::Player;
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, prelude::*, scene::ScenePlugin};
 
 fn scene_app() -> App {
@@ -52,6 +53,57 @@ fn each_road_composes_only_its_requested_effects() {
                 "{road:?}, {effects:?}",
             );
         }
+    }
+}
+
+#[test]
+fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
+    for road in [
+        RoadId::EmptyRoad1,
+        RoadId::EmptyRoad2,
+        RoadId::EmptyRoad3,
+        RoadId::EmptyRoad4,
+        RoadId::EmptyRoad5,
+        RoadId::EmptyRoad6,
+        RoadId::EmptyRoad7,
+    ] {
+        let mut app = scene_app();
+        let world = app.world_mut();
+        let root = world
+            .spawn_scene(road_scene(
+                road,
+                &[RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
+            ))
+            .unwrap()
+            .id();
+        assert_eq!(world.get::<RoadId>(root), Some(&road));
+        assert!(world.get::<SceneRoot>(root).is_some());
+        let children = world.get::<Children>(root).unwrap();
+        assert_eq!(children.len(), 3);
+        assert_eq!(
+            children
+                .iter()
+                .filter(|&entity| world.get::<Player>(entity).is_some())
+                .count(),
+            1
+        );
+        assert_eq!(
+            children
+                .iter()
+                .filter(|&entity| world.get::<Platform>(entity).is_some())
+                .count(),
+            1
+        );
+        assert_eq!(
+            children
+                .iter()
+                .filter(|&entity| world.get::<SwitchPoint>(entity).is_some())
+                .count(),
+            1
+        );
+        assert_eq!(world.query::<&BuildingType>().iter(world).count(), 0);
+        assert_eq!(world.query::<&FallingObject>().iter(world).count(), 0);
+        assert_eq!(world.query::<&ConstructionDetour>().iter(world).count(), 0);
     }
 }
 
