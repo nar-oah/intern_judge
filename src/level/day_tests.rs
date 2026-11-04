@@ -292,6 +292,78 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
 }
 
 #[test]
+fn shipped_roads_support_all_eight_weekend_unlocks_and_exit_into_the_next_day() {
+    let mut app = shipped_road_app();
+    let mut weekend_roads = Vec::new();
+
+    for day in 0..28 {
+        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
+        let weekend = app.world().resource::<GameCalendar>().is_weekend();
+        let friday = app.world().resource::<GameCalendar>().weekday() == 5;
+        let destination = if weekend {
+            let map = single::<TravelUiRoot>(&mut app);
+            let choices = &app.world().get::<TravelUiRoot>(map).unwrap().0;
+            let &road = choices
+                .first()
+                .expect("every weekend must offer a road to unlock");
+            assert!(!app.world().resource::<RoadUnlocks>().0[&road]);
+            weekend_roads.push(road);
+            road
+        } else {
+            let player = single::<Player>(&mut app);
+            let point = single::<SwitchPoint>(&mut app);
+            open_destinations(app.world_mut(), point, player);
+            RoadId::Court
+        };
+        let button = {
+            let world = app.world_mut();
+            world
+                .query::<(Entity, &TravelButtonAction)>()
+                .iter(world)
+                .find_map(|(entity, action)| (action.0 == destination).then_some(entity))
+                .expect("the day's destination is selectable")
+        };
+        select_destination(app.world_mut(), button);
+        assert!(app.world().resource::<RoadUnlocks>().0[&destination]);
+        let (_, player) = assert_road(&mut app, destination);
+        advance(&mut app, 2);
+        assert_commute(&app, CommuteState::Paused);
+        let paused_at = app.world().resource::<CommuteTime>().elapsed;
+        advance(&mut app, 2);
+        assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
+
+        let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
+        let point = single::<SwitchPoint>(&mut app);
+        app.world_mut().trigger(InteractRequested {
+            entity: point,
+            player,
+        });
+        app.update();
+        assert!(app.world().get_entity(player).is_err());
+        if friday {
+            single::<WeeklyBill>(&mut app);
+            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
+            KeyCode::KeyE.release(app.world_mut());
+            app.update();
+            KeyCode::KeyE.press(app.world_mut());
+            app.update();
+            KeyCode::KeyE.release(app.world_mut());
+        }
+        advance(&mut app, 2);
+        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day + 1);
+        assert_eq!(app.world().resource::<RoadUnlocks>().0, unlocks);
+    }
+
+    assert_eq!(weekend_roads.len(), 8);
+    assert_eq!(weekend_roads[0], RoadId::MarketRoad);
+    weekend_roads.sort_unstable();
+    weekend_roads.dedup();
+    assert_eq!(weekend_roads.len(), 8);
+    assert!(app.world().resource::<RoadUnlocks>().0.values().all(|&v| v));
+    single::<InternshipEnded>(&mut app);
+}
+
+#[test]
 fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress() {
     let mut app = weekday_app(28);
     let camera = app.world_mut().spawn(Camera2d).id();
