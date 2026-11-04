@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{DayEndRequested, RoadEffect, RoadEffects, RoadId};
+use super::{RoadEffect, RoadEffects, RoadId, day::DayEndRequested};
 use crate::player::{Player, PlayerAction};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
@@ -94,10 +94,7 @@ fn advance_dialogue(
     }
 }
 
-pub(super) fn close_dialogue(
-    mut commands: Commands,
-    mut finished: MessageReader<DialogueFinished>,
-) {
+fn close_dialogue(mut commands: Commands, mut finished: MessageReader<DialogueFinished>) {
     for finished in finished.read() {
         commands.entity(finished.runner).remove::<DialogueRunner>();
     }
