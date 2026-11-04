@@ -7,6 +7,25 @@ use bevy::{
     prelude::*,
     ui_widgets::{Activate, Button},
 };
+use leafwing_input_manager::prelude::*;
+
+#[derive(Actionlike, Clone, Copy, Debug, PartialEq, Eq, Hash, Reflect)]
+pub(super) enum UiAction {
+    Confirm,
+}
+
+pub(super) fn confirm_input_scene() -> impl Scene {
+    let input_map = InputMap::new([(UiAction::Confirm, KeyCode::KeyE)]);
+    // A held key from the previous scene must be released before confirming.
+    let mut actions = ActionState::default();
+    actions.press(&UiAction::Confirm);
+    actions.set_update_state_from_state();
+    actions.set_fixed_update_state_from_state();
+    bsn! {
+        input_map
+        actions
+    }
+}
 
 #[derive(Component, Clone, Default)]
 pub(super) struct TravelUiRoot(pub(super) Vec<RoadId>);

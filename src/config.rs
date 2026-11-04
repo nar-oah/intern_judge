@@ -20,6 +20,8 @@ pub struct GameSettings {
     pub total_days: u32,
     pub commute_limit: f32,
     pub initial_money: i32,
+    pub weekly_salary: i32,
+    pub weekly_rent: i32,
     pub multiplier: f32,
     pub per_second: f32,
 }

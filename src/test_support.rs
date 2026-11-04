@@ -47,6 +47,8 @@ pub(crate) fn insert_config(app: &mut App) {
             total_days: 28,
             commute_limit: 8.0,
             initial_money: 73,
+            weekly_salary: 31,
+            weekly_rent: 47,
             multiplier: 2.0,
             per_second: 8.0,
         })

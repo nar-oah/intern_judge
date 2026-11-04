@@ -1,4 +1,5 @@
 use super::{DialogueBox, DialogueOptions, DialoguePrompt};
+use crate::level::ui::confirm_input_scene;
 use bevy::{
     prelude::*,
     text::FontSourceTemplate,
@@ -13,6 +14,7 @@ pub(in crate::level) fn dialogue_box_scene() -> impl Scene {
     bsn! {
         #DialogueBox
         DialogueBox::default()
+        @confirm_input_scene()
         Node {
             position_type: PositionType::Absolute,
             left: percent(10),

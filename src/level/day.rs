@@ -1,10 +1,20 @@
-use super::{InitialRoad, RoadEffects, SceneRoot, scene};
+use super::{InitialRoad, RoadEffects, SceneRoot, bill, scene};
 use crate::game::{CommuteState, CommuteTime, Stamina, calendar::GameCalendar};
 use bevy::prelude::*;
 
-/// Kept until dialogue cleanup has completed, then consumed by `begin_next_day`.
+/// Kept until dialogue cleanup has completed, then consumed by `finish_day`.
 #[derive(Resource)]
 pub(super) struct DayEndRequested;
+
+pub(super) fn finish_day(world: &mut World) {
+    world.remove_resource::<DayEndRequested>();
+    let calendar = world.resource::<GameCalendar>();
+    if !calendar.is_finished() && calendar.weekday() == 5 {
+        bill::show_bill(world);
+    } else {
+        begin_next_day(world);
+    }
+}
 
 /// Finish the current day without entering `Playing` again or resetting session data.
 pub(super) fn begin_next_day(world: &mut World) {

@@ -20,6 +20,8 @@ impl Movement {
             total_days: 28,
             commute_limit: 60.0,
             initial_money: 0,
+            weekly_salary: 0,
+            weekly_rent: 0,
             multiplier: 2.5,
             per_second: 8.0,
         });
