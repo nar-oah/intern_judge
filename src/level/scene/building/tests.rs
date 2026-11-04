@@ -3,7 +3,7 @@ use crate::config::{
     BuildingValues, ConvenienceKind, ConvenienceValues, LotteryPrize, LotteryValues,
 };
 use crate::game::{CommuteState, HasHelmet, Money, Stamina, calendar::GameCalendar};
-use crate::level::InteractRequested;
+use crate::level::{BuildingType, InteractRequested};
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, scene::ScenePlugin};
 use bevy_replique::prelude::RepliqueDialogue;
 
@@ -218,7 +218,7 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
         };
         let player = app
             .world_mut()
-            .spawn((Player, LinearVelocity(Vec2::new(42.0, 7.0))))
+            .spawn((Player::default(), LinearVelocity(Vec2::new(42.0, 7.0))))
             .id();
 
         app.world_mut()
@@ -242,7 +242,7 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].runner, player);
         assert_eq!(
-            requests[0].node.as_str(),
+            requests[0].node.0.as_str(),
             match building {
                 BuildingType::ConvenienceStore => "convenience_store",
                 BuildingType::ToolStore => "tool_store",
@@ -269,7 +269,10 @@ fn weekend_dialogue_uses_the_information_node_even_when_court_is_paused() {
         ))
         .unwrap()
         .id();
-    let player = app.world_mut().spawn((Player, LinearVelocity::ZERO)).id();
+    let player = app
+        .world_mut()
+        .spawn((Player::default(), LinearVelocity::ZERO))
+        .id();
 
     app.world_mut()
         .trigger(InteractRequested { entity, player });
@@ -282,5 +285,5 @@ fn weekend_dialogue_uses_the_information_node_even_when_court_is_paused() {
         .drain()
         .collect::<Vec<_>>();
     assert_eq!(requests.len(), 1);
-    assert_eq!(requests[0].node.as_str(), "weekend_verdict");
+    assert_eq!(requests[0].node.0.as_str(), "weekend_verdict");
 }

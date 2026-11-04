@@ -18,7 +18,7 @@ pub(in crate::level::scene) fn convenience_store_scene(
         )
         BuildingType::ConvenienceStore
         kind
-        on(interact.run_if(in_state(CommuteState::Running)))
+        on(interact)
     }
 }
 
@@ -28,7 +28,11 @@ fn interact(
     values: Res<BuildingValues>,
     mut money: ResMut<Money>,
     mut stamina: ResMut<Stamina>,
+    commute: Res<State<CommuteState>>,
 ) {
+    if *commute.get() != CommuteState::Running {
+        return;
+    }
     let kind = stores.get(request.entity).unwrap();
     let store = &values.convenience_stores[kind];
     if stamina.0 >= Stamina::MAX || money.0 < store.price {

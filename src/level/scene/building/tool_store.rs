@@ -14,11 +14,19 @@ pub(in crate::level::scene) fn tool_store_scene(position: Vec2, size: Vec2) -> i
             BuildingDialogue::new("dialogue/buildings.rep", "tool_store").when_paused(),
         )
         BuildingType::ToolStore
-        on(interact.run_if(in_state(CommuteState::Running)))
+        on(interact)
     }
 }
 
-fn interact(_: On<InteractRequested>, mut money: ResMut<Money>, mut helmet: ResMut<HasHelmet>) {
+fn interact(
+    _: On<InteractRequested>,
+    mut money: ResMut<Money>,
+    mut helmet: ResMut<HasHelmet>,
+    commute: Res<State<CommuteState>>,
+) {
+    if *commute.get() != CommuteState::Running {
+        return;
+    }
     if helmet.0 || money.0 < COST {
         return;
     }

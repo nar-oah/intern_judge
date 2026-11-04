@@ -13,7 +13,7 @@ pub(in crate::level::scene) fn cat_scene(position: Vec2, size: Vec2) -> impl Sce
             BuildingDialogue::new("dialogue/buildings.rep", "cat").when_paused(),
         )
         BuildingType::Cat
-        on(interact.run_if(in_state(CommuteState::Running)))
+        on(interact)
     }
 }
 
@@ -22,7 +22,11 @@ fn interact(
     mut commands: Commands,
     mut money: ResMut<Money>,
     values: Res<BuildingValues>,
+    commute: Res<State<CommuteState>>,
 ) {
+    if *commute.get() != CommuteState::Running {
+        return;
+    }
     money.0 += values.cat_reward;
     commands.entity(request.entity).despawn();
 }

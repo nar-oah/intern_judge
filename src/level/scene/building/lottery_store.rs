@@ -15,11 +15,19 @@ pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -
             BuildingDialogue::new("dialogue/buildings.rep", "lottery_store").when_paused(),
         )
         BuildingType::LotteryStore
-        on(interact.run_if(in_state(CommuteState::Running)))
+        on(interact)
     }
 }
 
-fn interact(_: On<InteractRequested>, values: Res<BuildingValues>, mut money: ResMut<Money>) {
+fn interact(
+    _: On<InteractRequested>,
+    values: Res<BuildingValues>,
+    mut money: ResMut<Money>,
+    commute: Res<State<CommuteState>>,
+) {
+    if *commute.get() != CommuteState::Running {
+        return;
+    }
     let lottery = &values.lottery;
     if money.0 < lottery.price {
         return;
