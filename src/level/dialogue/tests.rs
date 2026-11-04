@@ -1,5 +1,6 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
+    config::GameState,
     game::{CommuteState, GameCalendar, GamePlugin, Stamina},
     level::{
         InitialRoad, InteractRequested, Interactable, InternshipEnded, LevelPlugin, RoadEffect,
