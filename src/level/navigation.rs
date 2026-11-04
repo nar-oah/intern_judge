@@ -51,7 +51,7 @@ pub(super) fn open_unlock_map(world: &mut World) {
     let mut destinations = graph
         .roads
         .iter()
-        .filter(|(road, _)| unlocks.get(road) == Some(&true))
+        .filter(|(road, _)| unlocks.get(*road) == Some(&true))
         .flat_map(|(_, neighbors)| neighbors.iter().copied())
         .filter(|road| unlocks.get(road) == Some(&false))
         .collect::<Vec<_>>();
