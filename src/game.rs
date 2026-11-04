@@ -3,6 +3,31 @@ mod tests;
 use crate::config::{GameSettings, GameState};
 use bevy::prelude::*;
 
+#[derive(Resource, Debug)]
+pub struct GameCalendar {
+    pub total_days: u32,
+    pub elapsed_days: u32,
+}
+
+impl GameCalendar {
+    /// Monday is 1 and Sunday is 7; a new game starts on Saturday.
+    pub fn weekday(&self) -> u32 {
+        (self.elapsed_days % 7 + 5) % 7 + 1
+    }
+
+    pub fn remaining_days(&self) -> u32 {
+        self.total_days.saturating_sub(self.elapsed_days)
+    }
+
+    pub fn is_weekend(&self) -> bool {
+        self.weekday() >= 6
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.elapsed_days >= self.total_days
+    }
+}
+
 #[derive(Resource, Debug, Default)]
 pub struct CommuteTime {
     pub elapsed: f32,
@@ -53,6 +78,12 @@ struct CommuteHud;
 struct CommuteHudText;
 
 #[derive(Component)]
+struct CalendarHud;
+
+#[derive(Component)]
+struct CalendarHudText;
+
+#[derive(Component)]
 struct StaminaBar;
 
 pub struct GamePlugin;
@@ -64,6 +95,7 @@ impl Plugin for GamePlugin {
                 OnEnter(GameState::Playing),
                 (initialize_game, setup_hud).chain(),
             )
+            .add_systems(OnExit(GameState::Playing), cleanup_hud)
             .add_systems(
                 Update,
                 (
@@ -74,6 +106,8 @@ impl Plugin for GamePlugin {
                             .or_eager(resource_exists_and_changed::<Stamina>)
                             .or_eager(resource_exists_and_changed::<GameSettings>),
                     ),
+                    update_calendar_hud
+                        .run_if(resource_exists_and_changed::<GameCalendar>),
                 )
                     .chain()
                     .run_if(in_state(GameState::Playing)),
@@ -82,6 +116,11 @@ impl Plugin for GamePlugin {
 }
 
 fn initialize_game(world: &mut World) {
+    let total_days = world.resource::<GameSettings>().total_days;
+    world.insert_resource(GameCalendar {
+        total_days,
+        elapsed_days: 0,
+    });
     world.insert_resource(CommuteTime::default());
     let money = Money::from_world(world);
     world.insert_resource(money);
@@ -97,6 +136,30 @@ fn tick_commute(time: Res<Time>, mut commute: ResMut<CommuteTime>) {
 }
 
 fn setup_hud(mut commands: Commands) {
+    commands.spawn((
+        CalendarHud,
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(16),
+            left: px(16),
+            padding: UiRect::all(px(12)),
+            border_radius: BorderRadius::all(px(6)),
+            ..default()
+        },
+        GlobalZIndex(200),
+        BackgroundColor(Color::srgb(0.12, 0.14, 0.2)),
+        Pickable::IGNORE,
+        children![(
+            CalendarHudText,
+            Text::default(),
+            TextFont {
+                font_size: FontSize::Px(22.0),
+                ..default()
+            },
+            TextColor(Color::srgb(0.95, 0.96, 1.0)),
+            Pickable::IGNORE,
+        )],
+    ));
     commands.spawn((
         CommuteHud,
         Node {
@@ -146,6 +209,37 @@ fn setup_hud(mut commands: Commands) {
             ),
         ],
     ));
+}
+
+fn cleanup_hud(
+    mut commands: Commands,
+    roots: Query<Entity, Or<(With<CommuteHud>, With<CalendarHud>)>>,
+) {
+    for root in &roots {
+        commands.entity(root).despawn();
+    }
+}
+
+fn update_calendar_hud(
+    calendar: Res<GameCalendar>,
+    mut hud: Query<&mut Text, With<CalendarHudText>>,
+) {
+    let weekdays = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ];
+    for mut text in &mut hud {
+        text.0 = format!(
+            "Days left: {}\n{}",
+            calendar.remaining_days(),
+            weekdays[(calendar.weekday() - 1) as usize],
+        );
+    }
 }
 
 fn update_hud(

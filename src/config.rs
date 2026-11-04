@@ -17,10 +17,16 @@ pub enum GameState {
 
 #[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize)]
 pub struct GameSettings {
+    #[serde(default = "default_total_days")]
+    pub total_days: u32,
     pub commute_limit: f32,
     pub initial_money: i32,
     pub multiplier: f32,
     pub per_second: f32,
+}
+
+fn default_total_days() -> u32 {
+    28
 }
 
 #[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize)]
