@@ -66,7 +66,6 @@ fn court_app() -> (App, Entity, Entity) {
 }
 
 fn approach(app: &mut App, player: Entity, target: Entity) {
-    // Place the player on the court's floor, inside the real building sensor.
     let center = app
         .world()
         .get::<GlobalTransform>(target)
@@ -145,7 +144,6 @@ fn select(app: &mut App, index: usize) {
         .find(|(choice, _, _)| *choice == index)
         .unwrap()
         .2;
-    // The observer must consume this suspension once even if activation repeats.
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().trigger(Activate { entity: button });
     advance(app, 4);
@@ -214,7 +212,6 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     assert!(app.world().get::<Node>(options).is_some());
     assert!(app.world().get::<Text>(options).is_none());
 
-    // Neither E nor the old selection keys can answer a choice point.
     KeyCode::ArrowLeft.press(app.world_mut());
     KeyCode::ArrowRight.press(app.world_mut());
     press_e(&mut app);
@@ -228,7 +225,6 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     );
     assert!(app.world().resource::<CommandsRun>().0.is_empty());
 
-    // The UI root is independent of the player hierarchy and still cleans up.
     app.world_mut().despawn(player);
     app.world_mut().flush();
     app.update();
@@ -359,7 +355,6 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
             single::<WeeklyBill>(&mut app);
             assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
             assert_eq!(app.world().resource::<Money>().0, balance);
-            // The E press closing the last line cannot also confirm the new bill.
             press_e(&mut app);
             advance(&mut app, 4);
         }
@@ -579,7 +574,6 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
     KeyCode::Space.press(app.world_mut());
     wait_for_dialogue(&mut app, false);
 
-    // Replace the nearby interaction target while the dialogue stays on the player.
     app.world_mut().entity_mut(bench).remove::<Interactable>();
     let other_building = app
         .world_mut()
