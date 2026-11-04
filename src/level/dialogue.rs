@@ -1,8 +1,11 @@
 #[cfg(test)]
 mod tests;
 pub(super) mod ui;
-use super::{RoadEffect, RoadEffects, RoadId, day::DayEndRequested};
-use crate::player::{Player, PlayerAction};
+use super::{
+    RoadEffect, RoadEffects, RoadId,
+    day::DayEndRequested,
+    ui::{ConfirmArmed, UiAction},
+};
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -73,19 +76,15 @@ fn show_dialogue(
 }
 
 fn advance_dialogue(
-    players: Query<&ActionState<PlayerAction>, (With<Player>, With<DialogueRunner>)>,
-    mut dialogs: Query<&mut DialogueBox>,
+    mut dialogs: Query<(&ActionState<UiAction>, &mut ConfirmArmed, &mut DialogueBox)>,
     mut resume: MessageWriter<ResumeDialogue>,
 ) {
-    let Ok(actions) = players.single() else {
+    let Ok((actions, mut confirm, mut dialog)) = dialogs.single_mut() else {
         return;
     };
-    if !actions.just_pressed(&PlayerAction::NextDialogue) {
+    if !confirm.just_pressed(actions) {
         return;
     }
-    let Ok(mut dialog) = dialogs.single_mut() else {
-        return;
-    };
     if let Some(token) = dialog.line.take() {
         resume.write(ResumeDialogue {
             token,

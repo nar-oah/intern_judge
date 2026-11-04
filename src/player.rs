@@ -42,7 +42,6 @@ pub(crate) enum PlayerAction {
     Sprint,
     Jump,
     Interact,
-    NextDialogue,
 }
 
 pub struct PlayerPlugin;

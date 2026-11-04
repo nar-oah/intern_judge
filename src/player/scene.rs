@@ -13,7 +13,6 @@ pub(crate) fn player_scene(position: Vec2) -> impl Scene {
         (PlayerAction::Sprint, KeyCode::ShiftLeft),
         (PlayerAction::Jump, KeyCode::Space),
         (PlayerAction::Interact, KeyCode::KeyE),
-        (PlayerAction::NextDialogue, KeyCode::KeyE),
     ]);
 
     bsn! {

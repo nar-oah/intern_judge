@@ -8,19 +8,15 @@ pub struct GameCalendar {
 }
 
 impl GameCalendar {
-    /// Monday is 1 and Sunday is 7; a new game starts on Saturday.
     pub fn weekday(&self) -> u32 {
         (self.elapsed_days % 7 + 5) % 7 + 1
     }
-
     pub fn remaining_days(&self) -> u32 {
         self.total_days.saturating_sub(self.elapsed_days)
     }
-
     pub fn is_weekend(&self) -> bool {
         self.weekday() >= 6
     }
-
     pub fn is_finished(&self) -> bool {
         self.elapsed_days >= self.total_days
     }

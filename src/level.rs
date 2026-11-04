@@ -1,3 +1,4 @@
+mod bill;
 mod day;
 #[cfg(test)]
 mod day_tests;
@@ -15,6 +16,7 @@ mod ui;
 use crate::config::{GameState, RoadGraph};
 use bevy::prelude::*;
 use bevy_replique::prelude::{DialogueRunner, DialogueSystem};
+use leafwing_input_manager::prelude::InputManagerPlugin;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -74,7 +76,8 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         dialogue::setup(app);
-        app.init_resource::<InitialRoad>()
+        app.add_plugins(InputManagerPlugin::<ui::UiAction>::default())
+            .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
             .add_systems(OnEnter(GameState::Playing), |world: &mut World| {
@@ -89,9 +92,15 @@ impl Plugin for LevelPlugin {
             })
             .add_systems(
                 Last,
-                day::begin_next_day
+                day::finish_day
                     .run_if(resource_exists::<day::DayEndRequested>)
                     .run_if(not(any_with_component::<DialogueRunner>))
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                Update,
+                bill::confirm_bill
+                    .run_if(any_with_component::<bill::WeeklyBill>)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(

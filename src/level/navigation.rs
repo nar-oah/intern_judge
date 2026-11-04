@@ -36,7 +36,7 @@ pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity
             world.resource::<RoadGraph>(),
             world.resource::<MapLayout>(),
         );
-        scene::replace_scene(world, root, next);
+        scene::replace_scene(world, [root], next);
         world
             .resource_mut::<NextState<CommuteState>>()
             .set(CommuteState::Paused);
@@ -56,7 +56,7 @@ pub(super) fn select_destination(world: &mut World, button: Entity) {
     if choices.0.contains(&destination) {
         let effects = world.resource::<RoadEffects>().0.get(&destination);
         let next = scene::road_scene(destination, effects.map_or(&[], Vec::as_slice));
-        scene::replace_scene(world, root, next);
+        scene::replace_scene(world, [root], next);
         let state = if destination == RoadId::Court {
             CommuteState::Paused
         } else {

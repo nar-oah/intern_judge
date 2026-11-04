@@ -2,6 +2,8 @@
     total_days: 28,
     commute_limit: 300.0,
     initial_money: 100,
+    weekly_salary: 100,
+    weekly_rent: 80,
     multiplier: 1.5,
     per_second: 5.0,
 )

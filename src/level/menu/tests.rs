@@ -6,7 +6,7 @@ use crate::{
     player::Player,
     test_support::{advance, finish_app, insert_config, scene_app},
 };
-use bevy::{state::app::StatesPlugin, time::TimeUpdateStrategy};
+use bevy::{input::InputPlugin, state::app::StatesPlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
 
 fn single<C: Component>(app: &mut App) -> Entity {
@@ -30,7 +30,7 @@ fn assert_no_gameplay(app: &mut App) {
 #[test]
 fn menu_waits_for_start_then_loads_the_initial_road_and_cleans_up_its_entities() {
     let mut app = scene_app();
-    app.add_plugins(StatesPlugin);
+    app.add_plugins((StatesPlugin, InputPlugin));
     insert_config(&mut app);
     app.insert_state(GameState::Loading)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(

@@ -1,10 +1,10 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
     config::GameState,
-    game::{CommuteState, GamePlugin, Stamina, calendar::GameCalendar},
+    game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
         InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-        SceneRoot, scene::ending::InternshipEnded,
+        SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -66,7 +66,6 @@ fn court_app() -> (App, Entity, Entity) {
 }
 
 fn approach(app: &mut App, player: Entity, target: Entity) {
-    // Place the player on the court's floor, inside the real building sensor.
     let center = app
         .world()
         .get::<GlobalTransform>(target)
@@ -145,7 +144,6 @@ fn select(app: &mut App, index: usize) {
         .find(|(choice, _, _)| *choice == index)
         .unwrap()
         .2;
-    // The observer must consume this suspension once even if activation repeats.
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().trigger(Activate { entity: button });
     advance(app, 4);
@@ -196,6 +194,9 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
             .is_none()
     );
     assert!(app.world().get::<ChildOf>(dialog).is_none());
+    assert!(app.world().get::<InputMap<UiAction>>(dialog).is_some());
+    assert!(app.world().get::<ActionState<UiAction>>(dialog).is_some());
+    assert!(app.world().get::<InputMap<UiAction>>(player).is_none());
     assert!(buttons(&mut app).is_empty());
 
     press_e(&mut app);
@@ -211,7 +212,6 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     assert!(app.world().get::<Node>(options).is_some());
     assert!(app.world().get::<Text>(options).is_none());
 
-    // Neither E nor the old selection keys can answer a choice point.
     KeyCode::ArrowLeft.press(app.world_mut());
     KeyCode::ArrowRight.press(app.world_mut());
     press_e(&mut app);
@@ -225,7 +225,6 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
     );
     assert!(app.world().resource::<CommandsRun>().0.is_empty());
 
-    // The UI root is independent of the player hierarchy and still cleans up.
     app.world_mut().despawn(player);
     app.world_mut().flush();
     app.update();
@@ -298,63 +297,101 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
-    let (mut app, player, _) = court_app();
-    let root = single::<SceneRoot>(&mut app);
-    let source = "\
+    for elapsed_days in [0, 6] {
+        let (mut app, player, _) = court_app();
+        app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
+        let balance = app.world().resource::<Money>().0;
+        let root = single::<SceneRoot>(&mut app);
+        let source = "\
 := start
 >> verdict(true)
 判决后的对话
 => END
 ---
 ";
-    app.world()
-        .resource::<EmbeddedAssetRegistry>()
-        .insert_asset(
-            "after-verdict.rep".into(),
-            Path::new("after-verdict.rep"),
-            source.as_bytes().to_vec(),
+        app.world()
+            .resource::<EmbeddedAssetRegistry>()
+            .insert_asset(
+                "after-verdict.rep".into(),
+                Path::new("after-verdict.rep"),
+                source.as_bytes().to_vec(),
+            );
+        let dialogue = app
+            .world()
+            .resource::<AssetServer>()
+            .load("embedded://after-verdict.rep");
+        app.world_mut()
+            .entity_mut(player)
+            .insert(DialogueRunner::new(dialogue));
+        app.world_mut()
+            .spawn_scene(ui::dialogue_box_scene())
+            .unwrap();
+        app.world_mut().write_message(StartDialogue {
+            runner: player,
+            node: "start".into(),
+        });
+        wait_for_dialogue(&mut app, false);
+        advance(&mut app, 4);
+
+        assert_prompt(&mut app, "判决后的对话");
+        assert!(app.world().get_entity(root).is_ok());
+        assert!(app.world().get::<DialogueRunner>(player).is_some());
+        assert!(app.world().contains_resource::<DayEndRequested>());
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days
         );
-    let dialogue = app
-        .world()
-        .resource::<AssetServer>()
-        .load("embedded://after-verdict.rep");
-    app.world_mut()
-        .entity_mut(player)
-        .insert(DialogueRunner::new(dialogue));
-    app.world_mut()
-        .spawn_scene(ui::dialogue_box_scene())
-        .unwrap();
-    app.world_mut().write_message(StartDialogue {
-        runner: player,
-        node: "start".into(),
-    });
-    wait_for_dialogue(&mut app, false);
-    advance(&mut app, 4);
+        assert_eq!(
+            app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
+            [RoadEffect::FallingObject]
+        );
 
-    assert_prompt(&mut app, "判决后的对话");
-    assert!(app.world().get_entity(root).is_ok());
-    assert!(app.world().get::<DialogueRunner>(player).is_some());
-    assert!(app.world().contains_resource::<DayEndRequested>());
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);
-    assert_eq!(
-        app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
-        [RoadEffect::FallingObject]
-    );
-
-    press_e(&mut app);
-    advance(&mut app, 4);
-    assert_closed(&mut app, player);
-    assert!(app.world().get_entity(root).is_err());
-    assert!(!app.world().contains_resource::<DayEndRequested>());
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
-    assert_eq!(
-        app.world().resource::<State<GameState>>().get(),
-        &GameState::Playing
-    );
+        press_e(&mut app);
+        advance(&mut app, 4);
+        assert_closed(&mut app, player);
+        assert!(app.world().get_entity(root).is_err());
+        assert!(!app.world().contains_resource::<DayEndRequested>());
+        if elapsed_days == 6 {
+            single::<WeeklyBill>(&mut app);
+            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+            assert_eq!(app.world().resource::<Money>().0, balance);
+            press_e(&mut app);
+            advance(&mut app, 4);
+        }
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days + 1
+        );
+        assert_eq!(
+            app.world().resource::<State<GameState>>().get(),
+            &GameState::Playing
+        );
+    }
 }
 
 #[test]
-fn final_verdict_closes_dialogue_and_ends_the_internship() {
+fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
+    let (mut app, player, bench) = court_app();
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 6;
+    let balance = app.world().resource::<Money>().0;
+    approach(&mut app, player, bench);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, false);
+    press_e(&mut app);
+    wait_for_dialogue(&mut app, true);
+    select(&mut app, 2);
+
+    assert_closed(&mut app, player);
+    assert!(app.world().get_entity(player).is_ok());
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
+    assert_eq!(app.world().resource::<Money>().0, balance);
+    assert!(!app.world().contains_resource::<DayEndRequested>());
+    let world = app.world_mut();
+    assert!(world.query::<&WeeklyBill>().iter(world).next().is_none());
+}
+
+#[test]
+fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship() {
     let (mut app, player, bench) = court_app();
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 27;
     approach(&mut app, player, bench);
@@ -366,6 +403,15 @@ fn final_verdict_closes_dialogue_and_ends_the_internship() {
 
     assert_closed(&mut app, player);
     assert!(app.world().get_entity(player).is_err());
+    let balance = app.world().resource::<Money>().0;
+    let settings = app.world().resource::<crate::config::GameSettings>();
+    let payment = settings.weekly_salary - settings.weekly_rent;
+    let bill = single::<WeeklyBill>(&mut app);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 27);
+    press_e(&mut app);
+    advance(&mut app, 4);
+    assert!(app.world().get_entity(bill).is_err());
+    assert_eq!(app.world().resource::<Money>().0, balance + payment);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
     single::<InternshipEnded>(&mut app);
     assert_eq!(
@@ -376,6 +422,30 @@ fn final_verdict_closes_dialogue_and_ends_the_internship() {
         app.world().resource::<State<CommuteState>>().get(),
         &CommuteState::Paused
     );
+}
+
+#[test]
+fn dialogue_confirm_uses_the_ui_root_mapping_independently_of_player_input() {
+    let (mut app, player, participant) = court_app();
+    approach(&mut app, player, participant);
+    press_e(&mut app);
+    let dialog = wait_for_dialogue(&mut app, false);
+    app.world_mut()
+        .entity_mut(player)
+        .remove::<InputMap<crate::player::PlayerAction>>()
+        .remove::<ActionState<crate::player::PlayerAction>>();
+    app.world_mut()
+        .entity_mut(dialog)
+        .insert(InputMap::new([(UiAction::Confirm, KeyCode::Enter)]));
+    press_e(&mut app);
+    advance(&mut app, 2);
+    assert_prompt(&mut app, "请作出你的判决");
+    assert!(buttons(&mut app).is_empty());
+
+    KeyCode::Enter.press(app.world_mut());
+    app.update();
+    wait_for_dialogue(&mut app, true);
+    assert_eq!(buttons(&mut app).len(), 3);
 }
 
 #[test]
@@ -504,7 +574,6 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
     KeyCode::Space.press(app.world_mut());
     wait_for_dialogue(&mut app, false);
 
-    // Replace the nearby interaction target while the dialogue stays on the player.
     app.world_mut().entity_mut(bench).remove::<Interactable>();
     let other_building = app
         .world_mut()
