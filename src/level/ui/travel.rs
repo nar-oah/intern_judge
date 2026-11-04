@@ -39,7 +39,11 @@ pub(in crate::level) fn travel_ui_scene(
     layout: &MapLayout,
 ) -> impl Scene + use<> {
     let unlocking = current.is_none();
-    let title = if unlocking { "Unlock a road" } else { "Road map" };
+    let title = if unlocking {
+        "Unlock a road"
+    } else {
+        "Road map"
+    };
     let empty_unlock_map = (unlocking && destinations.is_empty()).then(|| {
         bsn! {
             Node {
