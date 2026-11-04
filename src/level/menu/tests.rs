@@ -1,8 +1,8 @@
 use super::*;
 use crate::{
-    config::GameSettings,
+    config::{GameSettings, RoadGraph},
     game::{CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
-    level::{InitialRoad, LevelPlugin, RoadId, ui::TravelUiRoot},
+    level::{InitialRoad, LevelPlugin, RoadId, RoadUnlocks, ui::{TravelUiRoot, TravelButtonAction}},
     player::Player,
     test_support::{advance, finish_app, insert_config, scene_app},
 };
@@ -28,10 +28,11 @@ fn assert_no_gameplay(app: &mut App) {
 }
 
 #[test]
-fn menu_waits_for_start_then_loads_the_initial_road_and_cleans_up_its_entities() {
+fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_entities() {
     let mut app = scene_app();
     app.add_plugins((StatesPlugin, InputPlugin));
     insert_config(&mut app);
+    app.world_mut().resource_mut::<RoadGraph>().initial_unlocks.insert(RoadId::MarketRoad, false);
     app.insert_state(GameState::Loading)
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             125,
@@ -90,15 +91,14 @@ fn menu_waits_for_start_then_loads_the_initial_road_and_cleans_up_its_entities()
         assert!(app.world().get_entity(entity).is_err());
     }
     assert!(app.world().get_entity(camera).is_ok());
-    let road = single::<RoadId>(&mut app);
-    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
     assert_eq!(app.world().resource::<InitialRoad>().0, RoadId::ExampleRoad);
-    let player = single::<Player>(&mut app);
-    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), road);
-    assert_eq!(single::<SceneRoot>(&mut app), road);
+    let map = single::<TravelUiRoot>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), map);
+    assert_eq!(app.world().get::<TravelUiRoot>(map).unwrap().0, [RoadId::MarketRoad]);
     {
         let world = app.world_mut();
-        assert_eq!(world.query::<&TravelUiRoot>().iter(world).count(), 0);
+        assert_eq!(world.query::<&Player>().iter(world).count(), 0);
+        assert_eq!(world.query::<&RoadId>().iter(world).count(), 0);
     }
     assert_eq!(
         app.world().resource::<Money>().0,
@@ -109,7 +109,16 @@ fn menu_waits_for_start_then_loads_the_initial_road_and_cleans_up_its_entities()
     advance(&mut app, 2);
     assert_eq!(
         *app.world().resource::<State<CommuteState>>().get(),
-        CommuteState::Running
+        CommuteState::Paused
     );
-    assert!(app.world().resource::<CommuteTime>().elapsed > 0.0);
+    let paused_at = app.world().resource::<CommuteTime>().elapsed;
+    let destination = single::<TravelButtonAction>(&mut app);
+    app.world_mut().trigger(Activate { entity: destination });
+    advance(&mut app, 2);
+    let road = single::<RoadId>(&mut app);
+    assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::MarketRoad));
+    let player = single::<Player>(&mut app);
+    assert_eq!(app.world().get::<ChildOf>(player).unwrap().parent(), road);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
 }
