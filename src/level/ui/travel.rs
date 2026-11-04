@@ -127,7 +127,7 @@ pub(in crate::level) fn travel_ui_scene(
                 --
                 @text_scene("Green border: Available", 1.8)
             ]
-            -- @{empty_unlock_map}
+            -- {empty_unlock_map}
             --
             Node {
                 position_type: PositionType::Absolute,

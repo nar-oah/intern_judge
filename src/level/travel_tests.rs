@@ -1,15 +1,18 @@
 use super::{
     BuildingType, InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-    SceneRoot, SwitchPoint,
+    RoadUnlocks, SceneRoot, SwitchPoint,
+    day::start_day,
     map::MapLayout,
-    navigation::{open_destinations, select_destination},
+    navigation::{open_destinations, open_unlock_map, select_destination},
     scene,
     scene::effect::{ConstructionDetour, FallingObject},
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
     config::{BuildingValues, ConvenienceKind, GameSettings, GameState, RoadGraph},
-    game::{CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina},
+    game::{
+        CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar,
+    },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app, insert_config, scene_app},
 };
@@ -128,7 +131,10 @@ fn level_app() -> App {
 fn navigation_app() -> App {
     let mut app = level_app();
     let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
-    app.insert_resource(layout).init_resource::<RoadEffects>();
+    let unlocks = app.world().resource::<RoadGraph>().initial_unlocks.clone();
+    app.insert_resource(layout)
+        .insert_resource(RoadUnlocks(unlocks))
+        .init_resource::<RoadEffects>();
     finish_app(&mut app);
     app.world_mut()
         .spawn_scene(scene::road_scene(RoadId::ExampleRoad, &[]))
@@ -274,6 +280,10 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     let camera = app.world_mut().spawn(Camera2d).id();
     let unrelated = app.world_mut().spawn_empty().id();
     finish_app(&mut app);
+
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
+    start_day(app.world_mut());
+    app.update();
 
     let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
     let spawn = app.world().get::<Position>(player).unwrap().0;
