@@ -95,8 +95,19 @@ fn empty_unlock_map_still_displays_the_full_network_and_can_end_the_day() {
         .unwrap();
     world.trigger(Activate { entity: button });
     world.flush();
-    assert_eq!(world.resource::<crate::game::calendar::GameCalendar>().elapsed_days, 1);
+    assert_eq!(
+        world
+            .resource::<crate::game::calendar::GameCalendar>()
+            .elapsed_days,
+        1
+    );
     assert!(world.get_entity(root).is_err());
-    assert_eq!(world.query::<&crate::level::scene::ending::InternshipEnded>().iter(world).count(), 1);
+    assert_eq!(
+        world
+            .query::<&crate::level::scene::ending::InternshipEnded>()
+            .iter(world)
+            .count(),
+        1
+    );
     assert!(!world.contains_resource::<crate::level::day::DayEndRequested>());
 }
