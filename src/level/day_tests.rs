@@ -19,12 +19,11 @@ use crate::{
     test_support::{advance, finish_app, headless_app},
 };
 use avian2d::prelude::{LinearVelocity, Position};
-use bevy::{
-    prelude::*,
-    ui_widgets::{Activate, Button},
-};
+use bevy::prelude::*;
+use bevy_common_assets::ron::RonAssetPlugin;
 use bevy_replique::prelude::{DialogueFinished, DialogueRunner};
 use leafwing_input_manager::prelude::{ActionState, Buttonlike, InputMap};
+use std::time::{Duration, Instant};
 
 fn day_app(total_days: u32) -> App {
     configured_day_app(total_days, |_| {})
@@ -46,6 +45,39 @@ fn weekday_app(total_days: u32) -> App {
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
     start_day(app.world_mut());
     app.update();
+    app
+}
+
+fn shipped_road_app() -> App {
+    let mut app = headless_app(Vec2::ZERO);
+    app.insert_state(GameState::MainMenu)
+        .init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>()
+        .add_plugins((
+            RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
+            GamePlugin,
+            PlayerPlugin,
+            LevelPlugin,
+        ));
+    let handle = app
+        .world()
+        .resource::<AssetServer>()
+        .load::<RoadGraph>("roads.graph.ron");
+    finish_app(&mut app);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let graph = loop {
+        if let Some(graph) = app.world().resource::<Assets<RoadGraph>>().get(&handle) {
+            break graph.clone();
+        }
+        assert!(Instant::now() < deadline, "shipped road graph did not load");
+        app.update();
+        std::thread::sleep(Duration::from_millis(1));
+    };
+    app.insert_resource(graph);
+    app.world_mut()
+        .resource_mut::<NextState<GameState>>()
+        .set(GameState::Playing);
+    advance(&mut app, 2);
     app
 }
 
@@ -188,10 +220,19 @@ fn new_game_starts_with_the_weekend_unlock_map_and_resets_unlock_progress() {
 #[test]
 fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday() {
     let mut app = configured_day_app(28, |app| {
-        app.world_mut()
-            .resource_mut::<RoadGraph>()
+        let mut graph = app.world_mut().resource_mut::<RoadGraph>();
+        graph
             .initial_unlocks
             .insert(RoadId::MarketRoad, false);
+        graph.initial_unlocks.insert(RoadId::EmptyRoad1, false);
+        graph
+            .roads
+            .get_mut(&RoadId::MarketRoad)
+            .unwrap()
+            .push(RoadId::EmptyRoad1);
+        graph
+            .roads
+            .insert(RoadId::EmptyRoad1, vec![RoadId::MarketRoad]);
     });
     let map = single::<TravelUiRoot>(&mut app);
     let button = single::<TravelButtonAction>(&mut app);
@@ -202,10 +243,11 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     let (_, player) = assert_road(&mut app, RoadId::MarketRoad);
     advance(&mut app, 2);
     assert_commute(&app, CommuteState::Paused);
+    let paused_at = app.world().resource::<CommuteTime>().elapsed;
     KeyCode::KeyD.press(app.world_mut());
     advance(&mut app, 2);
     assert!(app.world().get::<LinearVelocity>(player).unwrap().x > 0.0);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
 
     let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
     let point = single::<SwitchPoint>(&mut app);
@@ -218,28 +260,31 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     assert!(app.world().get_entity(player).is_err());
     assert_absent::<Player>(&mut app);
     let map = single::<TravelUiRoot>(&mut app);
-    assert!(app.world().get::<TravelUiRoot>(map).unwrap().0.is_empty());
+    assert_eq!(
+        app.world().get::<TravelUiRoot>(map).unwrap().0,
+        [RoadId::EmptyRoad1]
+    );
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
     assert_eq!(app.world().resource::<RoadUnlocks>().0, unlocks);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
     assert_commute(&app, CommuteState::Paused);
 
-    let finish = {
-        let world = app.world_mut();
-        world
-            .query_filtered::<Entity, With<Button>>()
-            .single(world)
-            .expect("a fully unlocked weekend map offers an end-day button")
-    };
-    for _ in 0..2 {
-        app.world_mut()
-            .commands()
-            .trigger(Activate { entity: finish });
-    }
-    app.world_mut().flush();
+    let button = single::<TravelButtonAction>(&mut app);
+    select_destination(app.world_mut(), button);
+    let (_, player) = assert_road(&mut app, RoadId::EmptyRoad1);
+    advance(&mut app, 2);
+    assert!(app.world().get_entity(map).is_err());
+    assert_commute(&app, CommuteState::Paused);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
+    let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
+    let point = single::<SwitchPoint>(&mut app);
+    app.world_mut().trigger(InteractRequested {
+        entity: point,
+        player,
+    });
     advance(&mut app, 2);
 
-    assert!(app.world().get_entity(map).is_err());
+    assert!(app.world().get_entity(player).is_err());
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
     assert_eq!(app.world().resource::<RoadUnlocks>().0, unlocks);
     assert_day_scene(&mut app);
