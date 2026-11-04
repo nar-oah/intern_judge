@@ -31,6 +31,13 @@ pub enum RoadId {
     ExampleRoad,
     MarketRoad,
     Court,
+    EmptyRoad1,
+    EmptyRoad2,
+    EmptyRoad3,
+    EmptyRoad4,
+    EmptyRoad5,
+    EmptyRoad6,
+    EmptyRoad7,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
