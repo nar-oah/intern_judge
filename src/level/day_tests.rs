@@ -155,6 +155,9 @@ fn new_game_starts_with_the_weekend_unlock_map_and_resets_unlock_progress() {
                 .0
                 .insert(RoadId::MarketRoad, true);
             app.world_mut()
+                .resource_mut::<NextState<CommuteState>>()
+                .set(CommuteState::Running);
+            app.world_mut()
                 .resource_mut::<NextState<GameState>>()
                 .set(GameState::MainMenu);
             app.update();
