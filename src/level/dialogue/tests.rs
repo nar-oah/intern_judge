@@ -60,6 +60,9 @@ fn court_app() -> (App, Entity, Entity) {
             .after(DialogueSystem::Commands),
         );
     finish_app(&mut app);
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
+    crate::level::day::start_day(app.world_mut());
+    app.update();
     let player = single::<Player>(&mut app);
     let bench = named(&mut app, "JudgeBench");
     (app, player, bench)
@@ -297,7 +300,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
-    for elapsed_days in [0, 6] {
+    for elapsed_days in [2, 6] {
         let (mut app, player, _) = court_app();
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
         let balance = app.world().resource::<Money>().0;
