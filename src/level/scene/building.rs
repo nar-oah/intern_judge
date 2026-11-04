@@ -73,7 +73,10 @@ fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
     }
 }
 
-#[expect(clippy::too_many_arguments, reason = "dialogue observer uses ECS parameters")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "dialogue observer uses ECS parameters"
+)]
 fn start_building_dialogue(
     request: On<InteractRequested>,
     buildings: Query<&BuildingDialogue>,

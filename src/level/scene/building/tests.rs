@@ -6,8 +6,8 @@ use crate::game::{CommuteState, HasHelmet, Money, Stamina, calendar::GameCalenda
 use crate::level::{BuildingType, InteractRequested};
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, scene::ScenePlugin};
 use bevy_replique::prelude::{
-    DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, RepliquePlugin, ResumeDialogue,
-    ResumeInput,
+    DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, RepliquePlugin,
+    ResumeDialogue, ResumeInput,
 };
 use std::time::{Duration, Instant};
 
