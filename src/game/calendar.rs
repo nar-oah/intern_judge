@@ -66,7 +66,10 @@ pub(super) fn setup_calendar_hud(mut commands: Commands) {
     ));
 }
 
-pub(super) fn cleanup_calendar_hud(mut commands: Commands, roots: Query<Entity, With<CalendarHud>>) {
+pub(super) fn cleanup_calendar_hud(
+    mut commands: Commands,
+    roots: Query<Entity, With<CalendarHud>>,
+) {
     for root in &roots {
         commands.entity(root).despawn();
     }

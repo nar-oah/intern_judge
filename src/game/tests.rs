@@ -1,5 +1,5 @@
-use super::*;
 use super::calendar::{CalendarHud, CalendarHudText};
+use super::*;
 use crate::test_support::{advance, finish_app, insert_config};
 use bevy::{state::app::StatesPlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
