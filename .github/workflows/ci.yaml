@@ -33,7 +33,7 @@ jobs:
         uses: Swatinem/rust-cache@v2.9.2
         with:
           cache-targets: "false"
-          prefix-key: "v1-deps-only
+          prefix-key: "v1-deps-only"
 
       - name: Install Bevy Linux dependencies
         run: |
