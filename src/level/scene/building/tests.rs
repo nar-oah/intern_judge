@@ -3,7 +3,7 @@ use crate::config::{
     BuildingValues, ConvenienceKind, ConvenienceValues, LotteryPrize, LotteryValues,
 };
 use crate::game::{CommuteState, HasHelmet, Money, Stamina, calendar::GameCalendar};
-use crate::level::{BuildingType, InteractRequested};
+use crate::level::{BuildingType, PausedInteractRequested, RunningInteractRequested};
 use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, scene::ScenePlugin};
 use bevy_replique::prelude::{
     DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, RepliquePlugin,
@@ -61,11 +61,24 @@ fn building_app() -> App {
 }
 
 fn interact(app: &mut App, entity: Entity) {
-    app.world_mut().trigger(InteractRequested {
-        entity,
-        player: Entity::PLACEHOLDER,
-    });
+    let player = app
+        .world_mut()
+        .spawn((Player::default(), LinearVelocity(Vec2::new(42.0, 7.0))))
+        .id();
+    app.world_mut()
+        .trigger(RunningInteractRequested { entity, player });
     app.world_mut().flush();
+
+    assert!(app.world().get::<DialogueRunner>(player).is_none());
+    assert_eq!(
+        app.world().get::<LinearVelocity>(player).unwrap().0,
+        Vec2::new(42.0, 7.0)
+    );
+    assert!(
+        app.world()
+            .resource::<Messages<StartDialogue>>()
+            .is_empty()
+    );
 }
 
 fn spawn_building(app: &mut App, building: BuildingType) -> Entity {
@@ -229,7 +242,7 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
             .id();
 
         app.world_mut()
-            .trigger(InteractRequested { entity, player });
+            .trigger(PausedInteractRequested { entity, player });
         app.world_mut().flush();
 
         assert!(app.world().get::<DialogueRunner>(player).is_some());
@@ -261,6 +274,47 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
 }
 
 #[test]
+fn court_characters_start_dialogue_only_for_paused_interactions() {
+    for node in ["prosecution", "verdict", "defense"] {
+        let mut app = building_app();
+        app.world_mut()
+            .spawn_scene(crate::level::scene::road::court_scene(&[]))
+            .unwrap();
+        let world = app.world_mut();
+        let player = world
+            .query_filtered::<Entity, With<Player>>()
+            .single(world)
+            .unwrap();
+        let entity = world
+            .query::<(Entity, &BuildingDialogue)>()
+            .iter(world)
+            .find(|(_, dialogue)| dialogue.node == node)
+            .unwrap()
+            .0;
+        world.trigger(RunningInteractRequested { entity, player });
+        world.flush();
+
+        assert!(world.get::<DialogueRunner>(player).is_none(), "{node}");
+        assert!(world.resource::<Messages<StartDialogue>>().is_empty(), "{node}");
+
+        app.insert_resource(State::new(CommuteState::Paused));
+        app.world_mut()
+            .trigger(PausedInteractRequested { entity, player });
+        app.world_mut().flush();
+
+        assert!(app.world().get::<DialogueRunner>(player).is_some(), "{node}");
+        let requests = app
+            .world_mut()
+            .resource_mut::<Messages<StartDialogue>>()
+            .drain()
+            .collect::<Vec<_>>();
+        assert_eq!(requests.len(), 1, "{node}");
+        assert_eq!(requests[0].runner, player, "{node}");
+        assert_eq!(requests[0].node.as_str(), node);
+    }
+}
+
+#[test]
 fn every_building_dialogue_option_is_information_only() {
     for building in [
         BuildingType::ConvenienceStore,
@@ -279,7 +333,7 @@ fn every_building_dialogue_option_is_information_only() {
                 .spawn((Player::default(), LinearVelocity::ZERO))
                 .id();
             app.world_mut()
-                .trigger(InteractRequested { entity, player });
+                .trigger(PausedInteractRequested { entity, player });
             app.world_mut().flush();
             let deadline = Instant::now() + Duration::from_secs(10);
             let mut selected = false;
