@@ -1,6 +1,7 @@
 mod construction_detour;
 mod falling_object;
 #[cfg(test)]
+#[path = "../../../tests/level/scene/effect/mod.rs"]
 mod tests;
 
 use bevy::prelude::*;

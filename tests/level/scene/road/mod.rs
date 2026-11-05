@@ -6,20 +6,8 @@ use crate::level::{
     },
 };
 use crate::player::Player;
-use bevy::{app::TaskPoolPlugin, asset::AssetPlugin, prelude::*, scene::ScenePlugin};
-
-fn scene_app() -> App {
-    let mut app = App::new();
-    app.add_plugins((
-        TaskPoolPlugin::default(),
-        AssetPlugin::default(),
-        ScenePlugin,
-    ))
-    .init_asset::<Font>();
-    app.finish();
-    app.cleanup();
-    app
-}
+use crate::test_support::{assert_absent, count, scene_app};
+use bevy::prelude::*;
 
 #[test]
 fn each_road_composes_only_its_requested_effects() {
@@ -42,21 +30,13 @@ fn each_road_composes_only_its_requested_effects() {
             app.world_mut()
                 .spawn_scene(road_scene(road, effects, "loose_sign", RoadId::ExampleRoad))
                 .unwrap();
-            let world = app.world_mut();
-
             assert_eq!(
-                world
-                    .query_filtered::<Entity, With<FallingObject>>()
-                    .iter(world)
-                    .count(),
+                count::<FallingObject>(&mut app),
                 usize::from(effects.contains(&RoadEffect::FallingObject)),
                 "{road:?}, {effects:?}",
             );
             assert_eq!(
-                world
-                    .query_filtered::<Entity, With<ConstructionDetour>>()
-                    .iter(world)
-                    .count(),
+                count::<ConstructionDetour>(&mut app),
                 usize::from(effects.contains(&RoadEffect::ConstructionDetour)),
                 "{road:?}, {effects:?}",
             );
@@ -111,9 +91,9 @@ fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
                 .count(),
             1
         );
-        assert_eq!(world.query::<&BuildingType>().iter(world).count(), 0);
-        assert_eq!(world.query::<&FallingObject>().iter(world).count(), 0);
-        assert_eq!(world.query::<&ConstructionDetour>().iter(world).count(), 0);
+        assert_absent::<BuildingType>(&mut app);
+        assert_absent::<FallingObject>(&mut app);
+        assert_absent::<ConstructionDetour>(&mut app);
     }
 }
 

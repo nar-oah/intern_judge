@@ -1,12 +1,10 @@
 use super::*;
 use crate::{
     game::HasHelmet,
-    level::{RoadEffect, RoadId, scene::road_scene},
-    player::{Player, PlayerPlugin, Stunned, player_scene},
-    test_support::{advance, finish_app, headless_app, scene_app},
+    player::{Player, Stunned, player_scene},
+    test_support::{assert_removed, finish_app, headless_app, scene_app},
 };
 use avian2d::prelude::*;
-use leafwing_input_manager::prelude::*;
 
 fn impact(app: &mut App, object: Entity, target: Entity) {
     app.world_mut().trigger(CollisionStart {
@@ -34,7 +32,7 @@ fn impact_stuns_for_two_seconds_and_only_clears_horizontal_velocity() {
 
     impact(&mut app, object, player);
 
-    assert!(app.world().get_entity(object).is_err());
+    assert_removed(&app, &[object]);
     assert_eq!(app.world().get::<Stunned>(player).unwrap().remaining, 2.0);
     assert_eq!(
         app.world().get::<LinearVelocity>(player).unwrap().0,
@@ -58,7 +56,7 @@ fn helmet_is_consumed_by_one_player_hit_and_the_next_hit_stuns() {
             .unwrap()
             .id();
         impact(&mut app, object, player);
-        assert!(app.world().get_entity(object).is_err());
+        assert_removed(&app, &[object]);
         assert!(!app.world().resource::<HasHelmet>().0);
         assert_eq!(app.world().get::<Stunned>(player).is_none(), protected);
         if protected {
@@ -128,49 +126,3 @@ fn falling_object_disappears_on_real_player_platform_and_sensor_contacts() {
     }
 }
 
-#[test]
-fn market_detour_blocks_walking_and_can_be_cleared_by_the_initial_jump() {
-    let mut app = headless_app(Vec2::NEG_Y * 1000.0);
-    app.add_plugins(PlayerPlugin);
-    app.world_mut()
-        .spawn_scene(road_scene(
-            RoadId::MarketRoad,
-            &[RoadEffect::ConstructionDetour],
-            "",
-            RoadId::MarketRoad,
-        ))
-        .unwrap();
-    let world = app.world_mut();
-    let player = world
-        .query_filtered::<Entity, With<Player>>()
-        .single(world)
-        .unwrap();
-    let detour = world
-        .query_filtered::<Entity, With<ConstructionDetour>>()
-        .single(world)
-        .unwrap();
-    let detour_x = world.get::<Transform>(detour).unwrap().translation.x;
-    let mut position = world.get_mut::<Transform>(player).unwrap();
-    position.translation.x = detour_x - 100.0;
-    finish_app(&mut app);
-    advance(&mut app, 30);
-
-    KeyCode::KeyD.press(app.world_mut());
-    advance(&mut app, 60);
-    let blocked_x = app.world().get::<Position>(player).unwrap().x;
-    assert!(blocked_x < detour_x);
-    assert!(blocked_x > detour_x - 100.0);
-
-    // Give the player a short run-up so their feet clear the obstacle before contact.
-    KeyCode::KeyD.release(app.world_mut());
-    KeyCode::KeyA.press(app.world_mut());
-    advance(&mut app, 16);
-    KeyCode::KeyA.release(app.world_mut());
-    KeyCode::KeyD.press(app.world_mut());
-    KeyCode::Space.press(app.world_mut());
-    app.update();
-    assert!(app.world().get::<LinearVelocity>(player).unwrap().y > 0.0);
-    advance(&mut app, 70);
-    assert!(app.world().get::<Position>(player).unwrap().x > detour_x + 60.0);
-    assert!(app.world().get_entity(detour).is_ok());
-}

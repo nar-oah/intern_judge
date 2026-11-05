@@ -2,6 +2,7 @@ mod court;
 mod example_road;
 mod market_road;
 #[cfg(test)]
+#[path = "../../../tests/level/scene/road/mod.rs"]
 mod tests;
 
 pub(super) use court::court_scene;

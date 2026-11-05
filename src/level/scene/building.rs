@@ -2,6 +2,7 @@ mod cat;
 mod convenience_store;
 mod lottery_store;
 #[cfg(test)]
+#[path = "../../../tests/level/scene/building/mod.rs"]
 mod tests;
 mod tool_store;
 use crate::{

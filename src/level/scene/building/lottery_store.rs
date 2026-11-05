@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../../../tests/level/scene/lottery_store/mod.rs"]
 mod tests;
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, LotteryValues};
