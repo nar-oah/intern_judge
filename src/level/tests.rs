@@ -1,19 +1,31 @@
-use super::{InteractRequested, Interactable, interaction};
-use crate::player::{Player, PlayerAction};
+use super::{Interactable, PausedInteractRequested, RunningInteractRequested, interaction};
+use crate::{
+    game::CommuteState,
+    player::{Player, PlayerAction},
+};
 use avian2d::prelude::CollidingEntities;
 use bevy::{platform::time::Instant, prelude::*};
 use leafwing_input_manager::prelude::*;
 
 #[derive(Resource, Default)]
-struct Requests(Vec<(Entity, Entity)>);
+struct Requests {
+    running: Vec<(Entity, Entity)>,
+    paused: Vec<(Entity, Entity)>,
+}
 
 fn interaction_app() -> App {
     let mut app = App::new();
     app.init_resource::<Requests>()
+        .insert_resource(State::new(CommuteState::Running))
         .add_systems(PostUpdate, interaction::interact)
         .add_observer(
-            |event: On<InteractRequested>, mut requests: ResMut<Requests>| {
-                requests.0.push((event.entity, event.player));
+            |event: On<RunningInteractRequested>, mut requests: ResMut<Requests>| {
+                requests.running.push((event.entity, event.player));
+            },
+        )
+        .add_observer(
+            |event: On<PausedInteractRequested>, mut requests: ResMut<Requests>| {
+                requests.paused.push((event.entity, event.player));
             },
         );
     app
@@ -72,23 +84,46 @@ fn interaction_requires_overlap_at_the_time_of_a_fresh_press() {
         .unwrap()
         .insert(player);
     frame(&mut app);
-    assert!(app.world().resource::<Requests>().0.is_empty());
+    assert!(app.world().resource::<Requests>().running.is_empty());
 
     interact(&mut app, player, false);
     frame(&mut app);
     interact(&mut app, player, true);
     frame(&mut app);
     frame(&mut app);
-    assert_eq!(app.world().resource::<Requests>().0, [(target, player)]);
+    assert_eq!(app.world().resource::<Requests>().running, [(target, player)]);
 
     interact(&mut app, player, false);
     frame(&mut app);
     interact(&mut app, player, true);
     frame(&mut app);
     assert_eq!(
-        app.world().resource::<Requests>().0,
+        app.world().resource::<Requests>().running,
         [(target, player), (target, player)]
     );
+}
+
+#[test]
+fn interaction_routes_fresh_presses_to_the_current_commute_state() {
+    let mut app = interaction_app();
+    let player = player(&mut app);
+    let target = target(&mut app, &[player]);
+
+    for commute in [
+        CommuteState::Running,
+        CommuteState::Paused,
+        CommuteState::Running,
+    ] {
+        app.insert_resource(State::new(commute));
+        interact(&mut app, player, true);
+        frame(&mut app);
+        interact(&mut app, player, false);
+        frame(&mut app);
+    }
+
+    let requests = app.world().resource::<Requests>();
+    assert_eq!(requests.running, [(target, player), (target, player)]);
+    assert_eq!(requests.paused, [(target, player)]);
 }
 
 #[test]
@@ -106,9 +141,11 @@ fn non_interactive_collisions_and_non_player_input_do_not_request_interactions()
     interact(&mut app, non_player, true);
 
     frame(&mut app);
-    assert!(app.world().resource::<Requests>().0.is_empty());
+    assert!(app.world().resource::<Requests>().running.is_empty());
+    assert!(app.world().resource::<Requests>().paused.is_empty());
 
     app.world_mut().despawn(player);
     frame(&mut app);
-    assert!(app.world().resource::<Requests>().0.is_empty());
+    assert!(app.world().resource::<Requests>().running.is_empty());
+    assert!(app.world().resource::<Requests>().paused.is_empty());
 }
