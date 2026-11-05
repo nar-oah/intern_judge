@@ -6,7 +6,6 @@ use super::{
     day::DayEndRequested,
     ui::{ConfirmArmed, UiAction},
 };
-use crate::game::calendar::GameCalendar;
 use bevy::prelude::*;
 use bevy_replique::prelude::*;
 use leafwing_input_manager::prelude::ActionState;
@@ -111,15 +110,7 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(
-    In(guilty): In<bool>,
-    calendar: Res<GameCalendar>,
-    mut effects: ResMut<RoadEffects>,
-    mut commands: Commands,
-) {
-    if calendar.is_weekend() {
-        return;
-    }
+fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>, mut commands: Commands) {
     let (road, effect) = if guilty {
         (RoadId::ExampleRoad, RoadEffect::FallingObject)
     } else {
