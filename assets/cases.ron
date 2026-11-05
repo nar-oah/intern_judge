@@ -1,0 +1,22 @@
+[
+    (
+        dialogue_prefix: "loose_sign",
+        guilty: FallingObject,
+        not_guilty: ConstructionDetour,
+    ),
+    (
+        dialogue_prefix: "balcony_planter",
+        guilty: FallingObject,
+        not_guilty: PlaceholderA,
+    ),
+    (
+        dialogue_prefix: "blocked_sidewalk",
+        guilty: ConstructionDetour,
+        not_guilty: PlaceholderB,
+    ),
+    (
+        dialogue_prefix: "missing_bicycle",
+        guilty: PlaceholderA,
+        not_guilty: PlaceholderB,
+    ),
+]
