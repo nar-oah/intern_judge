@@ -21,9 +21,7 @@ pub(super) fn configured_day_app(total_days: u32, configure: impl FnOnce(&mut Ap
     let mut app = headless_app(Vec2::ZERO);
     app.world_mut().resource_mut::<GameSettings>().total_days = total_days;
     configure(&mut app);
-    app.init_asset::<Font>()
-        .init_asset_loader::<bevy::text::FontLoader>()
-        .add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
+    app.add_plugins((GamePlugin, PlayerPlugin, LevelPlugin));
     finish_app(&mut app);
     app
 }
@@ -36,7 +34,7 @@ pub(super) fn weekday_app(total_days: u32) -> App {
     app
 }
 
-pub(super) fn destination_button(app: &mut App, destination: RoadId) -> Entity {
+pub(in crate::level) fn destination_button(app: &mut App, destination: RoadId) -> Entity {
     let world = app.world_mut();
     world
         .query::<(Entity, &TravelButtonAction)>()
@@ -45,7 +43,7 @@ pub(super) fn destination_button(app: &mut App, destination: RoadId) -> Entity {
         .expect("the destination must be offered")
 }
 
-pub(super) fn activate(app: &mut App, destination: RoadId) {
+pub(in crate::level) fn activate(app: &mut App, destination: RoadId) {
     let button = destination_button(app, destination);
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().flush();
@@ -79,6 +77,7 @@ pub(super) fn assert_today_roads(app: &App, roads: &[RoadId]) {
     );
 }
 
+// Real scene ancestry and observers without advancing physics.
 pub(super) fn navigation_app() -> App {
     let mut app = level_app();
     let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());

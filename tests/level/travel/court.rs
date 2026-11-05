@@ -7,7 +7,7 @@ use crate::{
         tests::support::{activate, assert_road, navigation_app},
     },
     player::Player,
-    test_support::{assert_removed, finish_app, level_app, scene_entities, single},
+    test_support::{assert_removed, finish_app, level_app, named, scene_entities, single},
 };
 use bevy::{
     app::{HierarchyPropagatePlugin, PropagateSet},
@@ -62,15 +62,21 @@ fn assert_case_hud(app: &mut App, court: Entity, case_road: RoadId) -> Vec<Entit
     let panel = panels[0];
     assert!(world.get::<Node>(court).is_none());
     assert!(world.get::<Node>(panel).is_some());
-    let hud_root = world.get::<ChildOf>(panel).unwrap().parent();
-    assert!(world.get::<Node>(hud_root).is_some());
+    // Keep the HUD in the court's UI subtree without fixing its nesting depth.
+    let mut hud_root = panel;
+    while let Some(parent) = world.get::<ChildOf>(hud_root) {
+        if parent.parent() == court {
+            break;
+        }
+        hud_root = parent.parent();
+    }
     assert_eq!(world.get::<ChildOf>(hud_root).unwrap().parent(), court);
-    let children = world.get::<Children>(panel).unwrap();
-    assert_eq!(children.len(), 1);
-    assert_eq!(
-        world.get::<Text>(children[0]).unwrap().0,
-        format!("今日涉案路段：{case_road:?}")
-    );
+    assert!(world.get::<Node>(hud_root).is_some());
+    let labels = scene_entities(world, panel)
+        .into_iter()
+        .filter_map(|entity| world.get::<Text>(entity).map(|text| text.0.as_str()))
+        .collect::<Vec<_>>();
+    assert_eq!(labels, [format!("今日涉案路段：{case_road:?}")]);
     scene_entities(world, hud_root)
 }
 
@@ -154,8 +160,8 @@ fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() 
     let next = scene::enter_road(app.world_mut(), RoadId::Court);
     let court = app.world_mut().spawn_scene(next).unwrap().id();
     let player = single::<Player>(&mut app);
-    let hud_root = assert_case_hud(&mut app, court, RoadId::ExampleRoad)[0];
-    let hud = app.world().get::<Children>(hud_root).unwrap()[0];
+    assert_case_hud(&mut app, court, RoadId::ExampleRoad);
+    let hud = named(&mut app, "CaseHud");
     let court_transform = *app.world().get::<Transform>(court).unwrap();
     let player_transform = *app.world().get::<Transform>(player).unwrap();
 

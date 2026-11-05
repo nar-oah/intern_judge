@@ -23,8 +23,6 @@ use std::time::{Duration, Instant};
 fn shipped_road_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
     app.insert_state(GameState::MainMenu)
-        .init_asset::<Font>()
-        .init_asset_loader::<bevy::text::FontLoader>()
         .add_plugins((
             RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
             GamePlugin,
