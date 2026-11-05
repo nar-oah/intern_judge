@@ -1,7 +1,7 @@
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, ConvenienceKind};
-use crate::game::{CommuteState, Money, Stamina};
-use crate::level::{BuildingType, InteractRequested};
+use crate::game::{Money, Stamina};
+use crate::level::{BuildingType, RunningInteractRequested};
 use bevy::prelude::*;
 
 pub(in crate::level::scene) fn convenience_store_scene(
@@ -14,7 +14,7 @@ pub(in crate::level::scene) fn convenience_store_scene(
             position,
             size,
             Color::srgb(0.45, 0.7, 0.5),
-            BuildingDialogue::new("dialogue/buildings.rep", "convenience_store").when_paused(),
+            BuildingDialogue::new("dialogue/buildings.rep", "convenience_store"),
         )
         BuildingType::ConvenienceStore
         kind
@@ -23,16 +23,12 @@ pub(in crate::level::scene) fn convenience_store_scene(
 }
 
 fn interact(
-    request: On<InteractRequested>,
+    request: On<RunningInteractRequested>,
     stores: Query<&ConvenienceKind>,
     values: Res<BuildingValues>,
     mut money: ResMut<Money>,
     mut stamina: ResMut<Stamina>,
-    commute: Res<State<CommuteState>>,
 ) {
-    if *commute.get() != CommuteState::Running {
-        return;
-    }
     let kind = stores.get(request.entity).unwrap();
     let store = &values.convenience_stores[kind];
     if stamina.0 >= Stamina::MAX || money.0 < store.price {

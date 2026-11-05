@@ -5,8 +5,7 @@ mod lottery_store;
 mod tests;
 mod tool_store;
 use crate::{
-    game::CommuteState,
-    level::{InteractRequested, Interactable, dialogue::ui::dialogue_box_scene},
+    level::{Interactable, PausedInteractRequested, dialogue::ui::dialogue_box_scene},
     player::Player,
 };
 use avian2d::prelude::*;
@@ -21,21 +20,11 @@ pub(super) use tool_store::tool_store_scene;
 pub(in crate::level::scene) struct BuildingDialogue {
     asset: &'static str,
     node: &'static str,
-    paused_only: bool,
 }
 
 impl BuildingDialogue {
     pub(in crate::level::scene) fn new(asset: &'static str, node: &'static str) -> Self {
-        Self {
-            asset,
-            node,
-            paused_only: false,
-        }
-    }
-
-    fn when_paused(mut self) -> Self {
-        self.paused_only = true;
-        self
+        Self { asset, node }
     }
 }
 
@@ -67,9 +56,8 @@ fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
 }
 
 fn start_building_dialogue(
-    request: On<InteractRequested>,
+    request: On<PausedInteractRequested>,
     buildings: Query<&BuildingDialogue>,
-    commute: Res<State<CommuteState>>,
     assets: Res<AssetServer>,
     mut commands: Commands,
     mut players: Query<&mut LinearVelocity, (With<Player>, Without<DialogueRunner>)>,
@@ -78,9 +66,6 @@ fn start_building_dialogue(
     let Ok(dialogue) = buildings.get(request.entity) else {
         return;
     };
-    if dialogue.paused_only && *commute.get() != CommuteState::Paused {
-        return;
-    }
     let Ok(mut velocity) = players.get_mut(request.player) else {
         return;
     };
