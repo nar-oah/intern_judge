@@ -1,17 +1,10 @@
 use super::select_case;
 use crate::{
-    config::{CaseDef, CaseDefs},
+    config::CaseDefs,
     level::{RoadEffect, RoadEffects, RoadId, SelectedCase, TodayRoads},
+    test_support::case_def,
 };
 use rand::{SeedableRng, rngs::StdRng};
-
-fn case(prefix: &str, guilty: RoadEffect, not_guilty: RoadEffect) -> CaseDef {
-    CaseDef {
-        dialogue_prefix: prefix.into(),
-        guilty,
-        not_guilty,
-    }
-}
 
 #[test]
 fn either_outcome_effect_makes_a_case_unavailable() {
@@ -20,7 +13,7 @@ fn either_outcome_effect_makes_a_case_unavailable() {
         (RoadEffect::FallingObject, RoadEffect::ConstructionDetour),
         (RoadEffect::PlaceholderA, RoadEffect::PlaceholderB),
     ] {
-        let cases = CaseDefs(vec![case("blocked", guilty, not_guilty)]);
+        let cases = CaseDefs(vec![case_def("blocked", guilty, not_guilty)]);
         for effect in [guilty, not_guilty] {
             let effects = RoadEffects([(RoadId::ExampleRoad, vec![effect])].into());
             let mut rng = StdRng::seed_from_u64(17);
@@ -48,7 +41,7 @@ fn unrelated_effects_leave_the_case_available_and_selection_owns_its_definition(
         )]
         .into(),
     );
-    let expected = case(
+    let expected = case_def(
         "available",
         RoadEffect::FallingObject,
         RoadEffect::ConstructionDetour,
@@ -83,12 +76,12 @@ fn unvisited_roads_and_roads_without_available_cases_are_excluded() {
         .into(),
     );
     let cases = CaseDefs(vec![
-        case(
+        case_def(
             "blocked_on_both_roads",
             RoadEffect::FallingObject,
             RoadEffect::ConstructionDetour,
         ),
-        case(
+        case_def(
             "available_on_market",
             RoadEffect::PlaceholderA,
             RoadEffect::PlaceholderB,
@@ -112,17 +105,17 @@ fn selection_is_uniform_by_road_then_by_available_case() {
     let today = TodayRoads([RoadId::ExampleRoad, RoadId::MarketRoad].into());
     let effects = RoadEffects([(RoadId::ExampleRoad, vec![RoadEffect::FallingObject])].into());
     let cases = CaseDefs(vec![
-        case(
+        case_def(
             "first",
             RoadEffect::FallingObject,
             RoadEffect::ConstructionDetour,
         ),
-        case(
+        case_def(
             "second",
             RoadEffect::FallingObject,
             RoadEffect::PlaceholderA,
         ),
-        case("third", RoadEffect::PlaceholderA, RoadEffect::PlaceholderB),
+        case_def("third", RoadEffect::PlaceholderA, RoadEffect::PlaceholderB),
     ]);
     let mut rng = StdRng::seed_from_u64(41);
     let mut road_counts = [0_u32; 2];

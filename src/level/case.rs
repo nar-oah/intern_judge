@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../tests/level/case/mod.rs"]
 mod tests;
 
 use super::{RoadEffects, SelectedCase, TodayRoads};
