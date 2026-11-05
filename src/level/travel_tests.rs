@@ -17,7 +17,15 @@ use crate::{
     test_support::{advance, finish_app, headless_app, insert_config, scene_app},
 };
 use avian2d::prelude::*;
-use bevy::{input::InputPlugin, prelude::*, state::app::StatesPlugin, ui_widgets::Activate};
+use bevy::{
+    app::{HierarchyPropagatePlugin, PropagateSet},
+    camera::{ComputedCameraValues, RenderTargetInfo, Viewport},
+    input::InputPlugin,
+    prelude::*,
+    state::app::StatesPlugin,
+    ui::{ui_layout_system, ui_surface::UiSurface, update::propagate_ui_target_cameras},
+    ui_widgets::Activate,
+};
 use leafwing_input_manager::prelude::*;
 
 fn single<C: Component>(app: &mut App) -> Entity {
@@ -234,6 +242,67 @@ fn court_case_hud_shows_the_selected_road_and_is_removed_when_the_scene_is_repla
         assert_road(&mut app, RoadId::ExampleRoad);
         assert_no_case_hud(&mut app);
     }
+}
+
+#[test]
+fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() {
+    let mut app = navigation_app();
+    app.add_plugins((
+        HierarchyPropagatePlugin::<ComputedUiTargetCamera>::new(PostUpdate),
+        HierarchyPropagatePlugin::<ComputedUiRenderTargetInfo>::new(PostUpdate),
+    ))
+    .init_resource::<UiScale>()
+    .init_resource::<UiSurface>()
+    .init_resource::<bevy::text::FontCx>()
+    .init_resource::<RemSize>()
+    .add_systems(
+        PostUpdate,
+        (propagate_ui_target_cameras, ui_layout_system).chain(),
+    )
+    .configure_sets(
+        PostUpdate,
+        (
+            PropagateSet::<ComputedUiTargetCamera>::default(),
+            PropagateSet::<ComputedUiRenderTargetInfo>::default(),
+        )
+            .after(propagate_ui_target_cameras)
+            .before(ui_layout_system),
+    );
+    let viewport_size = UVec2::new(1000, 600);
+    app.world_mut().spawn((
+        Camera2d,
+        Camera {
+            computed: ComputedCameraValues {
+                target_info: Some(RenderTargetInfo {
+                    physical_size: viewport_size,
+                    scale_factor: 1.0,
+                }),
+                ..default()
+            },
+            viewport: Some(Viewport {
+                physical_size: viewport_size,
+                ..default()
+            }),
+            ..default()
+        },
+    ));
+    let court = enter_court(&mut app);
+    let player = single::<Player>(&mut app);
+    let hud = assert_case_hud(&mut app, court, RoadId::ExampleRoad)[0];
+    let court_transform = *app.world().get::<Transform>(court).unwrap();
+    let player_transform = *app.world().get::<Transform>(player).unwrap();
+
+    app.update();
+
+    let world = app.world();
+    let size = world.get::<ComputedNode>(hud).unwrap().size();
+    let center = world.get::<UiGlobalTransform>(hud).unwrap().translation;
+    assert!(size.x > 0.0 && size.y > 0.0);
+    assert!((center.x - viewport_size.x as f32 / 2.0).abs() <= 1.0);
+    assert!(center.y - size.y / 2.0 >= 0.0);
+    assert!(center.y + size.y / 2.0 < viewport_size.y as f32 / 4.0);
+    assert_eq!(world.get::<Transform>(court), Some(&court_transform));
+    assert_eq!(world.get::<Transform>(player), Some(&player_transform));
 }
 
 #[test]
