@@ -593,10 +593,12 @@ fn duplicate_and_stale_events_cannot_navigate_a_replacement_scene() {
     let player = single::<Player>(&mut app);
     let point = single::<SwitchPoint>(&mut app);
     for _ in 0..3 {
-        app.world_mut().commands().trigger(RunningInteractRequested {
-            entity: point,
-            player,
-        });
+        app.world_mut()
+            .commands()
+            .trigger(RunningInteractRequested {
+                entity: point,
+                player,
+            });
     }
     app.world_mut().flush();
     let map = assert_map(&mut app, &[RoadId::MarketRoad, RoadId::Court]);

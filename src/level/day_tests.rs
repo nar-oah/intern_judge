@@ -1,6 +1,6 @@
 use super::{
-    InitialRoad, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
-    SceneRoot, SwitchPoint,
+    InitialRoad, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects, RoadId,
+    RoadUnlocks, SceneRoot, SwitchPoint,
     bill::{WeeklyBill, confirm_bill, show_bill},
     day::{DayEndRequested, begin_next_day, start_day},
     navigation::{open_destinations, select_destination},
