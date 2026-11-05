@@ -1,6 +1,6 @@
 use super::{
-    BuildingType, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
-    RunningInteractRequested, SceneRoot, SwitchPoint,
+    BuildingType, CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+    RoadUnlocks, RunningInteractRequested, SceneRoot, SwitchPoint, TodayRoads,
     day::start_day,
     map::MapLayout,
     navigation::{open_destinations, open_unlock_map, select_destination},
@@ -9,7 +9,7 @@ use super::{
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
-    config::{BuildingValues, ConvenienceKind, GameSettings, GameState, RoadGraph},
+    config::{BuildingValues, CaseDefs, ConvenienceKind, GameSettings, GameState, RoadGraph},
     game::{
         CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar,
     },
@@ -119,6 +119,13 @@ fn assert_commute(app: &App, state: CommuteState) {
     assert_eq!(*app.world().resource::<State<CommuteState>>().get(), state);
 }
 
+fn assert_today_roads(app: &App, roads: &[RoadId]) {
+    assert_eq!(
+        app.world().resource::<TodayRoads>().0,
+        roads.iter().copied().collect()
+    );
+}
+
 fn level_app() -> App {
     let mut app = scene_app();
     app.add_plugins((StatesPlugin, InputPlugin))
@@ -134,11 +141,12 @@ fn navigation_app() -> App {
     let unlocks = app.world().resource::<RoadGraph>().initial_unlocks.clone();
     app.insert_resource(layout)
         .insert_resource(RoadUnlocks(unlocks))
-        .init_resource::<RoadEffects>();
+        .init_resource::<RoadEffects>()
+        .init_resource::<TodayRoads>()
+        .init_resource::<CurrentCase>();
     finish_app(&mut app);
-    app.world_mut()
-        .spawn_scene(scene::road_scene(RoadId::ExampleRoad, &[]))
-        .unwrap();
+    let initial = scene::enter_road(app.world_mut(), RoadId::ExampleRoad);
+    app.world_mut().spawn_scene(initial).unwrap();
     app
 }
 
@@ -160,6 +168,8 @@ fn new_game_initializes_road_progress_and_clears_the_previous_games_changes() {
     assert!(app.world().resource::<RoadEffects>().0.is_empty());
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     let (root, _) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
 
@@ -212,6 +222,7 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         .spawn_scene(scene::road_scene(
             RoadId::ExampleRoad,
             &[RoadEffect::FallingObject],
+            "",
         ))
         .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
@@ -230,17 +241,20 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         initial_root
     );
     assert_absent::<ConstructionDetour>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
 
     for destination in [RoadId::MarketRoad, RoadId::ExampleRoad, RoadId::MarketRoad] {
         let old_root = single::<SceneRoot>(&mut app);
         let old_scene = scene_entities(app.world(), old_root);
         let player = single::<Player>(&mut app);
         let point = single::<SwitchPoint>(&mut app);
+        let visited = app.world().resource::<TodayRoads>().0.clone();
         open_destinations(app.world_mut(), point, player);
         assert_removed(&app, &old_scene);
         assert_absent::<FallingObject>(&mut app);
         assert_absent::<ConstructionDetour>(&mut app);
         assert_eq!(app.world().resource::<RoadEffects>().0, effects);
+        assert_eq!(app.world().resource::<TodayRoads>().0, visited);
 
         activate(&mut app, destination);
         let (root, _) = assert_road(&mut app, destination);
@@ -257,6 +271,7 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
             assert_absent::<ConstructionDetour>(&mut app);
         }
         assert_eq!(app.world().resource::<RoadEffects>().0, effects);
+        assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     }
 }
 
@@ -280,6 +295,7 @@ fn playing_loads_the_configured_initial_road_without_requiring_outgoing_connecti
     app.update();
 
     assert_road(&mut app, RoadId::MarketRoad);
+    assert_today_roads(&app, &[RoadId::MarketRoad]);
     assert_commute(&app, CommuteState::Running);
 }
 
@@ -296,6 +312,8 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     app.update();
 
     let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     let spawn = app.world().get::<Position>(player).unwrap().0;
     assert_commute(&app, CommuteState::Running);
     let initial_elapsed = app.world().resource::<CommuteTime>().elapsed;
@@ -363,6 +381,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         assert!(app.world().resource::<CommuteTime>().elapsed > before);
 
         let point = single::<SwitchPoint>(&mut app);
+        let visited = app.world().resource::<TodayRoads>().0.clone();
         let center = app
             .world()
             .get::<GlobalTransform>(point)
@@ -379,6 +398,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         app.update();
         assert_removed(&app, &old_road);
         let map = assert_map(&mut app, choices);
+        assert_eq!(app.world().resource::<TodayRoads>().0, visited);
         let old_map = scene_entities(app.world(), map);
         assert_commute(&app, CommuteState::Paused);
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
@@ -388,6 +408,14 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         activate(&mut app, destination);
         assert_removed(&app, &old_map);
         let (_, next_player) = assert_road(&mut app, destination);
+        assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
+        if destination == RoadId::Court {
+            let selected = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
+            assert!(app.world().resource::<TodayRoads>().0.contains(&selected.road));
+            assert_eq!(selected.case, app.world().resource::<CaseDefs>().0[0]);
+        } else {
+            assert!(app.world().resource::<CurrentCase>().0.is_none());
+        }
         assert_ne!(next_player, player);
         assert_eq!(app.world().get::<Position>(next_player).unwrap().0, spawn);
         assert_eq!(
@@ -452,6 +480,8 @@ fn weekday_navigation_only_offers_unlocked_neighbors_and_rechecks_before_travel(
     select_destination(app.world_mut(), button);
     assert_eq!(single::<SceneRoot>(&mut app), root);
     assert_absent::<Player>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
 }
 
 #[test]
@@ -507,9 +537,11 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
     assert_removed(&app, &[extra_root, extra_child]);
     assert!(app.world().get_entity(unrelated).is_ok());
     assert_map(&mut app, &[RoadId::MarketRoad]);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     activate(&mut app, RoadId::MarketRoad);
     assert_road(&mut app, RoadId::MarketRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
@@ -518,8 +550,13 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
 
     open_unlock_map(app.world_mut());
     assert_map(&mut app, &[RoadId::EmptyRoad1]);
+    assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     activate(&mut app, RoadId::EmptyRoad1);
     assert_road(&mut app, RoadId::EmptyRoad1);
+    assert_today_roads(
+        &app,
+        &[RoadId::ExampleRoad, RoadId::MarketRoad, RoadId::EmptyRoad1],
+    );
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
     app.update();
@@ -572,6 +609,8 @@ fn navigation_rejects_invalid_actors_and_destinations() {
     assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
     assert!(app.world().get_entity(player).is_ok());
     assert_absent::<TravelUiRoot>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     app.world_mut().despawn(foreign_root);
     app.world_mut().despawn(orphan);
 
@@ -585,6 +624,8 @@ fn navigation_rejects_invalid_actors_and_destinations() {
     select_destination(app.world_mut(), button);
     assert_eq!(single::<SceneRoot>(&mut app), map);
     assert_absent::<Player>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
 }
 
 #[test]
