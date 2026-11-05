@@ -110,9 +110,7 @@ fn unvisited_roads_and_roads_without_available_cases_are_excluded() {
 #[test]
 fn selection_is_uniform_by_road_then_by_available_case() {
     let today = TodayRoads([RoadId::ExampleRoad, RoadId::MarketRoad].into());
-    let effects = RoadEffects(
-        [(RoadId::ExampleRoad, vec![RoadEffect::FallingObject])].into(),
-    );
+    let effects = RoadEffects([(RoadId::ExampleRoad, vec![RoadEffect::FallingObject])].into());
     let cases = CaseDefs(vec![
         case(
             "first",
@@ -124,11 +122,7 @@ fn selection_is_uniform_by_road_then_by_available_case() {
             RoadEffect::FallingObject,
             RoadEffect::PlaceholderA,
         ),
-        case(
-            "third",
-            RoadEffect::PlaceholderA,
-            RoadEffect::PlaceholderB,
-        ),
+        case("third", RoadEffect::PlaceholderA, RoadEffect::PlaceholderB),
     ]);
     let mut rng = StdRng::seed_from_u64(41);
     let mut road_counts = [0_u32; 2];
@@ -161,9 +155,6 @@ fn selection_is_uniform_by_road_then_by_available_case() {
         assert!((10_800..=13_200).contains(&count), "{road_counts:?}");
     }
     for count in market_case_counts {
-        assert!(
-            (3_400..=4_600).contains(&count),
-            "{market_case_counts:?}",
-        );
+        assert!((3_400..=4_600).contains(&count), "{market_case_counts:?}",);
     }
 }
