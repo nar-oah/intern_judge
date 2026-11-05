@@ -82,7 +82,7 @@ struct ConfigAssets {
     roads: Handle<RoadGraph>,
     #[asset(path = "buildings.values.ron")]
     buildings: Handle<BuildingValues>,
-    #[asset(path = "cases.ron")]
+    #[asset(path = "court.cases.ron")]
     cases: Handle<CaseDefs>,
 }
 

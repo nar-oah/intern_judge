@@ -155,6 +155,6 @@ fn selection_is_uniform_by_road_then_by_available_case() {
         assert!((10_800..=13_200).contains(&count), "{road_counts:?}");
     }
     for count in market_case_counts {
-        assert!((3_400..=4_600).contains(&count), "{market_case_counts:?}",);
+        assert!((3_400..=4_600).contains(&count), "{market_case_counts:?}");
     }
 }
