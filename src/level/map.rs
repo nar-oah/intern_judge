@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../tests/level/map/mod.rs"]
 mod tests;
 use super::RoadId;
 use crate::config::RoadGraph;

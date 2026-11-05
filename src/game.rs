@@ -1,5 +1,6 @@
 pub mod calendar;
 #[cfg(test)]
+#[path = "../tests/game/mod.rs"]
 mod tests;
 use crate::config::{GameSettings, GameState};
 use bevy::prelude::*;

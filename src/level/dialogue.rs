@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../tests/level/dialogue/mod.rs"]
 mod tests;
 pub(super) mod ui;
 use super::{
