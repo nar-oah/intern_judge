@@ -4,10 +4,10 @@ use super::super::{
     platform::platform_scene,
 };
 use crate::{
-    level::{RoadEffect, RoadId, SceneRoot},
+    level::{RoadEffect, RoadId, SceneRoot, ui::case_hud_scene},
     player::player_scene,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, ui::experimental::GhostNode};
 use rand::seq::IndexedRandom;
 
 const FALLING_X: [f32; 3] = [-280.0, 0.0, 280.0];
@@ -15,6 +15,7 @@ const FALLING_X: [f32; 3] = [-280.0, 0.0, 280.0];
 pub(in crate::level::scene) fn court_scene(
     effects: &[RoadEffect],
     dialogue_prefix: &str,
+    case_road: RoadId,
 ) -> impl Scene + use<> {
     let falling_object = effects.contains(&RoadEffect::FallingObject).then(|| {
         let x = *FALLING_X.choose(&mut rand::rng()).unwrap();
@@ -28,9 +29,12 @@ pub(in crate::level::scene) fn court_scene(
         #Court
         SceneRoot
         RoadId::Court
+        GhostNode
         Transform::default()
         Visibility::default()
         Children [
+            @case_hud_scene(case_road)
+            --
             @player_scene(Vec2::new(-460.0, -130.0))
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))

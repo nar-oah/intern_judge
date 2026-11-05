@@ -402,6 +402,7 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
             RoadId::ExampleRoad,
             &[RoadEffect::FallingObject],
             "",
+            RoadId::ExampleRoad,
         ))
         .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
