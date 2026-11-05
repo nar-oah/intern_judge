@@ -280,12 +280,20 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
         (1, Some(false), true),
         (2, None, false),
     ] {
-        let (mut app, player, bench) = court_app();
+        let mut app = road_app();
+        app.insert_resource(InitialRoad(RoadId::MarketRoad))
+            .insert_resource(CaseDefs(vec![CaseDef {
+                dialogue_prefix: "loose_sign".into(),
+                guilty: RoadEffect::PlaceholderA,
+                not_guilty: RoadEffect::PlaceholderB,
+            }]));
+        crate::level::day::start_day(app.world_mut());
+        let (player, bench) = enter_court(&mut app);
         let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
-        assert_eq!(selected.road, RoadId::ExampleRoad);
+        assert_eq!(selected.road, RoadId::MarketRoad);
         let mut expected_effects = HashMap::from([
             (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
-            (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
+            (RoadId::ExampleRoad, vec![RoadEffect::FallingObject]),
         ]);
         let effect = expected.map(|guilty| {
             if guilty {
@@ -338,7 +346,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
             assert!(app.world().get_entity(bench).is_err());
             single::<Player>(&mut app);
             let root = single::<SceneRoot>(&mut app);
-            assert_eq!(app.world().get::<RoadId>(root), Some(&RoadId::ExampleRoad));
+            assert_eq!(app.world().get::<RoadId>(root), Some(&RoadId::MarketRoad));
         } else {
             assert!(app.world().get_entity(player).is_ok());
             assert!(app.world().get_entity(bench).is_ok());
@@ -350,6 +358,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
     for elapsed_days in [2, 6] {
         let (mut app, player, _) = court_app();
+        let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
         let balance = app.world().resource::<Money>().0;
         let root = single::<SceneRoot>(&mut app);
@@ -388,13 +397,14 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
         assert!(app.world().get_entity(root).is_ok());
         assert!(app.world().get::<DialogueRunner>(player).is_some());
         assert!(app.world().contains_resource::<DayEndRequested>());
+        assert!(app.world().resource::<CurrentCase>().0.is_none());
         assert_eq!(
             app.world().resource::<GameCalendar>().elapsed_days,
             elapsed_days
         );
         assert_eq!(
-            app.world().resource::<RoadEffects>().0[&RoadId::ExampleRoad],
-            [RoadEffect::FallingObject]
+            app.world().resource::<RoadEffects>().0[&selected.road],
+            [selected.case.guilty]
         );
 
         press_e(&mut app);
@@ -423,6 +433,7 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
 #[test]
 fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
     let (mut app, player, bench) = court_app();
+    let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 6;
     let balance = app.world().resource::<Money>().0;
     approach(&mut app, player, bench);
@@ -437,6 +448,7 @@ fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
     assert_eq!(app.world().resource::<Money>().0, balance);
     assert!(!app.world().contains_resource::<DayEndRequested>());
+    assert_current_case(&app, &selected);
     let world = app.world_mut();
     assert!(world.query::<&WeeklyBill>().iter(world).next().is_none());
 }
@@ -444,6 +456,7 @@ fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
 #[test]
 fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship() {
     let (mut app, player, bench) = court_app();
+    let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 27;
     approach(&mut app, player, bench);
     press_e(&mut app);
@@ -466,9 +479,10 @@ fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship(
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
     single::<InternshipEnded>(&mut app);
     assert_eq!(
-        app.world().resource::<RoadEffects>().0[&RoadId::MarketRoad],
-        [RoadEffect::ConstructionDetour]
+        app.world().resource::<RoadEffects>().0[&selected.road],
+        [selected.case.not_guilty]
     );
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     assert_eq!(
         app.world().resource::<State<CommuteState>>().get(),
         &CommuteState::Paused
