@@ -417,7 +417,12 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         if destination == RoadId::Court {
             let selected = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
             assert_eq!(selected.road, RoadId::MarketRoad);
-            assert!(app.world().resource::<TodayRoads>().0.contains(&selected.road));
+            assert!(
+                app.world()
+                    .resource::<TodayRoads>()
+                    .0
+                    .contains(&selected.road)
+            );
             assert_eq!(selected.case, app.world().resource::<CaseDefs>().0[0]);
         } else {
             assert!(app.world().resource::<CurrentCase>().0.is_none());

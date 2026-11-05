@@ -24,7 +24,10 @@ pub(in crate::level::scene) struct BuildingDialogue {
 
 impl BuildingDialogue {
     pub(in crate::level::scene) fn new(asset: &'static str, node: impl Into<String>) -> Self {
-        Self { asset, node: node.into() }
+        Self {
+            asset,
+            node: node.into(),
+        }
     }
 }
 

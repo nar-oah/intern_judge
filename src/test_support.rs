@@ -1,7 +1,7 @@
 use crate::{
     config::{
-        BuildingValues, CaseDef, CaseDefs, ConvenienceKind, ConvenienceValues, GameSettings, GameState, LotteryPrize,
-        LotteryValues, RoadGraph,
+        BuildingValues, CaseDef, CaseDefs, ConvenienceKind, ConvenienceValues, GameSettings,
+        GameState, LotteryPrize, LotteryValues, RoadGraph,
     },
     game::{Stamina, calendar::GameCalendar},
     level::{RoadEffect, RoadId},

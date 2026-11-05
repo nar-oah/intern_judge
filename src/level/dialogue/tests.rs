@@ -4,7 +4,8 @@ use crate::{
     game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
         CurrentCase, InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect,
-        RoadEffects, RoadId, SceneRoot, SelectedCase, SwitchPoint, bill::WeeklyBill,
+        RoadEffects, RoadId, SceneRoot, SelectedCase, SwitchPoint,
+        bill::WeeklyBill,
         navigation::{open_destinations, select_destination},
         scene::ending::InternshipEnded,
         ui::TravelButtonAction,
