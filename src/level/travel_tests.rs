@@ -368,6 +368,11 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     app.world_mut().resource_mut::<Stamina>().0 = 42.0;
     app.world_mut().resource_mut::<HasHelmet>().0 = true;
     app.world_mut().resource_mut::<GameSettings>().commute_limit = 123.0;
+    // This road's existing effect makes its case unavailable when court is entered.
+    app.world_mut()
+        .resource_mut::<RoadEffects>()
+        .0
+        .insert(RoadId::ExampleRoad, vec![RoadEffect::FallingObject]);
     for (destination, choices) in [
         (RoadId::MarketRoad, &[RoadId::MarketRoad, RoadId::Court][..]),
         (RoadId::Court, &[RoadId::Court][..]),
@@ -411,6 +416,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
         if destination == RoadId::Court {
             let selected = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
+            assert_eq!(selected.road, RoadId::MarketRoad);
             assert!(app.world().resource::<TodayRoads>().0.contains(&selected.road));
             assert_eq!(selected.case, app.world().resource::<CaseDefs>().0[0]);
         } else {
