@@ -1,4 +1,5 @@
 mod bill;
+mod case;
 mod day;
 #[cfg(test)]
 mod day_tests;
@@ -13,12 +14,12 @@ mod tests;
 #[cfg(test)]
 mod travel_tests;
 mod ui;
-use crate::config::{GameState, RoadGraph};
+use crate::config::{CaseDef, GameState, RoadGraph};
 use bevy::prelude::*;
 use bevy_replique::prelude::{DialogueRunner, DialogueSystem};
 use leafwing_input_manager::prelude::InputManagerPlugin;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Component, Clone, Default)]
 struct SceneRoot;
@@ -40,14 +41,28 @@ pub enum RoadId {
     EmptyRoad7,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub enum RoadEffect {
     FallingObject,
     ConstructionDetour,
+    PlaceholderA,
+    PlaceholderB,
 }
 
 #[derive(Resource, Debug, Default, PartialEq, Eq)]
 pub struct RoadEffects(pub HashMap<RoadId, Vec<RoadEffect>>);
+
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
+pub struct TodayRoads(pub HashSet<RoadId>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SelectedCase {
+    pub road: RoadId,
+    pub case: CaseDef,
+}
+
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
+pub struct CurrentCase(pub Option<SelectedCase>);
 
 #[derive(Resource, Debug, Default, PartialEq, Eq)]
 pub struct RoadUnlocks(pub HashMap<RoadId, bool>);

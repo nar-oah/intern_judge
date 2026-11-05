@@ -16,15 +16,18 @@ pub(super) use convenience_store::convenience_store_scene;
 pub(super) use lottery_store::lottery_store_scene;
 pub(super) use tool_store::tool_store_scene;
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone)]
 pub(in crate::level::scene) struct BuildingDialogue {
     asset: &'static str,
-    node: &'static str,
+    node: String,
 }
 
 impl BuildingDialogue {
-    pub(in crate::level::scene) fn new(asset: &'static str, node: &'static str) -> Self {
-        Self { asset, node }
+    pub(in crate::level::scene) fn new(asset: &'static str, node: impl Into<String>) -> Self {
+        Self {
+            asset,
+            node: node.into(),
+        }
     }
 }
 
@@ -76,6 +79,6 @@ fn start_building_dialogue(
     commands.spawn_scene(dialogue_box_scene());
     start.write(StartDialogue {
         runner: request.player,
-        node: dialogue.node.into(),
+        node: dialogue.node.clone(),
     });
 }

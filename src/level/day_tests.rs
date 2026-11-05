@@ -1,6 +1,6 @@
 use super::{
-    InitialRoad, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects, RoadId,
-    RoadUnlocks, SceneRoot, SwitchPoint,
+    CurrentCase, InitialRoad, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects,
+    RoadId, RoadUnlocks, SceneRoot, SelectedCase, SwitchPoint, TodayRoads,
     bill::{WeeklyBill, confirm_bill, show_bill},
     day::{DayEndRequested, begin_next_day, start_day},
     navigation::{open_destinations, select_destination},
@@ -11,7 +11,7 @@ use super::{
     ui::{TravelButtonAction, TravelUiRoot, UiAction},
 };
 use crate::{
-    config::{GameSettings, GameState, RoadGraph},
+    config::{CaseDefs, GameSettings, GameState, RoadGraph},
     game::{
         CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar,
     },
@@ -138,14 +138,54 @@ fn assert_commute(app: &App, expected: CommuteState) {
     );
 }
 
+fn assert_today_roads(app: &App, roads: &[RoadId]) {
+    assert_eq!(
+        app.world().resource::<TodayRoads>().0,
+        roads.iter().copied().collect()
+    );
+}
+
 fn assert_day_scene(app: &mut App) {
     if app.world().resource::<GameCalendar>().is_weekend() {
         single::<TravelUiRoot>(app);
         assert_absent::<Player>(app);
+        assert_today_roads(app, &[]);
         assert_commute(app, CommuteState::Paused);
     } else {
         assert_road(app, RoadId::ExampleRoad);
+        assert_today_roads(app, &[RoadId::ExampleRoad]);
         assert_commute(app, CommuteState::Running);
+    }
+}
+
+#[test]
+fn starting_any_day_resets_the_previous_roads_and_case_before_choosing_its_scene() {
+    for elapsed_days in [0, 2, 28] {
+        let mut app = day_app(28);
+        app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
+        app.world_mut().resource_mut::<TodayRoads>().0 =
+            [RoadId::MarketRoad, RoadId::EmptyRoad1].into();
+        let case = app.world().resource::<CaseDefs>().0[0].clone();
+        app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
+            road: RoadId::MarketRoad,
+            case,
+        });
+
+        start_day(app.world_mut());
+
+        assert!(app.world().resource::<CurrentCase>().0.is_none());
+        if elapsed_days == 2 {
+            assert_road(&mut app, RoadId::ExampleRoad);
+            assert_today_roads(&app, &[RoadId::ExampleRoad]);
+        } else {
+            assert_today_roads(&app, &[]);
+            assert_absent::<Player>(&mut app);
+            if elapsed_days == 28 {
+                single::<InternshipEnded>(&mut app);
+            } else {
+                single::<TravelUiRoot>(&mut app);
+            }
+        }
     }
 }
 
@@ -233,12 +273,14 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
             .insert(RoadId::EmptyRoad1, vec![RoadId::MarketRoad]);
     });
     let map = single::<TravelUiRoot>(&mut app);
+    assert_today_roads(&app, &[]);
     let button = single::<TravelButtonAction>(&mut app);
     select_destination(app.world_mut(), button);
 
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     assert!(app.world().get_entity(map).is_err());
     let (_, player) = assert_road(&mut app, RoadId::MarketRoad);
+    assert_today_roads(&app, &[RoadId::MarketRoad]);
     advance(&mut app, 2);
     assert_commute(&app, CommuteState::Paused);
     let paused_at = app.world().resource::<CommuteTime>().elapsed;
@@ -258,6 +300,7 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     assert!(app.world().get_entity(player).is_err());
     assert_absent::<Player>(&mut app);
     let map = single::<TravelUiRoot>(&mut app);
+    assert_today_roads(&app, &[]);
     assert_eq!(
         app.world().get::<TravelUiRoot>(map).unwrap().0,
         [RoadId::EmptyRoad1]
@@ -270,6 +313,7 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     let button = single::<TravelButtonAction>(&mut app);
     select_destination(app.world_mut(), button);
     let (_, player) = assert_road(&mut app, RoadId::EmptyRoad1);
+    assert_today_roads(&app, &[RoadId::EmptyRoad1]);
     advance(&mut app, 2);
     assert!(app.world().get_entity(map).is_err());
     assert_commute(&app, CommuteState::Paused);

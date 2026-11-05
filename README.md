@@ -13,11 +13,11 @@ Bevy 0.20 + Avian 0.8 的简单平台关卡示例。运行：`cargo run`。以�
   便利店为绿色，Small 类型花费 10 元恢复 30 点体力，
   Large 类型花费 20 元恢复 60 点体力，最多恢复至 100 点；满体力或余额不足时不交易。
 - 工具店为橙色，花费 20 元购买安全帽；已有安全帽或余额不足时不交易。
-- 有罪判决为 ExampleRoad 添加高空抛物效果。效果生效后，每次进入时在该路段配置的候选横坐标中随机选择一个，从上方生成
+- 判决按当前案件配置为目标路段添加效果。高空抛物效果生效后，每次进入时在该路段配置的候选横坐标中随机选择一个，从上方生成
   一个彩色坠落方块。坠落物碰撞任何实体后消失；命中玩家时造成 2 秒眩晕，
   清零水平速度，保留垂直速度和物理模拟，结束后恢复移动操作。
   已有安全帽时消耗安全帽，免疫这次眩晕。
-- 无罪判决为 MarketRoad 添加施工绕道效果，在两个商店之间生成醒目的施工路障，阻挡通行，初始跳跃能力即可越过。
+- 施工绕道效果按路段布局生成施工路障；例如 MarketRoad 在两个商店之间生成醒目的路障，阻挡通行，初始跳跃能力即可越过。
   路障持续存在至离开路段，再次进入时按已保存的效果重新生成。
 - 彩票店为紫色，每次花费 10 元，10% 概率获得 50 元、20% 概率获得 10 元，
   其余无奖励；余额不足时不交易。
@@ -54,13 +54,13 @@ Player 不存在时，移动和交互系统自然跳过。
 法院通过 `court_scene()` 定义为普通路段，根实体标识为 `RoadId::Court`，
 中央棕色法官席复用建筑的碰撞感应区域与 E 键交互。工作日靠近后按 E，底部显示
 “请作出你的判决”，再次按 E 后显示有罪、无罪和离开按钮。
-法官席左侧为红色公诉方，右侧为蓝色辩护方，靠近按 E 可查看示例陈述，
+法官席左侧为红色公诉方，右侧为蓝色辩护方，靠近按 E 可查看抽中案件的陈述，
 再次按 E 结束陈述。三者直接使用参数化的 `dialogue_building_scene` 创建，
 通过 `BuildingDialogue` 指定 Replique 资源和节点，复用统一对话启动 Observer。
 工作日进入法院保持 `Paused`，法院对话和 `verdict()` 判决照常执行。
 法院初始已解锁，周末解锁地图不会提供进入法院的选项。
-工作日有罪判决为 ExampleRoad 添加高空抛物，无罪判决为 MarketRoad 添加施工绕道，
-同一种效果不会重复添加。判决先保存效果并请求结束当天，等待 Replique 对话结束及清理后再换天；
+工作日判决根据当前案件的 `guilty` 或 `not_guilty` 为抽中的路段添加效果，
+同一种效果不会重复添加。判决保存效果、清空当前案件并请求结束当天，等待 Replique 对话结束及清理后再换天；
 周五先显示账单，列出当前余额、本周工资、房租和结算后余额，按 E 确认后结算并换天。
 每周只结算一次，余额可以为负；最后一天为周五时，也须确认账单后才显示实习结束。
 “离开”仅关闭对话，可以再次交互，不结束当天。
@@ -68,7 +68,7 @@ Player 不存在时，移动和交互系统自然跳过。
 `assets/dialogue/court.rep` 和 `assets/dialogue/buildings.rep` 通过 `bevy_replique`
 管理法院、商店和猫咪的文案、分支及结束；工作日法院使用布尔参数判决命令。
 `src/level/dialogue.rs` 和 `src/level/dialogue/ui.rs` 负责共用对话逻辑与 BSN 对话框。
-对话框、账单和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话框、账单、涉案路段 HUD 和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
 对话推进与账单确认共用 `UiAction::Confirm`，默认绑定 E，`InputMap<UiAction>` 位于各自 BSN 根实体。
 新界面会等待前一个界面的 E 松开再接受确认，避免一次按键连续推进。
 
@@ -82,6 +82,9 @@ Player 不存在时，移动和交互系统自然跳过。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
   `convenience_stores` 按 Small、Large 类型配置 `price` 和 `stamina_recovery`。
+- `court.cases.ron`：保存 `CaseDef` 列表，每项包含 `dialogue_prefix`、`guilty`、`not_guilty`。
+  公诉和辩护台词对应 `dialogue/court.rep` 中的 `<dialogue_prefix>_prosecution`、
+  `<dialogue_prefix>_defense` 节点，共用 `verdict` 节点作出判决。
 
 `src/config.rs` 集中定义配置类型与 `ConfigPlugin` 加载逻辑，使用
 `bevy_asset_loader` 加载、`bevy_common_assets` 反序列化 RON。启动时进入
@@ -89,7 +92,7 @@ Player 不存在时，移动和交互系统自然跳过。
 进入 `GameState::MainMenu`，通过 Bevy UI / BSN 显示开始菜单。点击开始按钮后进入
 `GameState::Playing`，初始化本局数据、HUD 和周末解锁地图。
 开始菜单随状态切换清理。系统直接读取
-`GameSettings`、`RoadGraph`、`BuildingValues`，无需反复查询 `Assets<T>`。
+`GameSettings`、`RoadGraph`、`BuildingValues`、`CaseDefs`，无需反复查询 `Assets<T>`。
 
 `src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina`、
 `HasHelmet`、`GameCalendar` 和 `CommuteState`。固定参数直接读取配置，`Money` 和
@@ -135,8 +138,15 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 
 玩家的 `Stunned` 组件只记录剩余眩晕时间，原移动系统通过 `Without<Stunned>`
 跳过眩晕玩家，倒计时结束移除组件后自动恢复操作。
-当前不包含正式案件系统、随机路段选择、每日判决次数限制、每日概率、效果数量上限、
-坠落预警或每日触发次数限制。
+
+`TodayRoads(HashSet<RoadId>)` 每天重置，记录实际进入的路段，包含当天生成的初始路段，
+排除法院和地图上未选择的目的地。进入法院时，先从当天经过且仍有可用案件的路段中均匀抽取一路，
+再均匀抽取该路段的可用案件；案件的两种效果均未在该路段出现时才可用。
+`CurrentCase(Option<SelectedCase>)` 保存目标 `RoadId` 和完整 `CaseDef`，查看双方台词或选择离开时保留。
+`verdict(bool)` 将对应效果添加到目标路段（不重复添加），立即清空当前案件并请求结束当天。
+法院顶部中央的 HUD 显示 `CurrentCase` 抽中的目标路段，随法院场景一同创建和销毁。
+当前配置提供六个案件，覆盖四种效果的全部无序组合；`PlaceholderA`、`PlaceholderB` 仅保存为路段效果，不生成场景行为。
+抽取前提是当天存在可用案件，由玩家路线保证，不处理案件不足。
 
 `platform_scene(position, size)` 的尺寸写入 `Platform` 组件，并同时用于 Sprite
 和 Collider，方便以后替换为九切片或平铺贴图。便利店、工具店、彩票店和猫咪
@@ -163,14 +173,15 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 事件包含目标和玩家实体，不处理多个交互区域重叠的情况。建筑通过 BSN 的 `on(...)` 绑定统一对话
 Observer 和各自的工作日效果：所有建筑（包括法院角色）只响应暂停交互启动对话，普通建筑只响应运行交互执行交易或救援。
 切换点分别监听两种事件以导航或结束当天；路段切换由 `navigation.rs` 处理，目的地选择界面位于 `ui.rs`。
-暂不包含随机路网生成、每日猫咪刷新、跨场景救援状态保存、
-公交站或实际判案逻辑。
+暂不包含随机路网生成、每日猫咪刷新、跨场景救援状态保存或公交站。
 
 验证：`cargo test`、`cargo fmt --check`、`cargo clippy --all-targets -- -D warnings`。
 仅运行效果生命周期测试可用 `cargo test road_effects`，验证新局初始化和重置、
 切换场景的效果清理、永久效果保留，以及再次进入路段时重新生成效果。
 
-测试以游戏行为为边界：配置加载测试读取真实 RON 文件，其余测试使用独立数据，
+案件抽取单元测试验证效果可用条件与两级均匀抽样；每日记录和法院判决集成测试验证
+实际路段登记、重置、案件台词定位、效果去重及判决后的换天流程。
+测试以游戏行为为边界：配置加载测试读取真实 RON 文件，其余行为测试使用独立数值配置，
 避免调整数值时连带修改测试。移动、交易和导航规则使用轻量测试；真实键盘、
 碰撞和完整通勤流程保留无窗口集成测试。地图与 HUD 验证显示内容和可选目的地，
 不固定颜色、像素尺寸或场景内部组件清单。

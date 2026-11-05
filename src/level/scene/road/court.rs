@@ -4,15 +4,19 @@ use super::super::{
     platform::platform_scene,
 };
 use crate::{
-    level::{RoadEffect, RoadId, SceneRoot},
+    level::{RoadEffect, RoadId, SceneRoot, ui::case_hud_scene},
     player::player_scene,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, ui::experimental::GhostNode};
 use rand::seq::IndexedRandom;
 
 const FALLING_X: [f32; 3] = [-280.0, 0.0, 280.0];
 
-pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene + use<> {
+pub(in crate::level::scene) fn court_scene(
+    effects: &[RoadEffect],
+    dialogue_prefix: &str,
+    case_road: RoadId,
+) -> impl Scene + use<> {
     let falling_object = effects.contains(&RoadEffect::FallingObject).then(|| {
         let x = *FALLING_X.choose(&mut rand::rng()).unwrap();
         bsn_list! { @falling_object_scene(Vec2::new(x, 320.0)) }
@@ -25,9 +29,12 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
         #Court
         SceneRoot
         RoadId::Court
+        GhostNode
         Transform::default()
         Visibility::default()
         Children [
+            @case_hud_scene(case_road)
+            --
             @player_scene(Vec2::new(-460.0, -130.0))
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
@@ -37,7 +44,7 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
                 Vec2::new(-220.0, -127.5),
                 Vec2::new(80.0, 70.0),
                 Color::srgb(0.8, 0.3, 0.3),
-                BuildingDialogue::new("dialogue/court.rep", "prosecution"),
+                BuildingDialogue::new("dialogue/court.rep", format!("{dialogue_prefix}_prosecution")),
             )
             --
             Name::new("JudgeBench")
@@ -53,7 +60,7 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
                 Vec2::new(220.0, -127.5),
                 Vec2::new(80.0, 70.0),
                 Color::srgb(0.3, 0.45, 0.8),
-                BuildingDialogue::new("dialogue/court.rep", "defense"),
+                BuildingDialogue::new("dialogue/court.rep", format!("{dialogue_prefix}_defense")),
             )
             --
             {falling_object}

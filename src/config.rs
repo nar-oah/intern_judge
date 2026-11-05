@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests;
-use crate::level::RoadId;
+use crate::level::{RoadEffect, RoadId};
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_common_assets::ron::RonAssetPlugin;
@@ -31,6 +31,17 @@ pub struct RoadGraph {
     pub roads: HashMap<RoadId, Vec<RoadId>>,
     pub initial_unlocks: HashMap<RoadId, bool>,
 }
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+pub struct CaseDef {
+    pub dialogue_prefix: String,
+    pub guilty: RoadEffect,
+    pub not_guilty: RoadEffect,
+}
+
+#[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct CaseDefs(pub Vec<CaseDef>);
 
 #[derive(Component, Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub enum ConvenienceKind {
@@ -71,6 +82,8 @@ struct ConfigAssets {
     roads: Handle<RoadGraph>,
     #[asset(path = "buildings.values.ron")]
     buildings: Handle<BuildingValues>,
+    #[asset(path = "court.cases.ron")]
+    cases: Handle<CaseDefs>,
 }
 
 impl FromWorld for GameSettings {
@@ -106,6 +119,17 @@ impl FromWorld for BuildingValues {
     }
 }
 
+impl FromWorld for CaseDefs {
+    fn from_world(world: &mut World) -> Self {
+        let handle = &world.resource::<ConfigAssets>().cases;
+        world
+            .resource::<Assets<Self>>()
+            .get(handle)
+            .unwrap()
+            .clone()
+    }
+}
+
 pub struct ConfigPlugin;
 
 impl Plugin for ConfigPlugin {
@@ -115,6 +139,7 @@ impl Plugin for ConfigPlugin {
                 RonAssetPlugin::<GameSettings>::new(&["settings.ron"]),
                 RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
                 RonAssetPlugin::<BuildingValues>::new(&["values.ron"]),
+                RonAssetPlugin::<CaseDefs>::new(&["cases.ron"]),
             ))
             .add_loading_state(
                 LoadingState::new(GameState::Loading)
@@ -122,6 +147,7 @@ impl Plugin for ConfigPlugin {
                     .finally_init_resource::<GameSettings>()
                     .finally_init_resource::<RoadGraph>()
                     .finally_init_resource::<BuildingValues>()
+                    .finally_init_resource::<CaseDefs>()
                     .continue_to_state(GameState::MainMenu),
             );
     }

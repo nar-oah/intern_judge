@@ -1,6 +1,6 @@
 use super::{
-    BuildingType, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
-    RunningInteractRequested, SceneRoot, SwitchPoint,
+    BuildingType, CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId,
+    RoadUnlocks, RunningInteractRequested, SceneRoot, SwitchPoint, TodayRoads,
     day::start_day,
     map::MapLayout,
     navigation::{open_destinations, open_unlock_map, select_destination},
@@ -9,7 +9,7 @@ use super::{
     ui::{TravelButtonAction, TravelUiRoot},
 };
 use crate::{
-    config::{BuildingValues, ConvenienceKind, GameSettings, GameState, RoadGraph},
+    config::{BuildingValues, CaseDefs, ConvenienceKind, GameSettings, GameState, RoadGraph},
     game::{
         CommuteState, CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar,
     },
@@ -17,7 +17,15 @@ use crate::{
     test_support::{advance, finish_app, headless_app, insert_config, scene_app},
 };
 use avian2d::prelude::*;
-use bevy::{input::InputPlugin, prelude::*, state::app::StatesPlugin, ui_widgets::Activate};
+use bevy::{
+    app::{HierarchyPropagatePlugin, PropagateSet},
+    camera::{ComputedCameraValues, RenderTargetInfo, Viewport},
+    input::InputPlugin,
+    prelude::*,
+    state::app::StatesPlugin,
+    ui::{ui_layout_system, ui_surface::UiSurface, update::propagate_ui_target_cameras},
+    ui_widgets::Activate,
+};
 use leafwing_input_manager::prelude::*;
 
 fn single<C: Component>(app: &mut App) -> Entity {
@@ -119,6 +127,13 @@ fn assert_commute(app: &App, state: CommuteState) {
     assert_eq!(*app.world().resource::<State<CommuteState>>().get(), state);
 }
 
+fn assert_today_roads(app: &App, roads: &[RoadId]) {
+    assert_eq!(
+        app.world().resource::<TodayRoads>().0,
+        roads.iter().copied().collect()
+    );
+}
+
 fn level_app() -> App {
     let mut app = scene_app();
     app.add_plugins((StatesPlugin, InputPlugin))
@@ -134,12 +149,184 @@ fn navigation_app() -> App {
     let unlocks = app.world().resource::<RoadGraph>().initial_unlocks.clone();
     app.insert_resource(layout)
         .insert_resource(RoadUnlocks(unlocks))
-        .init_resource::<RoadEffects>();
+        .init_resource::<RoadEffects>()
+        .init_resource::<TodayRoads>()
+        .init_resource::<CurrentCase>();
     finish_app(&mut app);
-    app.world_mut()
-        .spawn_scene(scene::road_scene(RoadId::ExampleRoad, &[]))
-        .unwrap();
+    let initial = scene::enter_road(app.world_mut(), RoadId::ExampleRoad);
+    app.world_mut().spawn_scene(initial).unwrap();
     app
+}
+
+fn assert_no_case_hud(app: &mut App) {
+    let world = app.world_mut();
+    assert!(
+        world
+            .query::<&Name>()
+            .iter(world)
+            .all(|name| name.as_str() != "CaseHud")
+    );
+    assert!(
+        world
+            .query::<&Text>()
+            .iter(world)
+            .all(|text| !text.0.starts_with("今日涉案路段："))
+    );
+}
+
+fn enter_court(app: &mut App) -> Entity {
+    let player = single::<Player>(app);
+    let point = single::<SwitchPoint>(app);
+    open_destinations(app.world_mut(), point, player);
+    assert_no_case_hud(app);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
+    activate(app, RoadId::Court);
+    assert_road(app, RoadId::Court).0
+}
+
+fn assert_case_hud(app: &mut App, court: Entity, case_road: RoadId) -> Vec<Entity> {
+    assert_eq!(
+        app.world()
+            .resource::<CurrentCase>()
+            .0
+            .as_ref()
+            .unwrap()
+            .road,
+        case_road
+    );
+    let world = app.world_mut();
+    let panels = world
+        .query::<(Entity, &Name)>()
+        .iter(world)
+        .filter_map(|(entity, name)| (name.as_str() == "CaseHud").then_some(entity))
+        .collect::<Vec<_>>();
+    assert_eq!(panels.len(), 1);
+    let panel = panels[0];
+    assert!(world.get::<Node>(court).is_none());
+    assert!(world.get::<Node>(panel).is_some());
+    let hud_root = world.get::<ChildOf>(panel).unwrap().parent();
+    assert!(world.get::<Node>(hud_root).is_some());
+    assert_eq!(world.get::<ChildOf>(hud_root).unwrap().parent(), court);
+    let children = world.get::<Children>(panel).unwrap();
+    assert_eq!(children.len(), 1);
+    assert_eq!(
+        world.get::<Text>(children[0]).unwrap().0,
+        format!("今日涉案路段：{case_road:?}")
+    );
+    scene_entities(world, hud_root)
+}
+
+#[test]
+fn court_case_hud_shows_the_selected_road_and_is_removed_when_the_scene_is_replaced() {
+    for case_road in [RoadId::ExampleRoad, RoadId::MarketRoad] {
+        let mut app = navigation_app();
+        assert_no_case_hud(&mut app);
+        if case_road == RoadId::MarketRoad {
+            let player = single::<Player>(&mut app);
+            let point = single::<SwitchPoint>(&mut app);
+            open_destinations(app.world_mut(), point, player);
+            assert_no_case_hud(&mut app);
+            activate(&mut app, RoadId::MarketRoad);
+            assert_road(&mut app, RoadId::MarketRoad);
+            assert_no_case_hud(&mut app);
+            // Exclude ExampleRoad so selection must use the other visited road.
+            app.world_mut()
+                .resource_mut::<RoadEffects>()
+                .0
+                .insert(RoadId::ExampleRoad, vec![RoadEffect::FallingObject]);
+        }
+        let court = enter_court(&mut app);
+        let hud = assert_case_hud(&mut app, court, case_road);
+
+        let next = scene::enter_road(app.world_mut(), RoadId::ExampleRoad);
+        scene::replace_scene(app.world_mut(), [court], next);
+
+        assert_removed(&app, &hud);
+        assert_road(&mut app, RoadId::ExampleRoad);
+        assert_no_case_hud(&mut app);
+    }
+}
+
+#[test]
+fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() {
+    let mut app = level_app();
+    app.add_plugins((
+        HierarchyPropagatePlugin::<ComputedUiTargetCamera>::new(PostUpdate),
+        HierarchyPropagatePlugin::<ComputedUiRenderTargetInfo>::new(PostUpdate),
+    ))
+    .init_resource::<UiScale>()
+    .init_resource::<UiSurface>()
+    .init_resource::<bevy::text::FontCx>()
+    .init_resource::<RemSize>()
+    .init_resource::<RoadEffects>()
+    .init_resource::<CurrentCase>()
+    .insert_resource(TodayRoads([RoadId::ExampleRoad].into()))
+    .add_systems(
+        PostUpdate,
+        (propagate_ui_target_cameras, ui_layout_system).chain(),
+    )
+    .configure_sets(
+        PostUpdate,
+        (
+            PropagateSet::<ComputedUiTargetCamera>::default(),
+            PropagateSet::<ComputedUiRenderTargetInfo>::default(),
+        )
+            .after(propagate_ui_target_cameras)
+            .before(ui_layout_system),
+    );
+    let viewport_size = UVec2::new(1000, 600);
+    app.world_mut().spawn((
+        Camera2d,
+        Camera {
+            computed: ComputedCameraValues {
+                target_info: Some(RenderTargetInfo {
+                    physical_size: viewport_size,
+                    scale_factor: 1.0,
+                }),
+                ..default()
+            },
+            viewport: Some(Viewport {
+                physical_size: viewport_size,
+                ..default()
+            }),
+            ..default()
+        },
+    ));
+    finish_app(&mut app);
+    let next = scene::enter_road(app.world_mut(), RoadId::Court);
+    let court = app.world_mut().spawn_scene(next).unwrap().id();
+    let player = single::<Player>(&mut app);
+    let hud_root = assert_case_hud(&mut app, court, RoadId::ExampleRoad)[0];
+    let hud = app.world().get::<Children>(hud_root).unwrap()[0];
+    let court_transform = *app.world().get::<Transform>(court).unwrap();
+    let player_transform = *app.world().get::<Transform>(player).unwrap();
+
+    app.update();
+
+    let world = app.world();
+    let size = world.get::<ComputedNode>(hud).unwrap().size();
+    let center = world.get::<UiGlobalTransform>(hud).unwrap().translation;
+    assert!(size.x > 0.0 && size.y > 0.0);
+    assert!((center.x - viewport_size.x as f32 / 2.0).abs() <= 1.0);
+    assert!(center.y - size.y / 2.0 >= 0.0);
+    assert!(center.y + size.y / 2.0 < viewport_size.y as f32 / 4.0);
+    assert_eq!(world.get::<Transform>(court), Some(&court_transform));
+    assert_eq!(world.get::<Transform>(player), Some(&player_transform));
+}
+
+#[test]
+fn starting_a_day_removes_the_previous_courts_hud() {
+    let mut app = navigation_app();
+    app.init_resource::<InitialRoad>();
+    let court = enter_court(&mut app);
+    let hud = assert_case_hud(&mut app, court, RoadId::ExampleRoad);
+
+    start_day(app.world_mut());
+
+    assert_removed(&app, &hud);
+    assert_road(&mut app, RoadId::ExampleRoad);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
+    assert_no_case_hud(&mut app);
 }
 
 #[test]
@@ -160,6 +347,8 @@ fn new_game_initializes_road_progress_and_clears_the_previous_games_changes() {
     assert!(app.world().resource::<RoadEffects>().0.is_empty());
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     let (root, _) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     assert_absent::<FallingObject>(&mut app);
     assert_absent::<ConstructionDetour>(&mut app);
 
@@ -212,6 +401,8 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         .spawn_scene(scene::road_scene(
             RoadId::ExampleRoad,
             &[RoadEffect::FallingObject],
+            "",
+            RoadId::ExampleRoad,
         ))
         .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
@@ -230,17 +421,20 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         initial_root
     );
     assert_absent::<ConstructionDetour>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
 
     for destination in [RoadId::MarketRoad, RoadId::ExampleRoad, RoadId::MarketRoad] {
         let old_root = single::<SceneRoot>(&mut app);
         let old_scene = scene_entities(app.world(), old_root);
         let player = single::<Player>(&mut app);
         let point = single::<SwitchPoint>(&mut app);
+        let visited = app.world().resource::<TodayRoads>().0.clone();
         open_destinations(app.world_mut(), point, player);
         assert_removed(&app, &old_scene);
         assert_absent::<FallingObject>(&mut app);
         assert_absent::<ConstructionDetour>(&mut app);
         assert_eq!(app.world().resource::<RoadEffects>().0, effects);
+        assert_eq!(app.world().resource::<TodayRoads>().0, visited);
 
         activate(&mut app, destination);
         let (root, _) = assert_road(&mut app, destination);
@@ -257,6 +451,7 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
             assert_absent::<ConstructionDetour>(&mut app);
         }
         assert_eq!(app.world().resource::<RoadEffects>().0, effects);
+        assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     }
 }
 
@@ -280,6 +475,7 @@ fn playing_loads_the_configured_initial_road_without_requiring_outgoing_connecti
     app.update();
 
     assert_road(&mut app, RoadId::MarketRoad);
+    assert_today_roads(&app, &[RoadId::MarketRoad]);
     assert_commute(&app, CommuteState::Running);
 }
 
@@ -296,6 +492,8 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     app.update();
 
     let (_, player) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     let spawn = app.world().get::<Position>(player).unwrap().0;
     assert_commute(&app, CommuteState::Running);
     let initial_elapsed = app.world().resource::<CommuteTime>().elapsed;
@@ -350,6 +548,11 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     app.world_mut().resource_mut::<Stamina>().0 = 42.0;
     app.world_mut().resource_mut::<HasHelmet>().0 = true;
     app.world_mut().resource_mut::<GameSettings>().commute_limit = 123.0;
+    // This road's existing effect makes its case unavailable when court is entered.
+    app.world_mut()
+        .resource_mut::<RoadEffects>()
+        .0
+        .insert(RoadId::ExampleRoad, vec![RoadEffect::FallingObject]);
     for (destination, choices) in [
         (RoadId::MarketRoad, &[RoadId::MarketRoad, RoadId::Court][..]),
         (RoadId::Court, &[RoadId::Court][..]),
@@ -363,6 +566,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         assert!(app.world().resource::<CommuteTime>().elapsed > before);
 
         let point = single::<SwitchPoint>(&mut app);
+        let visited = app.world().resource::<TodayRoads>().0.clone();
         let center = app
             .world()
             .get::<GlobalTransform>(point)
@@ -379,6 +583,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         app.update();
         assert_removed(&app, &old_road);
         let map = assert_map(&mut app, choices);
+        assert_eq!(app.world().resource::<TodayRoads>().0, visited);
         let old_map = scene_entities(app.world(), map);
         assert_commute(&app, CommuteState::Paused);
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
@@ -388,6 +593,20 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         activate(&mut app, destination);
         assert_removed(&app, &old_map);
         let (_, next_player) = assert_road(&mut app, destination);
+        assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
+        if destination == RoadId::Court {
+            let selected = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
+            assert_eq!(selected.road, RoadId::MarketRoad);
+            assert!(
+                app.world()
+                    .resource::<TodayRoads>()
+                    .0
+                    .contains(&selected.road)
+            );
+            assert_eq!(selected.case, app.world().resource::<CaseDefs>().0[0]);
+        } else {
+            assert!(app.world().resource::<CurrentCase>().0.is_none());
+        }
         assert_ne!(next_player, player);
         assert_eq!(app.world().get::<Position>(next_player).unwrap().0, spawn);
         assert_eq!(
@@ -452,6 +671,8 @@ fn weekday_navigation_only_offers_unlocked_neighbors_and_rechecks_before_travel(
     select_destination(app.world_mut(), button);
     assert_eq!(single::<SceneRoot>(&mut app), root);
     assert_absent::<Player>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
 }
 
 #[test]
@@ -507,9 +728,11 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
     assert_removed(&app, &[extra_root, extra_child]);
     assert!(app.world().get_entity(unrelated).is_ok());
     assert_map(&mut app, &[RoadId::MarketRoad]);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     activate(&mut app, RoadId::MarketRoad);
     assert_road(&mut app, RoadId::MarketRoad);
+    assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
     assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
@@ -518,8 +741,13 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
 
     open_unlock_map(app.world_mut());
     assert_map(&mut app, &[RoadId::EmptyRoad1]);
+    assert_today_roads(&app, &[RoadId::ExampleRoad, RoadId::MarketRoad]);
     activate(&mut app, RoadId::EmptyRoad1);
     assert_road(&mut app, RoadId::EmptyRoad1);
+    assert_today_roads(
+        &app,
+        &[RoadId::ExampleRoad, RoadId::MarketRoad, RoadId::EmptyRoad1],
+    );
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
     app.update();
@@ -572,6 +800,8 @@ fn navigation_rejects_invalid_actors_and_destinations() {
     assert_eq!(app.world().get::<RoadId>(road), Some(&RoadId::ExampleRoad));
     assert!(app.world().get_entity(player).is_ok());
     assert_absent::<TravelUiRoot>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
     app.world_mut().despawn(foreign_root);
     app.world_mut().despawn(orphan);
 
@@ -585,6 +815,8 @@ fn navigation_rejects_invalid_actors_and_destinations() {
     select_destination(app.world_mut(), button);
     assert_eq!(single::<SceneRoot>(&mut app), map);
     assert_absent::<Player>(&mut app);
+    assert_today_roads(&app, &[RoadId::ExampleRoad]);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
 }
 
 #[test]
