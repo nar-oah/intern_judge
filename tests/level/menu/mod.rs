@@ -7,18 +7,10 @@ use crate::{
         ui::{TravelButtonAction, TravelUiRoot},
     },
     player::Player,
-    test_support::{advance, finish_app, insert_config, scene_app},
+    test_support::{advance, assert_absent, assert_removed, finish_app, level_app, scene_entities, single},
 };
-use bevy::{input::InputPlugin, state::app::StatesPlugin, time::TimeUpdateStrategy};
+use bevy::time::TimeUpdateStrategy;
 use std::time::Duration;
-
-fn single<C: Component>(app: &mut App) -> Entity {
-    let world = app.world_mut();
-    world
-        .query_filtered::<Entity, With<C>>()
-        .single(world)
-        .unwrap()
-}
 
 fn assert_no_gameplay(app: &mut App) {
     let world = app.world_mut();
@@ -26,15 +18,13 @@ fn assert_no_gameplay(app: &mut App) {
     assert!(!world.contains_resource::<Money>());
     assert!(!world.contains_resource::<Stamina>());
     assert!(!world.contains_resource::<HasHelmet>());
-    assert_eq!(world.query::<&Player>().iter(world).count(), 0);
-    assert_eq!(world.query::<&RoadId>().iter(world).count(), 0);
+    assert_absent::<Player>(app);
+    assert_absent::<RoadId>(app);
 }
 
 #[test]
 fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_entities() {
-    let mut app = scene_app();
-    app.add_plugins((StatesPlugin, InputPlugin));
-    insert_config(&mut app);
+    let mut app = level_app();
     app.world_mut()
         .resource_mut::<RoadGraph>()
         .initial_unlocks
@@ -47,10 +37,7 @@ fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_enti
     let camera = app.world_mut().spawn(Camera2d).id();
     finish_app(&mut app);
     assert_no_gameplay(&mut app);
-    {
-        let world = app.world_mut();
-        assert_eq!(world.query::<&SceneRoot>().iter(world).count(), 0);
-    }
+    assert_absent::<SceneRoot>(&mut app);
 
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
@@ -76,14 +63,7 @@ fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_enti
     );
     assert_no_gameplay(&mut app);
 
-    let mut menu_entities = vec![root];
-    let mut index = 0;
-    while index < menu_entities.len() {
-        if let Some(children) = app.world().get::<Children>(menu_entities[index]) {
-            menu_entities.extend(children.iter());
-        }
-        index += 1;
-    }
+    let menu_entities = scene_entities(app.world(), root);
     // Multiple activations before the transition still start only one game.
     app.world_mut().trigger(Activate { entity: button });
     app.world_mut().trigger(Activate { entity: button });
@@ -93,9 +73,7 @@ fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_enti
         *app.world().resource::<State<GameState>>().get(),
         GameState::Playing
     );
-    for entity in menu_entities {
-        assert!(app.world().get_entity(entity).is_err());
-    }
+    assert_removed(&app, &menu_entities);
     assert!(app.world().get_entity(camera).is_ok());
     assert_eq!(app.world().resource::<InitialRoad>().0, RoadId::ExampleRoad);
     let map = single::<TravelUiRoot>(&mut app);
@@ -104,11 +82,8 @@ fn menu_waits_for_start_then_opens_the_weekend_unlock_map_and_cleans_up_its_enti
         app.world().get::<TravelUiRoot>(map).unwrap().0,
         [RoadId::MarketRoad]
     );
-    {
-        let world = app.world_mut();
-        assert_eq!(world.query::<&Player>().iter(world).count(), 0);
-        assert_eq!(world.query::<&RoadId>().iter(world).count(), 0);
-    }
+    assert_absent::<Player>(&mut app);
+    assert_absent::<RoadId>(&mut app);
     assert_eq!(
         app.world().resource::<Money>().0,
         app.world().resource::<GameSettings>().initial_money
