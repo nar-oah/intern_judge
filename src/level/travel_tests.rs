@@ -246,7 +246,7 @@ fn court_case_hud_shows_the_selected_road_and_is_removed_when_the_scene_is_repla
 
 #[test]
 fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() {
-    let mut app = navigation_app();
+    let mut app = level_app();
     app.add_plugins((
         HierarchyPropagatePlugin::<ComputedUiTargetCamera>::new(PostUpdate),
         HierarchyPropagatePlugin::<ComputedUiRenderTargetInfo>::new(PostUpdate),
@@ -255,6 +255,9 @@ fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() 
     .init_resource::<UiSurface>()
     .init_resource::<bevy::text::FontCx>()
     .init_resource::<RemSize>()
+    .init_resource::<RoadEffects>()
+    .init_resource::<CurrentCase>()
+    .insert_resource(TodayRoads([RoadId::ExampleRoad].into()))
     .add_systems(
         PostUpdate,
         (propagate_ui_target_cameras, ui_layout_system).chain(),
@@ -286,7 +289,9 @@ fn court_case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() 
             ..default()
         },
     ));
-    let court = enter_court(&mut app);
+    finish_app(&mut app);
+    let next = scene::enter_road(app.world_mut(), RoadId::Court);
+    let court = app.world_mut().spawn_scene(next).unwrap().id();
     let player = single::<Player>(&mut app);
     let hud = assert_case_hud(&mut app, court, RoadId::ExampleRoad)[0];
     let court_transform = *app.world().get::<Transform>(court).unwrap();
