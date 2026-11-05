@@ -14,7 +14,8 @@ fn scene_app() -> App {
         TaskPoolPlugin::default(),
         AssetPlugin::default(),
         ScenePlugin,
-    ));
+    ))
+    .init_asset::<Font>();
     app.finish();
     app.cleanup();
     app
