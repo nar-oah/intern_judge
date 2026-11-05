@@ -14,7 +14,7 @@ fn case(prefix: &str, guilty: RoadEffect, not_guilty: RoadEffect) -> CaseDef {
 }
 
 #[test]
-fn_either_outcome_effect_makes_a_case_unavailable() {
+fn either_outcome_effect_makes_a_case_unavailable() {
     let today = TodayRoads([RoadId::ExampleRoad, RoadId::MarketRoad].into());
     for (guilty, not_guilty) in [
         (RoadEffect::FallingObject, RoadEffect::ConstructionDetour),
