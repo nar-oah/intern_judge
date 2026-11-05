@@ -12,7 +12,10 @@ use rand::seq::IndexedRandom;
 
 const FALLING_X: [f32; 3] = [-280.0, 0.0, 280.0];
 
-pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene + use<> {
+pub(in crate::level::scene) fn court_scene(
+    effects: &[RoadEffect],
+    dialogue_prefix: &str,
+) -> impl Scene + use<> {
     let falling_object = effects.contains(&RoadEffect::FallingObject).then(|| {
         let x = *FALLING_X.choose(&mut rand::rng()).unwrap();
         bsn_list! { @falling_object_scene(Vec2::new(x, 320.0)) }
@@ -37,7 +40,7 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
                 Vec2::new(-220.0, -127.5),
                 Vec2::new(80.0, 70.0),
                 Color::srgb(0.8, 0.3, 0.3),
-                BuildingDialogue::new("dialogue/court.rep", "prosecution"),
+                BuildingDialogue::new("dialogue/court.rep", format!("{dialogue_prefix}_prosecution")),
             )
             --
             Name::new("JudgeBench")
@@ -53,7 +56,7 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
                 Vec2::new(220.0, -127.5),
                 Vec2::new(80.0, 70.0),
                 Color::srgb(0.3, 0.45, 0.8),
-                BuildingDialogue::new("dialogue/court.rep", "defense"),
+                BuildingDialogue::new("dialogue/court.rep", format!("{dialogue_prefix}_defense")),
             )
             --
             {falling_object}

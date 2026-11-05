@@ -2,7 +2,7 @@
 mod tests;
 pub(super) mod ui;
 use super::{
-    RoadEffect, RoadEffects, RoadId,
+    CurrentCase, RoadEffects,
     day::DayEndRequested,
     ui::{ConfirmArmed, UiAction},
 };
@@ -110,13 +110,19 @@ fn cleanup_dialogue(
 }
 
 #[replique_command]
-fn verdict(In(guilty): In<bool>, mut effects: ResMut<RoadEffects>, mut commands: Commands) {
-    let (road, effect) = if guilty {
-        (RoadId::ExampleRoad, RoadEffect::FallingObject)
+fn verdict(
+    In(guilty): In<bool>,
+    mut current: ResMut<CurrentCase>,
+    mut effects: ResMut<RoadEffects>,
+    mut commands: Commands,
+) {
+    let selected = current.0.take().unwrap();
+    let effect = if guilty {
+        selected.case.guilty
     } else {
-        (RoadId::MarketRoad, RoadEffect::ConstructionDetour)
+        selected.case.not_guilty
     };
-    let effects = effects.0.entry(road).or_default();
+    let effects = effects.0.entry(selected.road).or_default();
     if !effects.contains(&effect) {
         effects.push(effect);
     }
