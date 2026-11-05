@@ -5,7 +5,7 @@ mod lottery_store;
 mod tests;
 mod tool_store;
 use crate::{
-    game::{CommuteState, calendar::GameCalendar},
+    game::CommuteState,
     level::{InteractRequested, Interactable, dialogue::ui::dialogue_box_scene},
     player::Player,
 };
@@ -21,7 +21,6 @@ pub(super) use tool_store::tool_store_scene;
 pub(in crate::level::scene) struct BuildingDialogue {
     asset: &'static str,
     node: &'static str,
-    weekend_node: Option<&'static str>,
     paused_only: bool,
 }
 
@@ -30,14 +29,8 @@ impl BuildingDialogue {
         Self {
             asset,
             node,
-            weekend_node: None,
             paused_only: false,
         }
-    }
-
-    pub(in crate::level::scene) fn with_weekend_node(mut self, node: &'static str) -> Self {
-        self.weekend_node = Some(node);
-        self
     }
 
     fn when_paused(mut self) -> Self {
@@ -73,15 +66,10 @@ fn building_scene(position: Vec2, size: Vec2, color: Color) -> impl Scene {
     }
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "dialogue observer uses ECS parameters"
-)]
 fn start_building_dialogue(
     request: On<InteractRequested>,
     buildings: Query<&BuildingDialogue>,
     commute: Res<State<CommuteState>>,
-    calendar: Res<GameCalendar>,
     assets: Res<AssetServer>,
     mut commands: Commands,
     mut players: Query<&mut LinearVelocity, (With<Player>, Without<DialogueRunner>)>,
@@ -96,11 +84,6 @@ fn start_building_dialogue(
     let Ok(mut velocity) = players.get_mut(request.player) else {
         return;
     };
-    let node = if calendar.is_weekend() {
-        dialogue.weekend_node.unwrap_or(dialogue.node)
-    } else {
-        dialogue.node
-    };
     velocity.x = 0.0;
     commands
         .entity(request.player)
@@ -108,6 +91,6 @@ fn start_building_dialogue(
     commands.spawn_scene(dialogue_box_scene());
     start.write(StartDialogue {
         runner: request.player,
-        node: node.into(),
+        node: dialogue.node.into(),
     });
 }

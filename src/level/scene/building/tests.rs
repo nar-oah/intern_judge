@@ -261,41 +261,6 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
 }
 
 #[test]
-fn weekend_dialogue_uses_the_information_node_even_when_court_is_paused() {
-    let mut app = building_app();
-    app.insert_resource(State::new(CommuteState::Paused));
-    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 0;
-    let entity = app
-        .world_mut()
-        .spawn_scene(dialogue_building_scene(
-            Vec2::ZERO,
-            Vec2::ONE,
-            Color::WHITE,
-            BuildingDialogue::new("dialogue/court.rep", "verdict")
-                .with_weekend_node("weekend_verdict"),
-        ))
-        .unwrap()
-        .id();
-    let player = app
-        .world_mut()
-        .spawn((Player::default(), LinearVelocity::ZERO))
-        .id();
-
-    app.world_mut()
-        .trigger(InteractRequested { entity, player });
-    app.world_mut().flush();
-
-    assert!(app.world().get::<DialogueRunner>(player).is_some());
-    let requests = app
-        .world_mut()
-        .resource_mut::<Messages<StartDialogue>>()
-        .drain()
-        .collect::<Vec<_>>();
-    assert_eq!(requests.len(), 1);
-    assert_eq!(requests[0].node.as_str(), "weekend_verdict");
-}
-
-#[test]
 fn every_building_dialogue_option_is_information_only() {
     for building in [
         BuildingType::ConvenienceStore,
