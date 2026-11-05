@@ -76,7 +76,13 @@ pub struct SwitchPoint;
 struct Interactable;
 
 #[derive(EntityEvent, Clone, Copy, Debug)]
-pub struct InteractRequested {
+pub struct RunningInteractRequested {
+    pub entity: Entity,
+    pub player: Entity,
+}
+
+#[derive(EntityEvent, Clone, Copy, Debug)]
+pub struct PausedInteractRequested {
     pub entity: Entity,
     pub player: Entity,
 }

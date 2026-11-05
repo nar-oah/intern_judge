@@ -3,8 +3,8 @@ use crate::{
     config::GameState,
     game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
-        InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-        SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
+        InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects,
+        RoadId, SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -588,7 +588,7 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
             Transform::from_xyz(0.0, -127.5, -1.0),
         ))
         .observe(
-            |_: On<InteractRequested>, mut requests: ResMut<OtherInteractions>| {
+            |_: On<PausedInteractRequested>, mut requests: ResMut<OtherInteractions>| {
                 requests.0 += 1;
             },
         )

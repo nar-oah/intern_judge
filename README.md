@@ -158,9 +158,11 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 
 建筑整体和切换点使用与占位外观同尺寸的 `Collider + Sensor + CollidingEntities`
 检测重叠，允许玩家穿过。统一交互逻辑位于 `src/level/interaction.rs`，
-每次新按下 E 向与玩家重叠的可交互目标发送一次 `InteractRequested` EntityEvent，
+每次新按下 E，根据 `CommuteState` 向与玩家重叠的可交互目标发送一次
+`RunningInteractRequested` 或 `PausedInteractRequested` EntityEvent，
 事件包含目标和玩家实体，不处理多个交互区域重叠的情况。建筑通过 BSN 的 `on(...)` 绑定统一对话
-Observer 和各自的工作日效果，切换点按通勤状态导航或结束当天；路段切换由 `navigation.rs` 处理，目的地选择界面位于 `ui.rs`。
+Observer 和各自的工作日效果：所有建筑（包括法院角色）只响应暂停交互启动对话，普通建筑只响应运行交互执行交易或救援。
+切换点分别监听两种事件以导航或结束当天；路段切换由 `navigation.rs` 处理，目的地选择界面位于 `ui.rs`。
 暂不包含随机路网生成、每日猫咪刷新、跨场景救援状态保存、
 公交站或实际判案逻辑。
 

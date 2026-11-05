@@ -1,5 +1,8 @@
-use super::{InteractRequested, Interactable};
-use crate::player::{Player, PlayerAction, Stunned};
+use super::{Interactable, PausedInteractRequested, RunningInteractRequested};
+use crate::{
+    game::CommuteState,
+    player::{Player, PlayerAction, Stunned},
+};
 use avian2d::prelude::CollidingEntities;
 use bevy::prelude::*;
 use bevy_replique::prelude::DialogueRunner;
@@ -9,6 +12,7 @@ type InteractablePlayerFilter = (With<Player>, Without<Stunned>, Without<Dialogu
 
 pub(super) fn interact(
     mut commands: Commands,
+    commute: Res<State<CommuteState>>,
     players: Query<(Entity, &ActionState<PlayerAction>), InteractablePlayerFilter>,
     targets: Query<(Entity, &CollidingEntities), With<Interactable>>,
 ) {
@@ -20,7 +24,14 @@ pub(super) fn interact(
     }
     for (entity, collisions) in &targets {
         if collisions.contains(&player) {
-            commands.trigger(InteractRequested { entity, player });
+            match commute.get() {
+                CommuteState::Running => {
+                    commands.trigger(RunningInteractRequested { entity, player });
+                }
+                CommuteState::Paused => {
+                    commands.trigger(PausedInteractRequested { entity, player });
+                }
+            }
             break;
         }
     }
