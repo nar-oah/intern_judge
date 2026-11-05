@@ -82,7 +82,7 @@ Player 不存在时，移动和交互系统自然跳过。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
   `convenience_stores` 按 Small、Large 类型配置 `price` 和 `stamina_recovery`。
-- `cases.ron`：保存 `CaseDef` 列表，每项包含 `dialogue_prefix`、`guilty`、`not_guilty`。
+- `court.cases.ron`：保存 `CaseDef` 列表，每项包含 `dialogue_prefix`、`guilty`、`not_guilty`。
   公诉和辩护台词对应 `dialogue/court.rep` 中的 `<dialogue_prefix>_prosecution`、
   `<dialogue_prefix>_defense` 节点，共用 `verdict` 节点作出判决。
 
