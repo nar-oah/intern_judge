@@ -5,7 +5,7 @@ mod platform;
 mod road;
 mod switch_point;
 
-use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, TodayRoads, case};
+use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, TodayRoads, case, ui::case_hud_scene};
 use crate::config::CaseDefs;
 use bevy::prelude::*;
 
@@ -42,7 +42,7 @@ pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
     if let Some(case_road) = case_road {
         Box::new(bsn! {
             @scene
-            Children [ @road::case_hud_scene(case_road) ]
+            Children [ @case_hud_scene(case_road) ]
         })
     } else {
         scene
