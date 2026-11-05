@@ -8,7 +8,9 @@ use crate::{
         day::DayEndRequested,
         navigation::{open_destinations, select_destination},
         scene::ending::InternshipEnded,
-        tests::support::{assert_commute, assert_road, assert_today_roads, configured_day_app, destination_button},
+        tests::support::{
+            assert_commute, assert_road, assert_today_roads, configured_day_app, destination_button,
+        },
         ui::{TravelButtonAction, TravelUiRoot},
     },
     player::{Player, PlayerPlugin},
@@ -22,13 +24,12 @@ use std::time::{Duration, Instant};
 
 fn shipped_road_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
-    app.insert_state(GameState::MainMenu)
-        .add_plugins((
-            RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
-            GamePlugin,
-            PlayerPlugin,
-            LevelPlugin,
-        ));
+    app.insert_state(GameState::MainMenu).add_plugins((
+        RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
+        GamePlugin,
+        PlayerPlugin,
+        LevelPlugin,
+    ));
     let handle = app
         .world()
         .resource::<AssetServer>()

@@ -90,4 +90,3 @@ fn rescuing_a_cat_pays_the_reward_and_removes_only_that_cat() {
     assert_removed(&app, &[cat]);
     assert!(app.world().get_entity(other_cat).is_ok());
 }
-

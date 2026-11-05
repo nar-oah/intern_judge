@@ -7,7 +7,9 @@ use crate::{
         ui::{TravelButtonAction, TravelUiRoot},
     },
     player::Player,
-    test_support::{advance, assert_absent, assert_removed, finish_app, level_app, scene_entities, single},
+    test_support::{
+        advance, assert_absent, assert_removed, finish_app, level_app, scene_entities, single,
+    },
 };
 use bevy::time::TimeUpdateStrategy;
 use std::time::Duration;

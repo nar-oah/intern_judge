@@ -78,4 +78,3 @@ impl Movement {
         self.world.resource::<Stamina>().0
     }
 }
-

@@ -7,8 +7,8 @@ use crate::{
 };
 use bevy_replique::prelude::RepliquePlugin;
 
-mod transactions;
 mod dialogue;
+mod transactions;
 
 fn building_app() -> App {
     let mut app = level_app();
@@ -68,4 +68,3 @@ fn spawn_building(app: &mut App, building: BuildingType) -> Entity {
             .id(),
     }
 }
-

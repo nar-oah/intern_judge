@@ -125,4 +125,3 @@ fn falling_object_disappears_on_real_player_platform_and_sensor_contacts() {
         );
     }
 }
-

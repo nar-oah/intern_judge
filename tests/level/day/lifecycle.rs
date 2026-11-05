@@ -3,10 +3,14 @@ use crate::{
     config::{CaseDefs, GameState},
     game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina, calendar::GameCalendar},
     level::{
-        CurrentCase, InitialRoad, RoadEffect, RoadEffects, RoadId, SceneRoot, SelectedCase, TodayRoads,
+        CurrentCase, InitialRoad, RoadEffect, RoadEffects, RoadId, SceneRoot, SelectedCase,
+        TodayRoads,
         bill::{WeeklyBill, show_bill},
         day::{DayEndRequested, begin_next_day, start_day},
-        scene::{effect::{ConstructionDetour, FallingObject}, ending::InternshipEnded},
+        scene::{
+            effect::{ConstructionDetour, FallingObject},
+            ending::InternshipEnded,
+        },
         tests::support::{assert_commute, assert_road, assert_today_roads, day_app, weekday_app},
         ui::TravelUiRoot,
     },

@@ -8,7 +8,7 @@ use crate::{
         bill::WeeklyBill,
         navigation::{open_destinations, select_destination},
         scene::ending::InternshipEnded,
-        },
+    },
     player::{Player, PlayerPlugin},
     test_support::{
         advance, assert_absent, case_def, finish_app, headless_app, named, press_e, press_key,

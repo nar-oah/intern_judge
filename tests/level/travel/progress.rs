@@ -2,9 +2,13 @@ use crate::{
     config::{GameState, RoadGraph},
     game::CommuteState,
     level::{
-        CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks, SceneRoot, SwitchPoint, TodayRoads,
+        CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
+        SceneRoot, SwitchPoint, TodayRoads,
         navigation::open_destinations,
-        scene::{self, effect::{ConstructionDetour, FallingObject}},
+        scene::{
+            self,
+            effect::{ConstructionDetour, FallingObject},
+        },
         tests::support::{activate, assert_commute, assert_road, assert_today_roads},
     },
     player::Player,

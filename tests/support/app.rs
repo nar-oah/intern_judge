@@ -1,8 +1,10 @@
 use super::insert_config;
 use crate::game::{CommuteState, Stamina};
 use avian2d::prelude::*;
-use bevy::{asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
-    state::app::StatesPlugin, time::TimeUpdateStrategy};
+use bevy::{
+    asset::AssetPlugin, input::InputPlugin, prelude::*, scene::ScenePlugin,
+    state::app::StatesPlugin, time::TimeUpdateStrategy,
+};
 use std::time::Duration;
 
 const FIXED_TIMESTEP: Duration = Duration::from_micros(15_625);
@@ -19,7 +21,8 @@ pub(crate) fn scene_app() -> App {
 /// Scene, state and keyboard support without physics or game entities.
 pub(crate) fn level_app() -> App {
     let mut app = scene_app();
-    app.add_plugins((StatesPlugin, InputPlugin)).init_state::<CommuteState>();
+    app.add_plugins((StatesPlugin, InputPlugin))
+        .init_state::<CommuteState>();
     insert_config(&mut app);
     app
 }

@@ -1,6 +1,10 @@
 use crate::{
     game::{CommuteState, calendar::GameCalendar},
-    level::{RoadId, SceneRoot, tests::support::{assert_commute, assert_road, assert_today_roads}, ui::TravelUiRoot},
+    level::{
+        RoadId, SceneRoot,
+        tests::support::{assert_commute, assert_road, assert_today_roads},
+        ui::TravelUiRoot,
+    },
     player::Player,
     test_support::{assert_absent, single},
 };

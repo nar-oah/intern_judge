@@ -1,12 +1,7 @@
 use super::*;
-use crate::{
-    game::calendar::GameCalendar,
-    level::PausedInteractRequested,
-    test_support::single,
-};
+use crate::{game::calendar::GameCalendar, level::PausedInteractRequested, test_support::single};
 use bevy_replique::prelude::{
-    DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine,
-    ResumeDialogue, ResumeInput,
+    DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, ResumeDialogue, ResumeInput,
 };
 use std::time::{Duration, Instant};
 

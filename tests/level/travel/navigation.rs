@@ -5,7 +5,10 @@ use crate::{
         CurrentCase, RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot, SwitchPoint,
         map::MapLayout,
         navigation::{open_destinations, open_unlock_map, select_destination},
-        tests::support::{activate, assert_commute, assert_map, assert_road, assert_today_roads, destination_button, navigation_app},
+        tests::support::{
+            activate, assert_commute, assert_map, assert_road, assert_today_roads,
+            destination_button, navigation_app,
+        },
         ui::{TravelButtonAction, TravelUiRoot},
     },
     player::Player,
