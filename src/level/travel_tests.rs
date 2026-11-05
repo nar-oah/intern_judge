@@ -481,16 +481,20 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
             RoadId::ExampleRoad,
             vec![RoadId::MarketRoad, RoadId::MarketRoad],
         ),
-        (RoadId::MarketRoad, vec![RoadId::Court]),
+        (RoadId::MarketRoad, vec![RoadId::EmptyRoad1]),
+        (RoadId::EmptyRoad1, vec![RoadId::MarketRoad]),
         (RoadId::Court, vec![]),
     ]
     .into();
     app.world_mut().resource_mut::<RoadUnlocks>().0 = [
         (RoadId::ExampleRoad, true),
         (RoadId::MarketRoad, false),
-        (RoadId::Court, false),
+        (RoadId::Court, true),
+        (RoadId::EmptyRoad1, false),
     ]
     .into();
+    let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
+    app.insert_resource(layout);
     let old_root = single::<SceneRoot>(&mut app);
     let old_scene = scene_entities(app.world(), old_root);
     let extra_root = app.world_mut().spawn(SceneRoot).id();
@@ -507,14 +511,16 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
     activate(&mut app, RoadId::MarketRoad);
     assert_road(&mut app, RoadId::MarketRoad);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::MarketRoad]);
-    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
+    assert!(!app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
     app.update();
     assert_commute(&app, CommuteState::Paused);
 
     open_unlock_map(app.world_mut());
-    assert_map(&mut app, &[RoadId::Court]);
-    activate(&mut app, RoadId::Court);
-    assert_road(&mut app, RoadId::Court);
+    assert_map(&mut app, &[RoadId::EmptyRoad1]);
+    activate(&mut app, RoadId::EmptyRoad1);
+    assert_road(&mut app, RoadId::EmptyRoad1);
+    assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::Court]);
     app.update();
     assert_commute(&app, CommuteState::Paused);
