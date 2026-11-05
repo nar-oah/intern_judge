@@ -1,4 +1,4 @@
-use super::{InitialRoad, RoadEffects, SceneRoot, bill, scene};
+use super::{InitialRoad, RoadEffects, RoadId, SceneRoot, bill, navigation, scene};
 use crate::game::{CommuteState, CommuteTime, Stamina, calendar::GameCalendar};
 use bevy::prelude::*;
 
@@ -22,14 +22,22 @@ pub(super) fn begin_next_day(world: &mut World) {
         return;
     }
     calendar.elapsed_days += 1;
-    let finished = calendar.is_finished();
     world.insert_resource(CommuteTime::default());
     world.insert_resource(Stamina::default());
+    start_day(world);
+}
 
+pub(super) fn start_day(world: &mut World) {
+    let calendar = world.resource::<GameCalendar>();
+    let finished = calendar.is_finished();
+    if !finished && calendar.is_weekend() {
+        navigation::open_unlock_map(world);
+        return;
+    }
+    let road = world.resource::<InitialRoad>().0;
     let next = if finished {
         Box::new(scene::ending::internship_ended_scene()) as Box<dyn Scene>
     } else {
-        let road = world.resource::<InitialRoad>().0;
         let effects = world.resource::<RoadEffects>().0.get(&road);
         scene::road_scene(road, effects.map_or(&[], Vec::as_slice))
     };
@@ -40,7 +48,7 @@ pub(super) fn begin_next_day(world: &mut World) {
     scene::replace_scene(world, roots, next);
     world
         .resource_mut::<NextState<CommuteState>>()
-        .set(if finished {
+        .set(if finished || road == RoadId::Court {
             CommuteState::Paused
         } else {
             CommuteState::Running

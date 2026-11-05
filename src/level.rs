@@ -31,6 +31,13 @@ pub enum RoadId {
     ExampleRoad,
     MarketRoad,
     Court,
+    EmptyRoad1,
+    EmptyRoad2,
+    EmptyRoad3,
+    EmptyRoad4,
+    EmptyRoad5,
+    EmptyRoad6,
+    EmptyRoad7,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,6 +48,9 @@ pub enum RoadEffect {
 
 #[derive(Resource, Debug, Default, PartialEq, Eq)]
 pub struct RoadEffects(pub HashMap<RoadId, Vec<RoadEffect>>);
+
+#[derive(Resource, Debug, Default, PartialEq, Eq)]
+pub struct RoadUnlocks(pub HashMap<RoadId, bool>);
 
 #[derive(Resource, Default)]
 pub struct InitialRoad(pub RoadId);
@@ -66,7 +76,13 @@ pub struct SwitchPoint;
 struct Interactable;
 
 #[derive(EntityEvent, Clone, Copy, Debug)]
-pub struct InteractRequested {
+pub struct RunningInteractRequested {
+    pub entity: Entity,
+    pub player: Entity,
+}
+
+#[derive(EntityEvent, Clone, Copy, Debug)]
+pub struct PausedInteractRequested {
     pub entity: Entity,
     pub player: Entity,
 }
@@ -80,16 +96,19 @@ impl Plugin for LevelPlugin {
             .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
-            .add_systems(OnEnter(GameState::Playing), |world: &mut World| {
-                world.remove_resource::<day::DayEndRequested>();
-                world.insert_resource(RoadEffects::default());
-                let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
-                world.insert_resource(layout);
-                let road = world.resource::<InitialRoad>().0;
-                let effects = world.resource::<RoadEffects>().0.get(&road);
-                let scene = scene::road_scene(road, effects.map_or(&[], Vec::as_slice));
-                world.spawn_scene(scene).unwrap();
-            })
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (|world: &mut World| {
+                    world.remove_resource::<day::DayEndRequested>();
+                    world.insert_resource(RoadEffects::default());
+                    let unlocks = world.resource::<RoadGraph>().initial_unlocks.clone();
+                    world.insert_resource(RoadUnlocks(unlocks));
+                    let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
+                    world.insert_resource(layout);
+                    day::start_day(world);
+                })
+                .after(crate::game::calendar::initialize_calendar),
+            )
             .add_systems(
                 Last,
                 day::finish_day

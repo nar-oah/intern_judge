@@ -3,8 +3,8 @@ use crate::{
     config::GameState,
     game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
-        InitialRoad, InteractRequested, Interactable, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-        SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
+        InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects,
+        RoadId, SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -60,6 +60,9 @@ fn court_app() -> (App, Entity, Entity) {
             .after(DialogueSystem::Commands),
         );
     finish_app(&mut app);
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
+    crate::level::day::start_day(app.world_mut());
+    app.update();
     let player = single::<Player>(&mut app);
     let bench = named(&mut app, "JudgeBench");
     (app, player, bench)
@@ -297,7 +300,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
 
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
-    for elapsed_days in [0, 6] {
+    for elapsed_days in [2, 6] {
         let (mut app, player, _) = court_app();
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
         let balance = app.world().resource::<Money>().0;
@@ -585,7 +588,7 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
             Transform::from_xyz(0.0, -127.5, -1.0),
         ))
         .observe(
-            |_: On<InteractRequested>, mut requests: ResMut<OtherInteractions>| {
+            |_: On<PausedInteractRequested>, mut requests: ResMut<OtherInteractions>| {
                 requests.0 += 1;
             },
         )

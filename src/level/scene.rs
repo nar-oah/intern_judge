@@ -24,5 +24,12 @@ pub(super) fn road_scene(road: RoadId, effects: &[RoadEffect]) -> Box<dyn Scene>
         RoadId::ExampleRoad => Box::new(road::example_road_scene(effects)),
         RoadId::MarketRoad => Box::new(road::market_road_scene(effects)),
         RoadId::Court => Box::new(road::court_scene(effects)),
+        RoadId::EmptyRoad1
+        | RoadId::EmptyRoad2
+        | RoadId::EmptyRoad3
+        | RoadId::EmptyRoad4
+        | RoadId::EmptyRoad5
+        | RoadId::EmptyRoad6
+        | RoadId::EmptyRoad7 => Box::new(road::empty_road_scene(road)),
     }
 }

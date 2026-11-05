@@ -1,20 +1,29 @@
 #[cfg(test)]
 mod tests;
-use super::building_scene;
+use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, LotteryValues};
 use crate::game::Money;
-use crate::level::{BuildingType, InteractRequested};
+use crate::level::{BuildingType, RunningInteractRequested};
 use bevy::prelude::*;
 
 pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -> impl Scene {
     bsn! {
-        @building_scene(position, size, Color::srgb(0.65, 0.5, 0.75))
+        @dialogue_building_scene(
+            position,
+            size,
+            Color::srgb(0.65, 0.5, 0.75),
+            BuildingDialogue::new("dialogue/buildings.rep", "lottery_store"),
+        )
         BuildingType::LotteryStore
         on(interact)
     }
 }
 
-fn interact(_: On<InteractRequested>, values: Res<BuildingValues>, mut money: ResMut<Money>) {
+fn interact(
+    _: On<RunningInteractRequested>,
+    values: Res<BuildingValues>,
+    mut money: ResMut<Money>,
+) {
     let lottery = &values.lottery;
     if money.0 < lottery.price {
         return;

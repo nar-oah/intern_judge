@@ -1,5 +1,5 @@
 use super::super::{
-    building::{CourtParticipant, court_participant_scene},
+    building::{BuildingDialogue, dialogue_building_scene},
     effect::{construction_detour_scene, falling_object_scene},
     platform::platform_scene,
 };
@@ -32,11 +32,29 @@ pub(in crate::level::scene) fn court_scene(effects: &[RoadEffect]) -> impl Scene
             --
             @platform_scene(Vec2::new(0.0, -180.0), Vec2::new(1000.0, 35.0))
             --
-            @court_participant_scene(Vec2::new(-220.0, -127.5), CourtParticipant::Prosecution)
+            Name::new("Prosecution")
+            @dialogue_building_scene(
+                Vec2::new(-220.0, -127.5),
+                Vec2::new(80.0, 70.0),
+                Color::srgb(0.8, 0.3, 0.3),
+                BuildingDialogue::new("dialogue/court.rep", "prosecution"),
+            )
             --
-            @court_participant_scene(Vec2::new(0.0, -127.5), CourtParticipant::Judge)
+            Name::new("JudgeBench")
+            @dialogue_building_scene(
+                Vec2::new(0.0, -127.5),
+                Vec2::new(120.0, 70.0),
+                Color::srgb(0.65, 0.45, 0.2),
+                BuildingDialogue::new("dialogue/court.rep", "verdict"),
+            )
             --
-            @court_participant_scene(Vec2::new(220.0, -127.5), CourtParticipant::Defense)
+            Name::new("Defense")
+            @dialogue_building_scene(
+                Vec2::new(220.0, -127.5),
+                Vec2::new(80.0, 70.0),
+                Color::srgb(0.3, 0.45, 0.8),
+                BuildingDialogue::new("dialogue/court.rep", "defense"),
+            )
             --
             {falling_object}
             --

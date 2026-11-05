@@ -29,6 +29,7 @@ pub struct GameSettings {
 #[derive(Asset, Resource, TypePath, Clone, Debug, Deserialize)]
 pub struct RoadGraph {
     pub roads: HashMap<RoadId, Vec<RoadId>>,
+    pub initial_unlocks: HashMap<RoadId, bool>,
 }
 
 #[derive(Component, Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]

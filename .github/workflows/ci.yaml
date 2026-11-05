@@ -12,6 +12,8 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
 
 jobs:
   check:
@@ -29,6 +31,9 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2.9.2
+        with:
+          cache-targets: "false"
+          prefix-key: "v1-deps-only"
 
       - name: Install Bevy Linux dependencies
         run: |

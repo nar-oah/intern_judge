@@ -11,7 +11,10 @@ use bevy::{
 };
 
 #[derive(Component, Clone, Default)]
-pub(in crate::level) struct TravelUiRoot(pub(in crate::level) Vec<RoadId>);
+pub(in crate::level) struct TravelUiRoot(
+    pub(in crate::level) Vec<RoadId>,
+    pub(in crate::level) bool,
+);
 
 #[derive(Component, Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub(in crate::level) struct TravelButtonAction(pub(in crate::level) RoadId);
@@ -30,11 +33,17 @@ const MAP_RADIUS: f32 = 24.0;
 const NODE_SIZE: Vec2 = Vec2::new(18.0, 7.0);
 
 pub(in crate::level) fn travel_ui_scene(
-    current: RoadId,
+    current: Option<RoadId>,
     destinations: Vec<RoadId>,
     graph: &RoadGraph,
     layout: &MapLayout,
 ) -> impl Scene + use<> {
+    let unlocking = current.is_none();
+    let title = if unlocking {
+        "Unlock a road"
+    } else {
+        "Road map"
+    };
     let radius = layout
         .positions
         .values()
@@ -82,7 +91,7 @@ pub(in crate::level) fn travel_ui_scene(
     bsn! {
         #TravelUi
         SceneRoot
-        TravelUiRoot(destinations)
+        TravelUiRoot(destinations, unlocking)
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
@@ -101,9 +110,9 @@ pub(in crate::level) fn travel_ui_scene(
             }
             Pickable::IGNORE
             Children [
-                @text_scene("Road map", 3.5)
+                @text_scene(title, 3.5)
                 --
-                @text_scene("Gold: Court | Blue: Current", 1.8)
+                @text_scene(if unlocking { "Gold: Court" } else { "Gold: Court | Blue: Current" }, 1.8)
                 --
                 @text_scene("Green border: Available", 1.8)
             ]
@@ -140,15 +149,22 @@ fn text_scene(label: &str, font_size: f32) -> impl Scene + use<> {
 fn road_node_scene(
     node: MapRoadNode,
     position: Vec2,
-    current: RoadId,
+    current: Option<RoadId>,
     available: bool,
 ) -> impl Scene {
     let label = match node.0 {
         RoadId::ExampleRoad => "Example Road",
         RoadId::MarketRoad => "Market Road",
         RoadId::Court => "Court",
+        RoadId::EmptyRoad1 => "Empty Road 1",
+        RoadId::EmptyRoad2 => "Empty Road 2",
+        RoadId::EmptyRoad3 => "Empty Road 3",
+        RoadId::EmptyRoad4 => "Empty Road 4",
+        RoadId::EmptyRoad5 => "Empty Road 5",
+        RoadId::EmptyRoad6 => "Empty Road 6",
+        RoadId::EmptyRoad7 => "Empty Road 7",
     };
-    let color = if node.0 == current {
+    let color = if Some(node.0) == current {
         Color::srgb(0.18, 0.38, 0.7)
     } else if node.0 == RoadId::Court {
         Color::srgb(0.65, 0.45, 0.12)
@@ -202,12 +218,14 @@ fn connection_scene(
     connection: MapConnection,
     from: Vec2,
     to: Vec2,
-    current: RoadId,
+    current: Option<RoadId>,
     destinations: &[RoadId],
 ) -> impl Scene + use<> {
     let midpoint = (from + to) / 2.0;
     let delta = to - from;
-    let color = if connection.from == current && destinations.contains(&connection.to) {
+    let color = if (current.is_none() || Some(connection.from) == current)
+        && destinations.contains(&connection.to)
+    {
         Color::srgb(0.35, 0.75, 0.5)
     } else {
         Color::srgb(0.35, 0.4, 0.5)
