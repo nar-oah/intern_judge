@@ -37,7 +37,12 @@ pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
         (road, String::new())
     };
     let effects = world.resource::<RoadEffects>().0.get(&road);
-    road_scene(road, effects.map_or(&[], Vec::as_slice), &dialogue_prefix, case_road)
+    road_scene(
+        road,
+        effects.map_or(&[], Vec::as_slice),
+        &dialogue_prefix,
+        case_road,
+    )
 }
 
 pub(super) fn road_scene(

@@ -274,7 +274,11 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
     for node in ["loose_sign_prosecution", "verdict", "loose_sign_defense"] {
         let mut app = building_app();
         app.world_mut()
-            .spawn_scene(crate::level::scene::road::court_scene(&[], "loose_sign", crate::level::RoadId::ExampleRoad))
+            .spawn_scene(crate::level::scene::road::court_scene(
+                &[],
+                "loose_sign",
+                crate::level::RoadId::ExampleRoad,
+            ))
             .unwrap();
         let world = app.world_mut();
         let player = world
