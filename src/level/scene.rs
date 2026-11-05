@@ -42,7 +42,7 @@ pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
     if let Some(case_road) = case_road {
         Box::new(bsn! {
             @scene
-            Children [ @case_hud_scene(case_road) ]
+            @case_hud_scene(case_road)
         })
     } else {
         scene
