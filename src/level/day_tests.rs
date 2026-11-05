@@ -331,11 +331,15 @@ fn shipped_roads_support_all_eight_weekend_unlocks_and_exit_into_the_next_day() 
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
 
         let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
-        let point = single::<SwitchPoint>(&mut app);
-        app.world_mut().trigger(InteractRequested {
-            entity: point,
-            player,
-        });
+        if weekend {
+            let point = single::<SwitchPoint>(&mut app);
+            app.world_mut().trigger(InteractRequested {
+                entity: point,
+                player,
+            });
+        } else {
+            app.world_mut().insert_resource(DayEndRequested);
+        }
         app.update();
         assert!(app.world().get_entity(player).is_err());
         if friday {

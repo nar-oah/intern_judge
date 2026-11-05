@@ -479,7 +479,7 @@ fn weekend_unlocks_only_the_frontier_and_enters_the_selected_road_paused() {
     app.world_mut().resource_mut::<RoadGraph>().roads = [
         (
             RoadId::ExampleRoad,
-            vec![RoadId::MarketRoad, RoadId::MarketRoad],
+            vec![RoadId::MarketRoad, RoadId::MarketRoad, RoadId::Court],
         ),
         (RoadId::MarketRoad, vec![RoadId::EmptyRoad1]),
         (RoadId::EmptyRoad1, vec![RoadId::MarketRoad]),
