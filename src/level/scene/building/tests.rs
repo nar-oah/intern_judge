@@ -74,11 +74,7 @@ fn interact(app: &mut App, entity: Entity) {
         app.world().get::<LinearVelocity>(player).unwrap().0,
         Vec2::new(42.0, 7.0)
     );
-    assert!(
-        app.world()
-            .resource::<Messages<StartDialogue>>()
-            .is_empty()
-    );
+    assert!(app.world().resource::<Messages<StartDialogue>>().is_empty());
 }
 
 fn spawn_building(app: &mut App, building: BuildingType) -> Entity {
@@ -295,14 +291,20 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
         world.flush();
 
         assert!(world.get::<DialogueRunner>(player).is_none(), "{node}");
-        assert!(world.resource::<Messages<StartDialogue>>().is_empty(), "{node}");
+        assert!(
+            world.resource::<Messages<StartDialogue>>().is_empty(),
+            "{node}"
+        );
 
         app.insert_resource(State::new(CommuteState::Paused));
         app.world_mut()
             .trigger(PausedInteractRequested { entity, player });
         app.world_mut().flush();
 
-        assert!(app.world().get::<DialogueRunner>(player).is_some(), "{node}");
+        assert!(
+            app.world().get::<DialogueRunner>(player).is_some(),
+            "{node}"
+        );
         let requests = app
             .world_mut()
             .resource_mut::<Messages<StartDialogue>>()
