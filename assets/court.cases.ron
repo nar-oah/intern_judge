@@ -10,6 +10,16 @@
         not_guilty: PlaceholderA,
     ),
     (
+        dialogue_prefix: "fallen_facade",
+        guilty: FallingObject,
+        not_guilty: PlaceholderB,
+    ),
+    (
+        dialogue_prefix: "unsafe_detour",
+        guilty: ConstructionDetour,
+        not_guilty: PlaceholderA,
+    ),
+    (
         dialogue_prefix: "blocked_sidewalk",
         guilty: ConstructionDetour,
         not_guilty: PlaceholderB,

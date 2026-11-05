@@ -85,7 +85,25 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     }
     world.resource::<BuildingValues>();
     let cases = &world.resource::<CaseDefs>().0;
-    assert_eq!(cases.len(), 4);
+    assert_eq!(cases.len(), 6);
+    let effects = [
+        RoadEffect::FallingObject,
+        RoadEffect::ConstructionDetour,
+        RoadEffect::PlaceholderA,
+        RoadEffect::PlaceholderB,
+    ];
+    for (index, &first) in effects.iter().enumerate() {
+        for &second in &effects[index + 1..] {
+            let count = cases
+                .iter()
+                .filter(|case| {
+                    (case.guilty == first && case.not_guilty == second)
+                        || (case.guilty == second && case.not_guilty == first)
+                })
+                .count();
+            assert_eq!(count, 1, "{first:?} / {second:?}");
+        }
+    }
     let prefixes = cases
         .iter()
         .map(|case| &case.dialogue_prefix)

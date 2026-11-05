@@ -30,6 +30,26 @@
 => END
 ---
 
+:= fallen_facade_prosecution
+公诉方：物业收到外墙开裂的报告后仍未排查，脱落的墙砖砸伤路人，请求判决有罪。
+=> END
+---
+
+:= fallen_facade_defense
+辩护方：物业已及时封闭危险区域，是路人擅自越过围栏进入，请求判决无罪。
+=> END
+---
+
+:= unsafe_detour_prosecution
+公诉方：施工方封闭原有道路后未设置绕行指引，导致行人在工地入口受伤，请求判决有罪。
+=> END
+---
+
+:= unsafe_detour_defense
+辩护方：施工方设置了完整的绕行标志，是运输车辆碰倒标志后未及时报告，请求判决无罪。
+=> END
+---
+
 := blocked_sidewalk_prosecution
 公诉方：施工方把建材堆在人行道上，迫使行人走入车道，请求判决有罪。
 => END
