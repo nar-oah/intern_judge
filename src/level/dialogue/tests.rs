@@ -1,10 +1,13 @@
 use super::{ui::DialogueChoiceButton, *};
 use crate::{
-    config::GameState,
+    config::{CaseDef, CaseDefs, GameState},
     game::{CommuteState, GamePlugin, Money, Stamina, calendar::GameCalendar},
     level::{
-        InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects,
-        RoadId, SceneRoot, bill::WeeklyBill, scene::ending::InternshipEnded,
+        CurrentCase, InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect,
+        RoadEffects, RoadId, SceneRoot, SelectedCase, SwitchPoint, bill::WeeklyBill,
+        navigation::{open_destinations, select_destination},
+        scene::ending::InternshipEnded,
+        ui::TravelButtonAction,
     },
     player::{Player, PlayerPlugin},
     test_support::{advance, finish_app, headless_app},
@@ -44,11 +47,11 @@ fn named(app: &mut App, expected: &str) -> Entity {
         .unwrap()
 }
 
-fn court_app() -> (App, Entity, Entity) {
+fn road_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
     app.init_asset::<Font>()
         .init_asset_loader::<bevy::text::FontLoader>()
-        .insert_resource(InitialRoad(RoadId::Court))
+        .insert_resource(InitialRoad(RoadId::ExampleRoad))
         .init_resource::<CommandsRun>()
         .init_resource::<OtherInteractions>()
         .add_plugins((GamePlugin, PlayerPlugin, LevelPlugin))
@@ -63,9 +66,41 @@ fn court_app() -> (App, Entity, Entity) {
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
     crate::level::day::start_day(app.world_mut());
     app.update();
-    let player = single::<Player>(&mut app);
-    let bench = named(&mut app, "JudgeBench");
+    app
+}
+
+fn enter_court(app: &mut App) -> (Entity, Entity) {
+    let player = single::<Player>(app);
+    let point = single::<SwitchPoint>(app);
+    open_destinations(app.world_mut(), point, player);
+    let button = {
+        let world = app.world_mut();
+        world
+            .query::<(Entity, &TravelButtonAction)>()
+            .iter(world)
+            .find_map(|(entity, destination)| (destination.0 == RoadId::Court).then_some(entity))
+            .unwrap()
+    };
+    select_destination(app.world_mut(), button);
+    app.update();
+    assert!(app.world().resource::<CurrentCase>().0.is_some());
+    let player = single::<Player>(app);
+    let bench = named(app, "JudgeBench");
+    (player, bench)
+}
+
+fn court_app() -> (App, Entity, Entity) {
+    let mut app = road_app();
+    let (player, bench) = enter_court(&mut app);
     (app, player, bench)
+}
+
+fn assert_current_case(app: &App, expected: &SelectedCase) {
+    let current = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
+    assert_eq!(current.road, expected.road);
+    assert_eq!(current.case.dialogue_prefix, expected.case.dialogue_prefix);
+    assert_eq!(current.case.guilty, expected.case.guilty);
+    assert_eq!(current.case.not_guilty, expected.case.not_guilty);
 }
 
 fn approach(app: &mut App, player: Entity, target: Entity) {
