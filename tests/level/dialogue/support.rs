@@ -26,14 +26,7 @@ pub(super) fn enter_court(app: &mut App) -> (Entity, Entity) {
     let player = single::<Player>(app);
     let point = single::<SwitchPoint>(app);
     open_destinations(app.world_mut(), point, player);
-    let button = {
-        let world = app.world_mut();
-        world
-            .query::<(Entity, &TravelButtonAction)>()
-            .iter(world)
-            .find_map(|(entity, destination)| (destination.0 == RoadId::Court).then_some(entity))
-            .unwrap()
-    };
+    let button = crate::level::tests::support::destination_button(app, RoadId::Court);
     select_destination(app.world_mut(), button);
     app.update();
     assert!(app.world().resource::<CurrentCase>().0.is_some());
