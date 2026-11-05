@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../tests/level/menu/mod.rs"]
 mod tests;
 
 use super::SceneRoot;

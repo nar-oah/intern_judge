@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../../tests/level/ui/travel/mod.rs"]
 mod tests;
 
 use crate::{

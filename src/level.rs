@@ -1,8 +1,6 @@
 mod bill;
 mod case;
 mod day;
-#[cfg(test)]
-mod day_tests;
 mod dialogue;
 mod interaction;
 mod map;
@@ -10,9 +8,8 @@ mod menu;
 mod navigation;
 mod scene;
 #[cfg(test)]
+#[path = "../tests/level/mod.rs"]
 mod tests;
-#[cfg(test)]
-mod travel_tests;
 mod ui;
 use crate::config::{CaseDef, GameState, RoadGraph};
 use bevy::prelude::*;

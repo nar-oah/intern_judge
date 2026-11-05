@@ -1,5 +1,6 @@
 mod scene;
 #[cfg(test)]
+#[path = "../tests/player/mod.rs"]
 mod tests;
 use crate::{
     config::{GameSettings, GameState},

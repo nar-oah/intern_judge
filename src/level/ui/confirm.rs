@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../../../tests/level/ui/confirm/mod.rs"]
 mod tests;
 
 use bevy::prelude::*;

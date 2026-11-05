@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[path = "../tests/config/mod.rs"]
 mod tests;
 use crate::level::{RoadEffect, RoadId};
 use bevy::prelude::*;
