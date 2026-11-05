@@ -150,6 +150,107 @@ fn navigation_app() -> App {
     app
 }
 
+fn assert_no_case_hud(app: &mut App) {
+    let world = app.world_mut();
+    assert!(
+        world
+            .query::<&Name>()
+            .iter(world)
+            .all(|name| name.as_str() != "CaseHud")
+    );
+    assert!(
+        world
+            .query::<&Text>()
+            .iter(world)
+            .all(|text| !text.0.starts_with("今日涉案路段："))
+    );
+}
+
+fn enter_court(app: &mut App) -> Entity {
+    let player = single::<Player>(app);
+    let point = single::<SwitchPoint>(app);
+    open_destinations(app.world_mut(), point, player);
+    assert_no_case_hud(app);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
+    activate(app, RoadId::Court);
+    assert_road(app, RoadId::Court).0
+}
+
+fn assert_case_hud(app: &mut App, court: Entity, case_road: RoadId) -> Vec<Entity> {
+    assert_eq!(
+        app.world()
+            .resource::<CurrentCase>()
+            .0
+            .as_ref()
+            .unwrap()
+            .road,
+        case_road
+    );
+    let world = app.world_mut();
+    let panels = world
+        .query::<(Entity, &Name)>()
+        .iter(world)
+        .filter_map(|(entity, name)| (name.as_str() == "CaseHud").then_some(entity))
+        .collect::<Vec<_>>();
+    assert_eq!(panels.len(), 1);
+    let panel = panels[0];
+    assert!(world.get::<Node>(panel).is_some());
+    assert_eq!(world.get::<ChildOf>(panel).unwrap().parent(), court);
+    let children = world.get::<Children>(panel).unwrap();
+    assert_eq!(children.len(), 1);
+    assert_eq!(
+        world.get::<Text>(children[0]).unwrap().0,
+        format!("今日涉案路段：{case_road:?}")
+    );
+    scene_entities(world, panel)
+}
+
+#[test]
+fn court_case_hud_shows_the_selected_road_and_is_removed_when_the_scene_is_replaced() {
+    for case_road in [RoadId::ExampleRoad, RoadId::MarketRoad] {
+        let mut app = navigation_app();
+        assert_no_case_hud(&mut app);
+        if case_road == RoadId::MarketRoad {
+            let player = single::<Player>(&mut app);
+            let point = single::<SwitchPoint>(&mut app);
+            open_destinations(app.world_mut(), point, player);
+            assert_no_case_hud(&mut app);
+            activate(&mut app, RoadId::MarketRoad);
+            assert_road(&mut app, RoadId::MarketRoad);
+            assert_no_case_hud(&mut app);
+            // Exclude ExampleRoad so selection must use the other visited road.
+            app.world_mut()
+                .resource_mut::<RoadEffects>()
+                .0
+                .insert(RoadId::ExampleRoad, vec![RoadEffect::FallingObject]);
+        }
+        let court = enter_court(&mut app);
+        let hud = assert_case_hud(&mut app, court, case_road);
+
+        let next = scene::enter_road(app.world_mut(), RoadId::ExampleRoad);
+        scene::replace_scene(app.world_mut(), [court], next);
+
+        assert_removed(&app, &hud);
+        assert_road(&mut app, RoadId::ExampleRoad);
+        assert_no_case_hud(&mut app);
+    }
+}
+
+#[test]
+fn starting_a_day_removes_the_previous_courts_hud() {
+    let mut app = navigation_app();
+    app.init_resource::<InitialRoad>();
+    let court = enter_court(&mut app);
+    let hud = assert_case_hud(&mut app, court, RoadId::ExampleRoad);
+
+    start_day(app.world_mut());
+
+    assert_removed(&app, &hud);
+    assert_road(&mut app, RoadId::ExampleRoad);
+    assert!(app.world().resource::<CurrentCase>().0.is_none());
+    assert_no_case_hud(&mut app);
+}
+
 #[test]
 fn new_game_initializes_road_progress_and_clears_the_previous_games_changes() {
     let mut app = level_app();
