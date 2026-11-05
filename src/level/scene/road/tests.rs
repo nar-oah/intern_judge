@@ -22,17 +22,24 @@ fn scene_app() -> App {
 
 #[test]
 fn each_road_composes_only_its_requested_effects() {
-    let effect_sets: [&[RoadEffect]; 4] = [
+    let effect_sets: [&[RoadEffect]; 6] = [
         &[],
         &[RoadEffect::FallingObject],
         &[RoadEffect::ConstructionDetour],
         &[RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
+        &[RoadEffect::PlaceholderA, RoadEffect::PlaceholderB],
+        &[
+            RoadEffect::FallingObject,
+            RoadEffect::ConstructionDetour,
+            RoadEffect::PlaceholderA,
+            RoadEffect::PlaceholderB,
+        ],
     ];
     for road in [RoadId::ExampleRoad, RoadId::MarketRoad, RoadId::Court] {
         for effects in effect_sets {
             let mut app = scene_app();
             app.world_mut()
-                .spawn_scene(road_scene(road, effects))
+                .spawn_scene(road_scene(road, effects, "loose_sign"))
                 .unwrap();
             let world = app.world_mut();
 
@@ -73,6 +80,7 @@ fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
             .spawn_scene(road_scene(
                 road,
                 &[RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
+                "",
             ))
             .unwrap()
             .id();
@@ -116,6 +124,7 @@ fn entering_example_road_spawns_one_object_at_a_layout_candidate() {
             .spawn_scene(road_scene(
                 RoadId::ExampleRoad,
                 &[RoadEffect::FallingObject],
+                "",
             ))
             .unwrap()
             .id();
@@ -138,6 +147,7 @@ fn market_detour_stands_on_ground_between_the_stores() {
         .spawn_scene(road_scene(
             RoadId::MarketRoad,
             &[RoadEffect::ConstructionDetour],
+            "",
         ))
         .unwrap();
     let (transform, sprite) = world

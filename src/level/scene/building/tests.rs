@@ -271,10 +271,10 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
 
 #[test]
 fn court_characters_start_dialogue_only_for_paused_interactions() {
-    for node in ["prosecution", "verdict", "defense"] {
+    for node in ["loose_sign_prosecution", "verdict", "loose_sign_defense"] {
         let mut app = building_app();
         app.world_mut()
-            .spawn_scene(crate::level::scene::road::court_scene(&[]))
+            .spawn_scene(crate::level::scene::road::court_scene(&[], "loose_sign"))
             .unwrap();
         let world = app.world_mut();
         let player = world

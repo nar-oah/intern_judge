@@ -136,6 +136,7 @@ fn market_detour_blocks_walking_and_can_be_cleared_by_the_initial_jump() {
         .spawn_scene(road_scene(
             RoadId::MarketRoad,
             &[RoadEffect::ConstructionDetour],
+            "",
         ))
         .unwrap();
     let world = app.world_mut();

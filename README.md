@@ -82,6 +82,9 @@ Player 不存在时，移动和交互系统自然跳过。
 - `buildings.values.ron`：`cat_reward` 为统一猫咪奖励；`lottery` 配置彩票 `price`
   及 `prizes`，每项使用 `reward` 和 `weight` 定义奖励与相对权重；
   `convenience_stores` 按 Small、Large 类型配置 `price` 和 `stamina_recovery`。
+- `cases.ron`：保存 `CaseDef` 列表，每项包含 `dialogue_prefix`、`guilty`、`not_guilty`。
+  公诉和辩护台词对应 `dialogue/court.rep` 中的 `<dialogue_prefix>_prosecution`、
+  `<dialogue_prefix>_defense` 节点，共用 `verdict` 节点作出判决。
 
 `src/config.rs` 集中定义配置类型与 `ConfigPlugin` 加载逻辑，使用
 `bevy_asset_loader` 加载、`bevy_common_assets` 反序列化 RON。启动时进入
@@ -89,7 +92,7 @@ Player 不存在时，移动和交互系统自然跳过。
 进入 `GameState::MainMenu`，通过 Bevy UI / BSN 显示开始菜单。点击开始按钮后进入
 `GameState::Playing`，初始化本局数据、HUD 和周末解锁地图。
 开始菜单随状态切换清理。系统直接读取
-`GameSettings`、`RoadGraph`、`BuildingValues`，无需反复查询 `Assets<T>`。
+`GameSettings`、`RoadGraph`、`BuildingValues`、`CaseDefs`，无需反复查询 `Assets<T>`。
 
 `src/game.rs` 的 `GamePlugin` 管理全局 `CommuteTime`、`Money`、`Stamina`、
 `HasHelmet`、`GameCalendar` 和 `CommuteState`。固定参数直接读取配置，`Money` 和
@@ -135,8 +138,14 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 
 玩家的 `Stunned` 组件只记录剩余眩晕时间，原移动系统通过 `Without<Stunned>`
 跳过眩晕玩家，倒计时结束移除组件后自动恢复操作。
-当前不包含正式案件系统、随机路段选择、每日判决次数限制、每日概率、效果数量上限、
-坠落预警或每日触发次数限制。
+
+`TodayRoads(HashSet<RoadId>)` 每天重置，记录实际进入的路段，包含当天生成的初始路段，
+排除法院和地图上未选择的目的地。进入法院时，先从当天经过且仍有可用案件的路段中均匀抽取一路，
+再均匀抽取该路段的可用案件；案件的两种效果均未在该路段出现时才可用。
+`CurrentCase(Option<SelectedCase>)` 保存目标 `RoadId` 和完整 `CaseDef`，查看双方台词或选择离开时保留。
+`verdict(bool)` 将对应效果添加到目标路段（不重复添加），立即清空当前案件并请求结束当天。
+当前配置提供四个案件；`PlaceholderA`、`PlaceholderB` 仅保存为路段效果，不生成场景行为。
+抽取前提是当天存在可用案件，由玩家路线保证，不处理案件不足。
 
 `platform_scene(position, size)` 的尺寸写入 `Platform` 组件，并同时用于 Sprite
 和 Collider，方便以后替换为九切片或平铺贴图。便利店、工具店、彩票店和猫咪
