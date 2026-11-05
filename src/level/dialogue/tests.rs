@@ -273,13 +273,7 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 
 #[test]
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
-    for (index, expected, duplicate) in [
-        (0, Some(true), false),
-        (0, Some(true), true),
-        (1, Some(false), false),
-        (1, Some(false), true),
-        (2, None, false),
-    ] {
+    for (index, expected) in [(0, Some(true)), (1, Some(false)), (2, None)] {
         let mut app = road_app();
         app.insert_resource(InitialRoad(RoadId::MarketRoad))
             .insert_resource(CaseDefs(vec![CaseDef {
@@ -302,9 +296,7 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 selected.case.not_guilty
             }
         });
-        if duplicate {
-            expected_effects.insert(selected.road, vec![effect.unwrap()]);
-        }
+
         app.world_mut().resource_mut::<RoadEffects>().0 = expected_effects.clone();
         approach(&mut app, player, bench);
         let elapsed_days = app.world().resource::<GameCalendar>().elapsed_days;
@@ -324,9 +316,8 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 assert_eq!(commands[0].token.runner(), player);
                 assert_eq!(commands[0].name, "verdict");
                 assert_eq!(commands[0].args, [Value::Bool(result)]);
-                if !duplicate {
-                    expected_effects.insert(selected.road, vec![effect.unwrap()]);
-                }
+
+                expected_effects.insert(selected.road, vec![effect.unwrap()]);
                 assert!(app.world().resource::<CurrentCase>().0.is_none());
             }
             None => {

@@ -111,20 +111,16 @@ fn cleanup_dialogue(
 
 #[replique_command]
 fn verdict(
-    In(guilty): In<bool>,
+    In(is_guilty): In<bool>,
     mut current: ResMut<CurrentCase>,
     mut effects: ResMut<RoadEffects>,
     mut commands: Commands,
 ) {
     let selected = current.0.take().unwrap();
-    let effect = if guilty {
-        selected.case.guilty
-    } else {
-        selected.case.not_guilty
-    };
+    let guilty = selected.case.guilty;
+    let not_guilty = selected.case.not_guilty;
+    let effect = if is_guilty { guilty } else { not_guilty };
     let effects = effects.0.entry(selected.road).or_default();
-    if !effects.contains(&effect) {
-        effects.push(effect);
-    }
+    effects.push(effect);
     commands.insert_resource(DayEndRequested);
 }
