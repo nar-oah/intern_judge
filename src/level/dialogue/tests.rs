@@ -272,26 +272,39 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 
 #[test]
 fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
-    let (mut app, mut player, mut bench) = court_app();
-    let mut expected_effects = HashMap::from([
-        (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
-        (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
-    ]);
-    app.world_mut().resource_mut::<RoadEffects>().0 = expected_effects.clone();
-    for (index, expected) in [
-        (0, Some(true)),
-        (0, Some(true)),
-        (1, Some(false)),
-        (1, Some(false)),
-        (2, None),
+    for (index, expected, duplicate) in [
+        (0, Some(true), false),
+        (0, Some(true), true),
+        (1, Some(false), false),
+        (1, Some(false), true),
+        (2, None, false),
     ] {
+        let (mut app, player, bench) = court_app();
+        let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
+        assert_eq!(selected.road, RoadId::ExampleRoad);
+        let mut expected_effects = HashMap::from([
+            (RoadId::Court, vec![RoadEffect::ConstructionDetour]),
+            (RoadId::MarketRoad, vec![RoadEffect::FallingObject]),
+        ]);
+        let effect = expected.map(|guilty| {
+            if guilty {
+                selected.case.guilty
+            } else {
+                selected.case.not_guilty
+            }
+        });
+        if duplicate {
+            expected_effects.insert(selected.road, vec![effect.unwrap()]);
+        }
+        app.world_mut().resource_mut::<RoadEffects>().0 = expected_effects.clone();
         approach(&mut app, player, bench);
         let elapsed_days = app.world().resource::<GameCalendar>().elapsed_days;
-        app.world_mut().resource_mut::<CommandsRun>().0.clear();
         press_e(&mut app);
         wait_for_dialogue(&mut app, false);
+        assert_current_case(&app, &selected);
         press_e(&mut app);
         wait_for_dialogue(&mut app, true);
+        assert_current_case(&app, &selected);
         select(&mut app, index);
         assert_closed(&mut app, player);
 
@@ -302,17 +315,15 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 assert_eq!(commands[0].token.runner(), player);
                 assert_eq!(commands[0].name, "verdict");
                 assert_eq!(commands[0].args, [Value::Bool(result)]);
-                let (road, effects) = if result {
-                    (RoadId::ExampleRoad, vec![RoadEffect::FallingObject])
-                } else {
-                    (
-                        RoadId::MarketRoad,
-                        vec![RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
-                    )
-                };
-                expected_effects.insert(road, effects);
+                if !duplicate {
+                    expected_effects.insert(selected.road, vec![effect.unwrap()]);
+                }
+                assert!(app.world().resource::<CurrentCase>().0.is_none());
             }
-            None => assert!(commands.is_empty(), "leaving must not issue a verdict"),
+            None => {
+                assert!(commands.is_empty(), "leaving must not issue a verdict");
+                assert_current_case(&app, &selected);
+            }
         }
         assert_eq!(app.world().resource::<RoadEffects>().0, expected_effects);
         advance(&mut app, 4);
@@ -324,8 +335,9 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
         if expected.is_some() {
             assert!(app.world().get_entity(player).is_err());
             assert!(app.world().get_entity(bench).is_err());
-            player = single::<Player>(&mut app);
-            bench = named(&mut app, "JudgeBench");
+            single::<Player>(&mut app);
+            let root = single::<SceneRoot>(&mut app);
+            assert_eq!(app.world().get::<RoadId>(root), Some(&RoadId::ExampleRoad));
         } else {
             assert!(app.world().get_entity(player).is_ok());
             assert!(app.world().get_entity(bench).is_ok());
