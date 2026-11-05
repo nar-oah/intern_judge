@@ -1,6 +1,6 @@
 use super::{
-    BuildingType, InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects, RoadId,
-    RoadUnlocks, SceneRoot, SwitchPoint,
+    BuildingType, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
+    RunningInteractRequested, SceneRoot, SwitchPoint,
     day::start_day,
     map::MapLayout,
     navigation::{open_destinations, open_unlock_map, select_destination},
@@ -593,7 +593,7 @@ fn duplicate_and_stale_events_cannot_navigate_a_replacement_scene() {
     let player = single::<Player>(&mut app);
     let point = single::<SwitchPoint>(&mut app);
     for _ in 0..3 {
-        app.world_mut().commands().trigger(InteractRequested {
+        app.world_mut().commands().trigger(RunningInteractRequested {
             entity: point,
             player,
         });

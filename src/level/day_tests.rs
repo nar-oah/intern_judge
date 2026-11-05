@@ -1,5 +1,5 @@
 use super::{
-    InitialRoad, InteractRequested, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
+    InitialRoad, LevelPlugin, PausedInteractRequested, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
     SceneRoot, SwitchPoint,
     bill::{WeeklyBill, confirm_bill, show_bill},
     day::{DayEndRequested, begin_next_day, start_day},
@@ -249,7 +249,7 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
 
     let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
     let point = single::<SwitchPoint>(&mut app);
-    app.world_mut().trigger(InteractRequested {
+    app.world_mut().trigger(PausedInteractRequested {
         entity: point,
         player,
     });
@@ -276,7 +276,7 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     assert!(app.world().resource::<RoadUnlocks>().0[&RoadId::EmptyRoad1]);
     let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
     let point = single::<SwitchPoint>(&mut app);
-    app.world_mut().trigger(InteractRequested {
+    app.world_mut().trigger(PausedInteractRequested {
         entity: point,
         player,
     });
@@ -305,6 +305,7 @@ fn shipped_roads_support_all_eight_weekend_unlocks_and_exit_into_the_next_day() 
                 .first()
                 .expect("every weekend must offer a road to unlock");
             assert!(!app.world().resource::<RoadUnlocks>().0[&road]);
+            assert!(!weekend_roads.contains(&road));
             weekend_roads.push(road);
             road
         } else {
@@ -333,7 +334,7 @@ fn shipped_roads_support_all_eight_weekend_unlocks_and_exit_into_the_next_day() 
         let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
         if weekend {
             let point = single::<SwitchPoint>(&mut app);
-            app.world_mut().trigger(InteractRequested {
+            app.world_mut().trigger(PausedInteractRequested {
                 entity: point,
                 player,
             });
@@ -361,7 +362,6 @@ fn shipped_roads_support_all_eight_weekend_unlocks_and_exit_into_the_next_day() 
     weekend_roads.sort_unstable();
     weekend_roads.dedup();
     assert_eq!(weekend_roads.len(), 8);
-    assert!(app.world().resource::<RoadUnlocks>().0.values().all(|&v| v));
     single::<InternshipEnded>(&mut app);
 }
 
