@@ -1,4 +1,4 @@
-use super::{Interactable, PausedInteractRequested, RunningInteractRequested, interaction};
+use crate::level::{Interactable, PausedInteractRequested, RunningInteractRequested, interaction};
 use crate::{
     game::CommuteState,
     player::{Player, PlayerAction},
