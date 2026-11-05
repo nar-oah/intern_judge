@@ -1,10 +1,10 @@
 use crate::{
     config::{
-        BuildingValues, ConvenienceKind, ConvenienceValues, GameSettings, GameState, LotteryPrize,
+        BuildingValues, CaseDef, CaseDefs, ConvenienceKind, ConvenienceValues, GameSettings, GameState, LotteryPrize,
         LotteryValues, RoadGraph,
     },
     game::{Stamina, calendar::GameCalendar},
-    level::RoadId,
+    level::{RoadEffect, RoadId},
 };
 use avian2d::prelude::*;
 use bevy::{
@@ -43,6 +43,11 @@ pub(crate) fn insert_config(app: &mut App) {
     // Behavioral tests use their own data so balancing the shipped RON assets
     // does not change their expectations. Config tests exercise the real loader.
     app.insert_state(GameState::Playing)
+        .insert_resource(CaseDefs(vec![CaseDef {
+            dialogue_prefix: "loose_sign".into(),
+            guilty: RoadEffect::FallingObject,
+            not_guilty: RoadEffect::ConstructionDetour,
+        }]))
         .insert_resource(GameSettings {
             total_days: 28,
             commute_limit: 8.0,
