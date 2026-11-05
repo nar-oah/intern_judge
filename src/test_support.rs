@@ -19,6 +19,8 @@ const FIXED_TIMESTEP: Duration = Duration::from_micros(15_625);
 pub(crate) fn scene_app() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
+    app.init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>();
     app
 }
 

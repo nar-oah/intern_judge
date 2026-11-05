@@ -68,7 +68,7 @@ Player 不存在时，移动和交互系统自然跳过。
 `assets/dialogue/court.rep` 和 `assets/dialogue/buildings.rep` 通过 `bevy_replique`
 管理法院、商店和猫咪的文案、分支及结束；工作日法院使用布尔参数判决命令。
 `src/level/dialogue.rs` 和 `src/level/dialogue/ui.rs` 负责共用对话逻辑与 BSN 对话框。
-对话框、账单和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
+对话框、账单、涉案路段 HUD 和实习结束界面使用随项目提供的全量中文字体，来源与许可证见 `assets/fonts/`；其余 UI 使用默认字体。
 对话推进与账单确认共用 `UiAction::Confirm`，默认绑定 E，`InputMap<UiAction>` 位于各自 BSN 根实体。
 新界面会等待前一个界面的 E 松开再接受确认，避免一次按键连续推进。
 
@@ -144,7 +144,8 @@ HUD 独立于 `SceneRoot`，实时显示剩余秒数、金钱和可视化体力�
 再均匀抽取该路段的可用案件；案件的两种效果均未在该路段出现时才可用。
 `CurrentCase(Option<SelectedCase>)` 保存目标 `RoadId` 和完整 `CaseDef`，查看双方台词或选择离开时保留。
 `verdict(bool)` 将对应效果添加到目标路段（不重复添加），立即清空当前案件并请求结束当天。
-当前配置提供四个案件；`PlaceholderA`、`PlaceholderB` 仅保存为路段效果，不生成场景行为。
+法院顶部中央的 HUD 显示 `CurrentCase` 抽中的目标路段，随法院场景一同创建和销毁。
+当前配置提供六个案件，覆盖四种效果的全部无序组合；`PlaceholderA`、`PlaceholderB` 仅保存为路段效果，不生成场景行为。
 抽取前提是当天存在可用案件，由玩家路线保证，不处理案件不足。
 
 `platform_scene(position, size)` 的尺寸写入 `Platform` 组件，并同时用于 Sprite

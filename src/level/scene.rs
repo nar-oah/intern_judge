@@ -21,6 +21,7 @@ pub(super) fn replace_scene(
 }
 
 pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
+    let mut case_road = None;
     let dialogue_prefix = if road == RoadId::Court {
         let selected = case::select_case(
             world.resource::<TodayRoads>(),
@@ -29,6 +30,7 @@ pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
             &mut rand::rng(),
         );
         let prefix = selected.case.dialogue_prefix.clone();
+        case_road = Some(selected.road);
         world.resource_mut::<CurrentCase>().0 = Some(selected);
         prefix
     } else {
@@ -36,7 +38,15 @@ pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
         String::new()
     };
     let effects = world.resource::<RoadEffects>().0.get(&road);
-    road_scene(road, effects.map_or(&[], Vec::as_slice), &dialogue_prefix)
+    let scene = road_scene(road, effects.map_or(&[], Vec::as_slice), &dialogue_prefix);
+    if let Some(case_road) = case_road {
+        Box::new(bsn! {
+            @scene
+            Children [ @road::case_hud_scene(case_road) ]
+        })
+    } else {
+        scene
+    }
 }
 
 pub(super) fn road_scene(
