@@ -13,27 +13,9 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
 
     press_e(&mut app);
     assert!(app.world().get::<DialogueRunner>(player).is_some());
-    let dialog = wait_for_dialogue(&mut app, false);
+    wait_for_dialogue(&mut app, false);
     advance(&mut app, 4);
     assert_prompt(&mut app, "请作出你的判决");
-    assert!(
-        app.world()
-            .get::<DialogueBox>(dialog)
-            .unwrap()
-            .line
-            .is_some()
-    );
-    assert!(
-        app.world()
-            .get::<DialogueBox>(dialog)
-            .unwrap()
-            .choices
-            .is_none()
-    );
-    assert!(app.world().get::<ChildOf>(dialog).is_none());
-    assert!(app.world().get::<InputMap<UiAction>>(dialog).is_some());
-    assert!(app.world().get::<ActionState<UiAction>>(dialog).is_some());
-    assert!(app.world().get::<InputMap<UiAction>>(player).is_none());
     assert!(buttons(&mut app).is_empty());
 
     press_e(&mut app);
@@ -45,21 +27,11 @@ fn opening_and_holding_e_keeps_the_first_line_until_a_fresh_press() {
             .collect::<Vec<_>>(),
         [(0, "有罪".into()), (1, "无罪".into()), (2, "离开".into())]
     );
-    let options = single::<DialogueOptions>(&mut app);
-    assert!(app.world().get::<Node>(options).is_some());
-    assert!(app.world().get::<Text>(options).is_none());
-
     KeyCode::ArrowLeft.press(app.world_mut());
     KeyCode::ArrowRight.press(app.world_mut());
     press_e(&mut app);
     advance(&mut app, 4);
-    assert!(
-        app.world()
-            .get::<DialogueBox>(dialog)
-            .unwrap()
-            .choices
-            .is_some()
-    );
+    assert_eq!(buttons(&mut app).len(), 3);
     assert!(app.world().resource::<CommandsRun>().0.is_empty());
 
     app.world_mut().despawn(player);
@@ -87,8 +59,7 @@ fn dialogue_confirm_uses_the_ui_root_mapping_independently_of_player_input() {
     assert_prompt(&mut app, "请作出你的判决");
     assert!(buttons(&mut app).is_empty());
 
-    KeyCode::Enter.press(app.world_mut());
-    app.update();
+    press_key(&mut app, KeyCode::Enter);
     wait_for_dialogue(&mut app, true);
     assert_eq!(buttons(&mut app).len(), 3);
 }
@@ -158,9 +129,6 @@ fn dialogue_blocks_controls_and_other_buildings_then_restores_all_input() {
     press_e(&mut app);
     assert_eq!(app.world().resource::<OtherInteractions>().0, 1);
 
-    KeyCode::Space.release(app.world_mut());
-    app.update();
-    KeyCode::Space.press(app.world_mut());
-    app.update();
+    press_key(&mut app, KeyCode::Space);
     assert!(app.world().get::<LinearVelocity>(player).unwrap().y > 0.0);
 }

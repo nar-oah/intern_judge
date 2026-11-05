@@ -15,28 +15,7 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
 => END
 ---
 ";
-        app.world()
-            .resource::<EmbeddedAssetRegistry>()
-            .insert_asset(
-                "after-verdict.rep".into(),
-                Path::new("after-verdict.rep"),
-                source.as_bytes().to_vec(),
-            );
-        let dialogue = app
-            .world()
-            .resource::<AssetServer>()
-            .load("embedded://after-verdict.rep");
-        app.world_mut()
-            .entity_mut(player)
-            .insert(DialogueRunner::new(dialogue));
-        app.world_mut()
-            .spawn_scene(ui::dialogue_box_scene())
-            .unwrap();
-        app.world_mut().write_message(StartDialogue {
-            runner: player,
-            node: "start".into(),
-        });
-        wait_for_dialogue(&mut app, false);
+        start_fixture(&mut app, player, source);
         advance(&mut app, 4);
 
         assert_prompt(&mut app, "判决后的对话");

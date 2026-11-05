@@ -50,10 +50,7 @@ pub(super) fn court_app() -> (App, Entity, Entity) {
 
 pub(super) fn assert_current_case(app: &App, expected: &SelectedCase) {
     let current = app.world().resource::<CurrentCase>().0.as_ref().unwrap();
-    assert_eq!(current.road, expected.road);
-    assert_eq!(current.case.dialogue_prefix, expected.case.dialogue_prefix);
-    assert_eq!(current.case.guilty, expected.case.guilty);
-    assert_eq!(current.case.not_guilty, expected.case.not_guilty);
+    assert_eq!(current, expected);
 }
 
 pub(super) fn approach(app: &mut App, player: Entity, target: Entity) {
