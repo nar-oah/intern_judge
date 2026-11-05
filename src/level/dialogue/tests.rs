@@ -515,11 +515,36 @@ fn dialogue_confirm_uses_the_ui_root_mapping_independently_of_player_input() {
 
 #[test]
 fn court_participants_use_nearby_e_dialogue_and_restore_movement() {
-    for (name, expected) in [
-        ("Prosecution", "公诉方：请求判决有罪。"),
-        ("Defense", "辩护方：请求判决无罪。"),
+    for (prefix, name, expected) in [
+        (
+            "loose_sign",
+            "Prosecution",
+            "公诉方：店主明知招牌松动仍未维修，招牌坠落砸伤行人，请求判决有罪。",
+        ),
+        (
+            "loose_sign",
+            "Defense",
+            "辩护方：招牌当天刚通过检修，事故由突发强风造成，请求判决无罪。",
+        ),
+        (
+            "balcony_planter",
+            "Prosecution",
+            "公诉方：住户将花盆放在阳台外沿，花盆坠落损坏车辆，请求判决有罪。",
+        ),
+        (
+            "balcony_planter",
+            "Defense",
+            "辩护方：花盆有固定支架，是维修人员拆除支架后未装回，请求判决无罪。",
+        ),
     ] {
-        let (mut app, player, _) = court_app();
+        let mut app = road_app();
+        app.insert_resource(CaseDefs(vec![CaseDef {
+            dialogue_prefix: prefix.into(),
+            guilty: RoadEffect::FallingObject,
+            not_guilty: RoadEffect::ConstructionDetour,
+        }]));
+        let (player, _) = enter_court(&mut app);
+        let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
         let participant = named(&mut app, name);
         press_e(&mut app);
         assert_closed(&mut app, player);
@@ -532,6 +557,7 @@ fn court_participants_use_nearby_e_dialogue_and_restore_movement() {
         press_e(&mut app);
         wait_for_dialogue(&mut app, false);
         assert_prompt(&mut app, expected);
+        assert_current_case(&app, &selected);
         advance(&mut app, 4);
         assert_prompt(&mut app, expected);
         assert_eq!(app.world().get::<LinearVelocity>(player).unwrap().x, 0.0);
@@ -543,6 +569,7 @@ fn court_participants_use_nearby_e_dialogue_and_restore_movement() {
         assert!(app.world().get::<LinearVelocity>(player).unwrap().x > 0.0);
         assert!(app.world().resource::<CommandsRun>().0.is_empty());
         assert!(app.world().resource::<RoadEffects>().0.is_empty());
+        assert_current_case(&app, &selected);
     }
 }
 
