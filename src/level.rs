@@ -81,7 +81,6 @@ struct Interactable;
 #[derive(EntityEvent, Clone, Copy, Debug)]
 pub struct RunningInteractRequested {
     pub entity: Entity,
-    pub player: Entity,
 }
 
 #[derive(EntityEvent, Clone, Copy, Debug)]

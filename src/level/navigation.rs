@@ -1,24 +1,18 @@
 use super::{
-    RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot, SwitchPoint,
+    RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot,
     map::MapLayout,
     scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
-use crate::{config::RoadGraph, game::CommuteState, player::Player};
+use crate::{config::RoadGraph, game::CommuteState};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "Navigation reads ECS data through system parameters"
-)]
 pub(super) fn open_destinations(
     request: On<RunningInteractRequested>,
     mut commands: Commands,
     roots: Query<&RoadId, With<SceneRoot>>,
     parents: Query<&ChildOf>,
-    players: Query<(), With<Player>>,
-    points: Query<(), With<SwitchPoint>>,
     graph: Res<RoadGraph>,
     unlocks: Res<RoadUnlocks>,
     layout: Res<MapLayout>,
@@ -33,15 +27,6 @@ pub(super) fn open_destinations(
     let Ok(&road) = roots.get(root) else {
         return;
     };
-    if !players.contains(request.player)
-        || parents
-            .iter_ancestors(request.player)
-            .find(|&entity| roots.contains(entity))
-            != Some(root)
-        || !points.contains(request.entity)
-    {
-        return;
-    }
     let Some(choices) = graph.roads.get(&road) else {
         return;
     };

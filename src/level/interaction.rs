@@ -26,7 +26,7 @@ pub(super) fn interact(
         if collisions.contains(&player) {
             match commute.get() {
                 CommuteState::Running => {
-                    commands.trigger(RunningInteractRequested { entity, player });
+                    commands.trigger(RunningInteractRequested { entity });
                 }
                 CommuteState::Paused => {
                     commands.trigger(PausedInteractRequested { entity, player });
