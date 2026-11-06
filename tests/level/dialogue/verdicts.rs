@@ -61,6 +61,33 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
 }
 
 #[test]
+fn end_day_during_a_verdict_tail_creates_only_one_bill() {
+    let (mut app, player, _) = court_app();
+    let root = single::<SceneRoot>(&mut app);
+    start_fixture(
+        &mut app,
+        player,
+        ":= start\n>> verdict(true)\n判决后的对话\n=> END\n---\n",
+    );
+    assert_prompt(&mut app, "判决后的对话");
+
+    app.world_mut().trigger(crate::level::day::EndDay);
+    app.world_mut().flush();
+
+    let bill = single::<DailyBill>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    assert!(app.world().get_entity(root).is_err());
+    assert!(app.world().get_entity(player).is_err());
+    assert_closed(&mut app, player);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
+    app.update();
+    press_e(&mut app);
+    advance(&mut app, 3);
+    assert_absent::<DailyBill>(&mut app);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
+}
+
+#[test]
 fn leaving_court_on_friday_closes_dialogue_without_billing_or_advancing() {
     let (mut app, player, bench) = court_app();
     let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();

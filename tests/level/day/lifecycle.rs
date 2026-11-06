@@ -162,6 +162,7 @@ fn end_day_immediately_replaces_the_scene_and_repeated_events_keep_the_same_bill
 
     app.world_mut().trigger(EndDay);
 
+    app.world_mut().flush();
     assert!(app.world().get_entity(root).is_err());
     assert!(app.world().get_entity(player).is_err());
     assert_absent::<DialogueRunner>(&mut app);
@@ -170,7 +171,12 @@ fn end_day_immediately_replaces_the_scene_and_repeated_events_keep_the_same_bill
     assert_eq!(single::<SceneRoot>(&mut app), bill);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
 
-    app.world_mut().trigger(EndDay);
+    app.world_mut()
+        .run_system_cached(|mut commands: Commands| {
+            commands.trigger(EndDay);
+            commands.trigger(EndDay);
+        })
+        .unwrap();
     advance(&mut app, 3);
 
     assert_eq!(single::<SceneRoot>(&mut app), bill);
@@ -207,6 +213,7 @@ fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
             }
 
             app.world_mut().trigger(EndDay);
+            app.world_mut().flush();
             if !billing {
                 app.update();
                 press_e(&mut app);
