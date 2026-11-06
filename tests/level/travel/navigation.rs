@@ -229,6 +229,8 @@ fn duplicate_and_stale_events_cannot_navigate_a_replacement_scene() {
     app.world_mut().flush();
     let (road, next_player) = assert_road(&mut app, RoadId::MarketRoad);
     assert!(app.world().get_entity(map).is_err());
+    app.update();
+    assert_commute(&app, CommuteState::Running);
     open_destinations(app.world_mut(), point, player);
     select_destination(app.world_mut(), stale_court);
     assert_eq!(single::<SceneRoot>(&mut app), road);
@@ -240,4 +242,6 @@ fn duplicate_and_stale_events_cannot_navigate_a_replacement_scene() {
     assert_eq!(single::<SceneRoot>(&mut app), next_map);
     activate(&mut app, RoadId::Court);
     assert_road(&mut app, RoadId::Court);
+    app.update();
+    assert_commute(&app, CommuteState::Paused);
 }
