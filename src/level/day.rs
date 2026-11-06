@@ -33,20 +33,22 @@ pub(super) fn start_day(world: &mut World) {
     let calendar = world.resource::<GameCalendar>();
     let finished = calendar.is_finished();
     if !finished && calendar.is_weekend() {
-        navigation::open_unlock_map(world);
+        world.trigger(navigation::OpenUnlockMap);
+        world.flush();
         return;
     }
     let road = world.resource::<InitialRoad>().0;
-    let next = if finished {
-        Box::new(scene::ending::internship_ended_scene()) as Box<dyn Scene>
+    if finished {
+        let roots = world
+            .query_filtered::<Entity, With<SceneRoot>>()
+            .iter(world)
+            .collect::<Vec<_>>();
+        scene::replace_scene(world, roots, scene::ending::internship_ended_scene());
     } else {
-        scene::enter_road(world, road)
-    };
-    let roots = world
-        .query_filtered::<Entity, With<SceneRoot>>()
-        .iter(world)
-        .collect::<Vec<_>>();
-    scene::replace_scene(world, roots, next);
+        world.trigger(scene::EnterRoad(road));
+        // Replace the old scene before a caller continues the day transition.
+        world.flush();
+    }
     world
         .resource_mut::<NextState<CommuteState>>()
         .set(if finished || road == RoadId::Court {

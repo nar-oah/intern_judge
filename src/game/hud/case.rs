@@ -1,14 +1,27 @@
 use crate::level::RoadId;
 use bevy::{prelude::*, text::FontSourceTemplate};
 
-pub(in crate::level) fn case_hud_scene(road: RoadId) -> impl Scene {
+#[derive(Component, Clone, Default)]
+pub(in crate::game) struct CaseHud;
+
+#[derive(Component, Clone, Default)]
+pub(in crate::game) struct CaseHudText;
+
+pub(super) fn case_hud_scene(road: Option<RoadId>) -> impl Scene {
+    let visibility = if road.is_some() {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
     bsn! {
-        // Keep the road's world entities and HUD under one scene root.
+        #CaseHudRoot
+        CaseHud
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
             height: percent(100),
         }
+        visibility
         Pickable::IGNORE
         Children [
             #CaseHud
@@ -24,7 +37,8 @@ pub(in crate::level) fn case_hud_scene(road: RoadId) -> impl Scene {
             BackgroundColor(Color::srgb(0.12, 0.14, 0.2))
             Pickable::IGNORE
             Children [
-                Text::new(format!("今日涉案路段：{road:?}"))
+                CaseHudText
+                Text::new(road.map_or_else(String::new, |road| format!("今日涉案路段：{road:?}")))
                 TextFont {
                     font: FontSourceTemplate::Handle("fonts/court-dialogue.ttf"),
                     font_size: FontSize::Px(22.0),

@@ -23,9 +23,8 @@ pub(super) fn road_app() -> App {
 }
 
 pub(super) fn enter_court(app: &mut App) -> (Entity, Entity) {
-    let player = single::<Player>(app);
     let point = single::<SwitchPoint>(app);
-    open_destinations(app.world_mut(), point, player);
+    open_destinations(app.world_mut(), point);
     let button = crate::level::tests::support::destination_button(app, RoadId::Court);
     select_destination(app.world_mut(), button);
     app.update();

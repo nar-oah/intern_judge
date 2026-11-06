@@ -1,6 +1,14 @@
-use super::calendar::{CalendarHud, CalendarHudText};
+use super::calendar::GameCalendar;
+use super::hud::{
+    calendar::{CalendarHud, CalendarHudText},
+    case::{CaseHud, CaseHudText},
+    commute::{CommuteHud, CommuteHudText, StaminaBar},
+};
 use super::*;
-use crate::test_support::{advance, count, finish_app, insert_config, single, text};
+use crate::{
+    level::CurrentCase,
+    test_support::{advance, count, finish_app, insert_config, scene_app, single, text},
+};
 use bevy::{state::app::StatesPlugin, time::TimeUpdateStrategy};
 use std::time::Duration;
 
@@ -10,9 +18,10 @@ mod hud;
 mod session;
 
 fn game() -> App {
-    let mut app = App::new();
-    app.add_plugins((MinimalPlugins, StatesPlugin));
+    let mut app = scene_app();
+    app.add_plugins(StatesPlugin);
     insert_config(&mut app);
+    app.init_resource::<CurrentCase>();
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
         125,
     )))

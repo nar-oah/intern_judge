@@ -4,14 +4,14 @@ use crate::{
     level::{
         CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
         SceneRoot, SwitchPoint, TodayRoads,
-        navigation::open_destinations,
         scene::{
             self,
             effect::{ConstructionDetour, FallingObject},
         },
-        tests::support::{activate, assert_commute, assert_road, assert_today_roads},
+        tests::support::{
+            activate, assert_commute, assert_road, assert_today_roads, open_destinations,
+        },
     },
-    player::Player,
     test_support::{assert_absent, assert_removed, finish_app, level_app, scene_entities, single},
 };
 use bevy::prelude::*;
@@ -88,8 +88,6 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         .spawn_scene(scene::road_scene(
             RoadId::ExampleRoad,
             &[RoadEffect::FallingObject],
-            "",
-            RoadId::ExampleRoad,
         ))
         .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
@@ -113,10 +111,9 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
     for destination in [RoadId::MarketRoad, RoadId::ExampleRoad, RoadId::MarketRoad] {
         let old_root = single::<SceneRoot>(&mut app);
         let old_scene = scene_entities(app.world(), old_root);
-        let player = single::<Player>(&mut app);
         let point = single::<SwitchPoint>(&mut app);
         let visited = app.world().resource::<TodayRoads>().0.clone();
-        open_destinations(app.world_mut(), point, player);
+        open_destinations(app.world_mut(), point);
         assert_removed(&app, &old_scene);
         assert_absent::<FallingObject>(&mut app);
         assert_absent::<ConstructionDetour>(&mut app);

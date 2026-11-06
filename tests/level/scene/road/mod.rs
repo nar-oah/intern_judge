@@ -1,6 +1,7 @@
 use crate::level::{
-    BuildingType, Platform, RoadEffect, RoadId, SceneRoot, SwitchPoint,
+    Platform, RoadEffect, RoadId, SceneRoot, SwitchPoint,
     scene::{
+        building::BuildingDialogue,
         effect::{ConstructionDetour, FallingObject},
         road_scene,
     },
@@ -28,7 +29,7 @@ fn each_road_composes_only_its_requested_effects() {
         for effects in effect_sets {
             let mut app = scene_app();
             app.world_mut()
-                .spawn_scene(road_scene(road, effects, "loose_sign", RoadId::ExampleRoad))
+                .spawn_scene(road_scene(road, effects))
                 .unwrap();
             assert_eq!(
                 count::<FallingObject>(&mut app),
@@ -61,8 +62,6 @@ fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
             .spawn_scene(road_scene(
                 road,
                 &[RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
-                "",
-                road,
             ))
             .unwrap()
             .id();
@@ -91,7 +90,7 @@ fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
                 .count(),
             1
         );
-        assert_absent::<BuildingType>(&mut app);
+        assert_absent::<BuildingDialogue>(&mut app);
         assert_absent::<FallingObject>(&mut app);
         assert_absent::<ConstructionDetour>(&mut app);
     }
@@ -106,8 +105,6 @@ fn entering_example_road_spawns_one_object_at_a_layout_candidate() {
             .spawn_scene(road_scene(
                 RoadId::ExampleRoad,
                 &[RoadEffect::FallingObject],
-                "",
-                RoadId::ExampleRoad,
             ))
             .unwrap()
             .id();
@@ -130,8 +127,6 @@ fn market_detour_stands_on_ground_between_the_stores() {
         .spawn_scene(road_scene(
             RoadId::MarketRoad,
             &[RoadEffect::ConstructionDetour],
-            "",
-            RoadId::MarketRoad,
         ))
         .unwrap();
     let (transform, sprite) = world
@@ -143,16 +138,13 @@ fn market_detour_stands_on_ground_between_the_stores() {
 
     assert_eq!(size, Vec2::splat(60.0));
     assert_eq!(position.y - size.y / 2.0, -162.5);
-    for (building, transform, sprite) in world
-        .query::<(&BuildingType, &Transform, &Sprite)>()
-        .iter(world)
-    {
+    for (building, transform, sprite) in world.query::<(&Name, &Transform, &Sprite)>().iter(world) {
         let store_half_width = sprite.custom_size.unwrap().x / 2.0;
-        match building {
-            BuildingType::ToolStore => {
+        match building.as_str() {
+            "ToolStore" => {
                 assert!(transform.translation.x + store_half_width < position.x - size.x / 2.0);
             }
-            BuildingType::ConvenienceStore => {
+            "ConvenienceStore" => {
                 assert!(position.x + size.x / 2.0 < transform.translation.x - store_half_width);
             }
             _ => panic!("unexpected MarketRoad building: {building:?}"),

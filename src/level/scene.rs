@@ -4,8 +4,7 @@ pub(super) mod ending;
 mod platform;
 mod road;
 mod switch_point;
-
-use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, TodayRoads, case};
+use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, TodayRoads, case};
 use crate::config::CaseDefs;
 use bevy::prelude::*;
 
@@ -20,41 +19,39 @@ pub(super) fn replace_scene(
     world.spawn_scene(next).unwrap();
 }
 
-pub(super) fn enter_road(world: &mut World, road: RoadId) -> Box<dyn Scene> {
-    let (case_road, dialogue_prefix) = if road == RoadId::Court {
-        let selected = case::select_case(
-            world.resource::<TodayRoads>(),
-            world.resource::<RoadEffects>(),
-            world.resource::<CaseDefs>(),
-            &mut rand::rng(),
-        );
-        let prefix = selected.case.dialogue_prefix.clone();
-        let case_road = selected.road;
-        world.resource_mut::<CurrentCase>().0 = Some(selected);
-        (case_road, prefix)
+#[derive(Event)]
+pub(super) struct EnterRoad(pub RoadId);
+
+pub(super) fn enter_road(
+    request: On<EnterRoad>,
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    mut today: ResMut<TodayRoads>,
+    effects: Res<RoadEffects>,
+    cases: Res<CaseDefs>,
+    mut current: ResMut<CurrentCase>,
+) {
+    let road = request.0;
+    let rng = &mut rand::rng();
+    if road == RoadId::Court {
+        current.0 = Some(case::select_case(&today, &effects, &cases, rng));
     } else {
-        world.resource_mut::<TodayRoads>().0.insert(road);
-        (road, String::new())
-    };
-    let effects = world.resource::<RoadEffects>().0.get(&road);
-    road_scene(
+        today.0.insert(road);
+    }
+    for root in &roots {
+        commands.entity(root).despawn();
+    }
+    commands.spawn_scene(road_scene(
         road,
-        effects.map_or(&[], Vec::as_slice),
-        &dialogue_prefix,
-        case_road,
-    )
+        effects.0.get(&road).map_or(&[], Vec::as_slice),
+    ));
 }
 
-pub(super) fn road_scene(
-    road: RoadId,
-    effects: &[RoadEffect],
-    dialogue_prefix: &str,
-    case_road: RoadId,
-) -> Box<dyn Scene> {
+pub(super) fn road_scene(road: RoadId, effects: &[RoadEffect]) -> Box<dyn Scene> {
     match road {
         RoadId::ExampleRoad => Box::new(road::example_road_scene(effects)),
         RoadId::MarketRoad => Box::new(road::market_road_scene(effects)),
-        RoadId::Court => Box::new(road::court_scene(effects, dialogue_prefix, case_road)),
+        RoadId::Court => Box::new(road::court_scene(effects)),
         RoadId::EmptyRoad1
         | RoadId::EmptyRoad2
         | RoadId::EmptyRoad3

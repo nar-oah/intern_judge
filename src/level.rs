@@ -72,15 +72,6 @@ pub struct Platform {
     pub size: Vec2,
 }
 
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum BuildingType {
-    #[default]
-    ConvenienceStore,
-    ToolStore,
-    LotteryStore,
-    Cat,
-}
-
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct SwitchPoint;
 
@@ -90,7 +81,6 @@ struct Interactable;
 #[derive(EntityEvent, Clone, Copy, Debug)]
 pub struct RunningInteractRequested {
     pub entity: Entity,
-    pub player: Entity,
 }
 
 #[derive(EntityEvent, Clone, Copy, Debug)]
@@ -105,6 +95,8 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         dialogue::setup(app);
         app.add_plugins(InputManagerPlugin::<ui::UiAction>::default())
+            .add_observer(scene::enter_road)
+            .add_observer(navigation::open_unlock_map)
             .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)

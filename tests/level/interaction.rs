@@ -9,7 +9,7 @@ use leafwing_input_manager::prelude::*;
 
 #[derive(Resource, Default)]
 struct Requests {
-    running: Vec<(Entity, Entity)>,
+    running: Vec<Entity>,
     paused: Vec<(Entity, Entity)>,
 }
 
@@ -20,7 +20,7 @@ fn interaction_app() -> App {
         .add_systems(PostUpdate, interaction::interact)
         .add_observer(
             |event: On<RunningInteractRequested>, mut requests: ResMut<Requests>| {
-                requests.running.push((event.entity, event.player));
+                requests.running.push(event.entity);
             },
         )
         .add_observer(
@@ -91,19 +91,13 @@ fn interaction_requires_overlap_at_the_time_of_a_fresh_press() {
     interact(&mut app, player, true);
     frame(&mut app);
     frame(&mut app);
-    assert_eq!(
-        app.world().resource::<Requests>().running,
-        [(target, player)]
-    );
+    assert_eq!(app.world().resource::<Requests>().running, [target]);
 
     interact(&mut app, player, false);
     frame(&mut app);
     interact(&mut app, player, true);
     frame(&mut app);
-    assert_eq!(
-        app.world().resource::<Requests>().running,
-        [(target, player), (target, player)]
-    );
+    assert_eq!(app.world().resource::<Requests>().running, [target, target]);
 }
 
 #[test]
@@ -125,7 +119,7 @@ fn interaction_routes_fresh_presses_to_the_current_commute_state() {
     }
 
     let requests = app.world().resource::<Requests>();
-    assert_eq!(requests.running, [(target, player), (target, player)]);
+    assert_eq!(requests.running, [target, target]);
     assert_eq!(requests.paused, [(target, player)]);
 }
 

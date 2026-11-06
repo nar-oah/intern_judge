@@ -1,5 +1,9 @@
 use super::*;
-use crate::{game::calendar::GameCalendar, level::PausedInteractRequested, test_support::single};
+use crate::{
+    game::calendar::GameCalendar,
+    level::{CurrentCase, PausedInteractRequested, RoadEffect, RoadId, SelectedCase},
+    test_support::{assert_absent, case_def, named, single},
+};
 use bevy_replique::prelude::{
     DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, ResumeDialogue, ResumeInput,
 };
@@ -7,16 +11,17 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn paused_buildings_start_dialogue_without_running_their_effects() {
-    for building in [
-        BuildingType::ConvenienceStore,
-        BuildingType::ToolStore,
-        BuildingType::LotteryStore,
-        BuildingType::Cat,
+    for (building, node) in [
+        ("ConvenienceStore", "convenience_store"),
+        ("ToolStore", "tool_store"),
+        ("LotteryStore", "lottery_store"),
+        ("Cat", "cat"),
     ] {
         let mut app = building_app();
         app.insert_resource(State::new(CommuteState::Paused));
         app.world_mut().resource_mut::<Stamina>().0 = 35.0;
         let entity = spawn_building(&mut app, building);
+        assert_eq!(app.world().get::<Name>(entity).unwrap().as_str(), building);
         let player = spawn_player(&mut app, Vec2::new(42.0, 7.0));
 
         app.world_mut()
@@ -39,38 +44,34 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
             .collect::<Vec<_>>();
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].runner, player);
-        assert_eq!(
-            requests[0].node.as_str(),
-            match building {
-                BuildingType::ConvenienceStore => "convenience_store",
-                BuildingType::ToolStore => "tool_store",
-                BuildingType::LotteryStore => "lottery_store",
-                BuildingType::Cat => "cat",
-            }
-        );
+        assert_eq!(requests[0].node.as_str(), node);
     }
 }
 
 #[test]
 fn court_characters_start_dialogue_only_for_paused_interactions() {
-    for node in ["loose_sign_prosecution", "verdict", "loose_sign_defense"] {
+    for (name, asset, node) in [
+        ("Prosecution", "dialogue/prosecution.rep", "loose_sign"),
+        ("JudgeBench", "dialogue/verdict.rep", "verdict"),
+        ("Defense", "dialogue/defense.rep", "loose_sign"),
+    ] {
         let mut app = building_app();
-        app.world_mut()
-            .spawn_scene(crate::level::scene::road::court_scene(
-                &[],
+        app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
+            road: RoadId::ExampleRoad,
+            case: case_def(
                 "loose_sign",
-                crate::level::RoadId::ExampleRoad,
-            ))
+                RoadEffect::FallingObject,
+                RoadEffect::ConstructionDetour,
+            ),
+        });
+        app.world_mut()
+            .spawn_scene(crate::level::scene::road::court_scene(&[]))
             .unwrap();
         let player = single::<Player>(&mut app);
+        let entity = named(&mut app, name);
         let world = app.world_mut();
-        let entity = world
-            .query::<(Entity, &BuildingDialogue)>()
-            .iter(world)
-            .find(|(_, dialogue)| dialogue.node == node)
-            .unwrap()
-            .0;
-        world.trigger(RunningInteractRequested { entity, player });
+        assert_eq!(world.get::<BuildingDialogue>(entity).unwrap().asset, asset);
+        world.trigger(RunningInteractRequested { entity });
         world.flush();
 
         assert!(world.get::<DialogueRunner>(player).is_none(), "{node}");
@@ -100,13 +101,76 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
 }
 
 #[test]
+fn court_participants_resolve_the_current_case_when_interacted_with() {
+    for name in ["Prosecution", "Defense"] {
+        let mut app = building_app();
+        app.world_mut()
+            .spawn_scene(crate::level::scene::road::court_scene(&[]))
+            .unwrap();
+        let player = single::<Player>(&mut app);
+        let entity = named(&mut app, name);
+        assert_eq!(
+            app.world().get::<BuildingDialogue>(entity).unwrap().node,
+            None
+        );
+
+        app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
+            road: RoadId::MarketRoad,
+            case: case_def(
+                "balcony_planter",
+                RoadEffect::FallingObject,
+                RoadEffect::ConstructionDetour,
+            ),
+        });
+        app.world_mut()
+            .trigger(PausedInteractRequested { entity, player });
+        app.world_mut().flush();
+
+        let requests = app
+            .world_mut()
+            .resource_mut::<Messages<StartDialogue>>()
+            .drain()
+            .collect::<Vec<_>>();
+        assert_eq!(requests.len(), 1, "{name}");
+        assert_eq!(requests[0].node, "balcony_planter", "{name}");
+        assert_eq!(requests[0].runner, player, "{name}");
+    }
+}
+
+#[test]
+fn court_participants_without_a_case_leave_velocity_and_ui_unchanged() {
+    for name in ["Prosecution", "Defense"] {
+        let mut app = building_app();
+        app.world_mut()
+            .spawn_scene(crate::level::scene::road::court_scene(&[]))
+            .unwrap();
+        let player = single::<Player>(&mut app);
+        let entity = named(&mut app, name);
+        app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(42.0, 7.0);
+        app.world_mut()
+            .trigger(PausedInteractRequested { entity, player });
+        app.world_mut().flush();
+
+        assert!(
+            app.world().get::<DialogueRunner>(player).is_none(),
+            "{name}"
+        );
+        assert_eq!(
+            app.world().get::<LinearVelocity>(player).unwrap().0,
+            Vec2::new(42.0, 7.0),
+            "{name}",
+        );
+        assert!(
+            app.world().resource::<Messages<StartDialogue>>().is_empty(),
+            "{name}",
+        );
+        assert_absent::<Node>(&mut app);
+    }
+}
+
+#[test]
 fn every_building_dialogue_option_is_information_only() {
-    for building in [
-        BuildingType::ConvenienceStore,
-        BuildingType::ToolStore,
-        BuildingType::LotteryStore,
-        BuildingType::Cat,
-    ] {
+    for building in ["ConvenienceStore", "ToolStore", "LotteryStore", "Cat"] {
         for choice in 0..2 {
             let mut app = building_app();
             app.insert_resource(State::new(CommuteState::Paused));

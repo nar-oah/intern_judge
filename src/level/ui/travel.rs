@@ -6,10 +6,7 @@ use crate::{
     config::RoadGraph,
     level::{RoadId, SceneRoot, map::MapLayout, navigation},
 };
-use bevy::{
-    prelude::*,
-    ui_widgets::{Activate, Button},
-};
+use bevy::{prelude::*, ui_widgets::Button};
 
 #[derive(Component, Clone, Default)]
 pub(in crate::level) struct TravelUiRoot(
@@ -184,7 +181,7 @@ fn road_node_scene(
         bsn! {
             Button
             TravelButtonAction(destination)
-            on(activate_button)
+            on(navigation::select_destination)
         }
     });
     let picking = if available {
@@ -248,9 +245,4 @@ fn connection_scene(
         BackgroundColor(color)
         Pickable::IGNORE
     }
-}
-
-fn activate_button(activate: On<Activate>, mut commands: Commands) {
-    let button = activate.entity;
-    commands.queue(move |world: &mut World| navigation::select_destination(world, button));
 }

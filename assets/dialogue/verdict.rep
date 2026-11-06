@@ -1,0 +1,11 @@
+:= verdict
+请作出你的判决
+-> 有罪
+    >> verdict(true)
+    => END
+-> 无罪
+    >> verdict(false)
+    => END
+-> 离开
+    => END
+---

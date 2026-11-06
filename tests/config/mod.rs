@@ -1,6 +1,6 @@
 use super::*;
 use crate::game::{CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar};
-use bevy::{asset::AssetPlugin, state::app::StatesPlugin};
+use bevy::{asset::AssetPlugin, scene::ScenePlugin, state::app::StatesPlugin};
 use bevy_replique::prelude::{RepliqueDialogue, RepliquePlugin};
 use std::{
     collections::HashSet,
@@ -17,14 +17,18 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
             file_path: format!("{}/assets", env!("CARGO_MANIFEST_DIR")),
             ..default()
         },
+        ScenePlugin,
         RepliquePlugin,
         ConfigPlugin,
         GamePlugin,
     ));
-    let court = app
-        .world()
-        .resource::<AssetServer>()
-        .load::<RepliqueDialogue>("dialogue/court.rep");
+    app.init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>();
+    let court = ["verdict", "prosecution", "defense"].map(|name| {
+        app.world()
+            .resource::<AssetServer>()
+            .load::<RepliqueDialogue>(format!("dialogue/{name}.rep"))
+    });
     assert_eq!(
         app.world().resource::<State<GameState>>().get(),
         &GameState::Loading
@@ -38,11 +42,12 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
 
     let deadline = Instant::now() + Duration::from_secs(10);
     while app.world().resource::<State<GameState>>().get() != &GameState::MainMenu
-        || app
-            .world()
-            .resource::<Assets<RepliqueDialogue>>()
-            .get(&court)
-            .is_none()
+        || court.iter().any(|handle| {
+            app.world()
+                .resource::<Assets<RepliqueDialogue>>()
+                .get(handle)
+                .is_none()
+        })
     {
         app.update();
         assert!(
@@ -104,22 +109,33 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
             assert_eq!(count, 1, "{first:?} / {second:?}");
         }
     }
-    let prefixes = cases
+    let nodes = cases
         .iter()
-        .map(|case| &case.dialogue_prefix)
+        .map(|case| &case.dialogue_node)
         .collect::<HashSet<_>>();
-    assert_eq!(prefixes.len(), cases.len());
-    let dialogue = world
-        .resource::<Assets<RepliqueDialogue>>()
-        .get(&court)
-        .unwrap()
-        .dialogue();
-    assert!(dialogue.get_node(&"verdict".into()).is_some());
+    assert_eq!(nodes.len(), cases.len());
+    let dialogues = world.resource::<Assets<RepliqueDialogue>>();
+    assert!(
+        dialogues
+            .get(&court[0])
+            .unwrap()
+            .dialogue()
+            .get_node(&"verdict".into())
+            .is_some()
+    );
     for case in cases {
         assert_ne!(case.guilty, case.not_guilty);
-        for side in ["prosecution", "defense"] {
-            let node = format!("{}_{side}", case.dialogue_prefix);
-            assert!(dialogue.get_node(&node.as_str().into()).is_some(), "{node}");
+        for handle in &court[1..] {
+            assert!(
+                dialogues
+                    .get(handle)
+                    .unwrap()
+                    .dialogue()
+                    .get_node(&case.dialogue_node.as_str().into())
+                    .is_some(),
+                "{}",
+                case.dialogue_node,
+            );
         }
     }
     assert!(!world.contains_resource::<Money>());

@@ -1,54 +1,71 @@
 use super::{
-    RoadId, RoadUnlocks, SceneRoot, SwitchPoint,
+    RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot,
     map::MapLayout,
     scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
-use crate::{config::RoadGraph, game::CommuteState, player::Player};
-use bevy::prelude::*;
+use crate::{config::RoadGraph, game::CommuteState};
+use bevy::ui_widgets::Activate;
+use bevy::{ecs::system::SystemParam, prelude::*};
 
-pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
-    let Some(root) = scene_root(world, point) else {
+#[derive(SystemParam)]
+pub(super) struct NavigationMap<'w> {
+    graph: Res<'w, RoadGraph>,
+    unlocks: Res<'w, RoadUnlocks>,
+    layout: Res<'w, MapLayout>,
+}
+
+pub(super) fn open_destinations(
+    request: On<RunningInteractRequested>,
+    mut commands: Commands,
+    roots: Query<&RoadId, With<SceneRoot>>,
+    parents: Query<&ChildOf>,
+    map: NavigationMap,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let Some(root) = parents
+        .iter_ancestors(request.entity)
+        .find(|&entity| roots.contains(entity))
+    else {
         return;
     };
-    let Some(&road) = world.get::<RoadId>(root) else {
+    let Ok(&road) = roots.get(root) else {
         return;
     };
-    if world.get::<Player>(player).is_none()
-        || scene_root(world, player) != Some(root)
-        || world.get::<SwitchPoint>(point).is_none()
-    {
-        return;
-    }
-    let Some(choices) = world.resource::<RoadGraph>().roads.get(&road) else {
+    let Some(choices) = map.graph.roads.get(&road) else {
         return;
     };
     let mut destinations = Vec::new();
     for &destination in choices {
-        if world.resource::<RoadUnlocks>().0.get(&destination) == Some(&true)
-            && !destinations.contains(&destination)
-        {
+        if map.unlocks.0.get(&destination) == Some(&true) && !destinations.contains(&destination) {
             destinations.push(destination);
         }
     }
     if !destinations.is_empty() {
-        let next = ui::travel_ui_scene(
+        commands.entity(root).despawn();
+        commands.spawn_scene(ui::travel_ui_scene(
             Some(road),
             destinations,
-            world.resource::<RoadGraph>(),
-            world.resource::<MapLayout>(),
-        );
-        scene::replace_scene(world, [root], next);
-        world
-            .resource_mut::<NextState<CommuteState>>()
-            .set(CommuteState::Paused);
+            &map.graph,
+            &map.layout,
+        ));
+        commute.set(CommuteState::Paused);
     }
 }
 
-pub(super) fn open_unlock_map(world: &mut World) {
-    let graph = world.resource::<RoadGraph>();
-    let unlocks = &world.resource::<RoadUnlocks>().0;
-    let mut destinations = graph
+#[derive(Event)]
+pub(super) struct OpenUnlockMap;
+
+pub(super) fn open_unlock_map(
+    _: On<OpenUnlockMap>,
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    map: NavigationMap,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let unlocks = &map.unlocks.0;
+    let mut destinations = map
+        .graph
         .roads
         .iter()
         .filter(|(road, _)| unlocks.get(*road) == Some(&true))
@@ -57,53 +74,47 @@ pub(super) fn open_unlock_map(world: &mut World) {
         .collect::<Vec<_>>();
     destinations.sort_unstable();
     destinations.dedup();
-    let next = ui::travel_ui_scene(None, destinations, graph, world.resource::<MapLayout>());
-    let roots = world
-        .query_filtered::<Entity, With<SceneRoot>>()
-        .iter(world)
-        .collect::<Vec<_>>();
-    scene::replace_scene(world, roots, next);
-    world
-        .resource_mut::<NextState<CommuteState>>()
-        .set(CommuteState::Paused);
+    for root in &roots {
+        commands.entity(root).despawn();
+    }
+    commands.spawn_scene(ui::travel_ui_scene(
+        None,
+        destinations,
+        &map.graph,
+        &map.layout,
+    ));
+    commute.set(CommuteState::Paused);
 }
 
-pub(super) fn select_destination(world: &mut World, button: Entity) {
-    let Some(&TravelButtonAction(destination)) = world.get::<TravelButtonAction>(button) else {
+pub(super) fn select_destination(
+    activate: On<Activate>,
+    mut commands: Commands,
+    buttons: Query<&TravelButtonAction>,
+    parents: Query<&ChildOf>,
+    maps: Query<&TravelUiRoot, With<SceneRoot>>,
+    mut unlocks: ResMut<RoadUnlocks>,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let Ok(&TravelButtonAction(destination)) = buttons.get(activate.entity) else {
         return;
     };
-    let Some(root) = scene_root(world, button) else {
-        return;
-    };
-    let Some(choices) = world.get::<TravelUiRoot>(root) else {
+    let Some(choices) = parents
+        .iter_ancestors(activate.entity)
+        .find_map(|entity| maps.get(entity).ok())
+    else {
         return;
     };
     let unlocking = choices.1;
-    if choices.0.contains(&destination)
-        && world.resource::<RoadUnlocks>().0.get(&destination) == Some(&!unlocking)
-    {
+    if choices.0.contains(&destination) && unlocks.0.get(&destination) == Some(&!unlocking) {
         if unlocking {
-            world
-                .resource_mut::<RoadUnlocks>()
-                .0
-                .insert(destination, true);
+            unlocks.0.insert(destination, true);
         }
-        let next = scene::enter_road(world, destination);
-        scene::replace_scene(world, [root], next);
+        commands.trigger(scene::EnterRoad(destination));
         let state = if unlocking || destination == RoadId::Court {
             CommuteState::Paused
         } else {
             CommuteState::Running
         };
-        world.resource_mut::<NextState<CommuteState>>().set(state);
-    }
-}
-
-fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
-    loop {
-        if world.get::<SceneRoot>(entity).is_some() {
-            return Some(entity);
-        }
-        entity = world.get::<ChildOf>(entity)?.parent();
+        commute.set(state);
     }
 }

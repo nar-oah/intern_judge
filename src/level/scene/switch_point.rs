@@ -1,6 +1,5 @@
 use crate::level::{
-    Interactable, PausedInteractRequested, RunningInteractRequested, SwitchPoint,
-    day::DayEndRequested, navigation,
+    Interactable, PausedInteractRequested, SwitchPoint, day::DayEndRequested, navigation,
 };
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -18,15 +17,9 @@ pub(super) fn switch_point_scene(position: Vec2) -> impl Scene {
         Collider::rectangle(size.x, size.y)
         Sensor
         CollidingEntities::default()
-        on(interact)
+        on(navigation::open_destinations)
         on(end_day)
     }
-}
-
-fn interact(request: On<RunningInteractRequested>, mut commands: Commands) {
-    let point = request.entity;
-    let player = request.player;
-    commands.queue(move |world: &mut World| navigation::open_destinations(world, point, player));
 }
 
 fn end_day(_: On<PausedInteractRequested>, mut commands: Commands) {

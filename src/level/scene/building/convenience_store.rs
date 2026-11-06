@@ -1,7 +1,7 @@
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, ConvenienceKind};
 use crate::game::{Money, Stamina};
-use crate::level::{BuildingType, RunningInteractRequested};
+use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
 pub(in crate::level::scene) fn convenience_store_scene(
@@ -16,7 +16,7 @@ pub(in crate::level::scene) fn convenience_store_scene(
             Color::srgb(0.45, 0.7, 0.5),
             BuildingDialogue::new("dialogue/buildings.rep", "convenience_store"),
         )
-        BuildingType::ConvenienceStore
+        #ConvenienceStore
         kind
         on(interact)
     }

@@ -35,7 +35,7 @@ pub struct RoadGraph {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct CaseDef {
-    pub dialogue_prefix: String,
+    pub dialogue_node: String,
     pub guilty: RoadEffect,
     pub not_guilty: RoadEffect,
 }
