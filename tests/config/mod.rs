@@ -1,6 +1,6 @@
 use super::*;
 use crate::game::{CommuteTime, GamePlugin, HasHelmet, Money, Stamina, calendar::GameCalendar};
-use bevy::{asset::AssetPlugin, state::app::StatesPlugin};
+use bevy::{asset::AssetPlugin, scene::ScenePlugin, state::app::StatesPlugin};
 use bevy_replique::prelude::{RepliqueDialogue, RepliquePlugin};
 use std::{
     collections::HashSet,
@@ -17,10 +17,13 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
             file_path: format!("{}/assets", env!("CARGO_MANIFEST_DIR")),
             ..default()
         },
+        ScenePlugin,
         RepliquePlugin,
         ConfigPlugin,
         GamePlugin,
     ));
+    app.init_asset::<Font>()
+        .init_asset_loader::<bevy::text::FontLoader>();
     let court = ["verdict", "prosecution", "defense"].map(|name| {
         app.world()
             .resource::<AssetServer>()

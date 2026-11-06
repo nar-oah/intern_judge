@@ -113,44 +113,27 @@ fn hud_refreshes_when_each_displayed_resource_changes_while_paused() {
     }
 }
 
+fn last_changed<C: Component>(app: &App, entity: Entity) -> u32 {
+    app.world()
+        .entity(entity)
+        .get_ref::<C>()
+        .unwrap()
+        .last_changed()
+        .get()
+}
+
 fn hud_change_ticks(app: &mut App) -> [u32; 5] {
     let commute = single::<CommuteHudText>(app);
     let stamina = single::<StaminaBar>(app);
     let calendar = single::<CalendarHudText>(app);
     let case = single::<CaseHud>(app);
     let case_text = single::<CaseHudText>(app);
-    let world = app.world();
     [
-        world
-            .entity(commute)
-            .get_ref::<Text>()
-            .unwrap()
-            .last_changed()
-            .get(),
-        world
-            .entity(stamina)
-            .get_ref::<Node>()
-            .unwrap()
-            .last_changed()
-            .get(),
-        world
-            .entity(calendar)
-            .get_ref::<Text>()
-            .unwrap()
-            .last_changed()
-            .get(),
-        world
-            .entity(case)
-            .get_ref::<Visibility>()
-            .unwrap()
-            .last_changed()
-            .get(),
-        world
-            .entity(case_text)
-            .get_ref::<Text>()
-            .unwrap()
-            .last_changed()
-            .get(),
+        last_changed::<Text>(app, commute),
+        last_changed::<Node>(app, stamina),
+        last_changed::<Text>(app, calendar),
+        last_changed::<Visibility>(app, case),
+        last_changed::<Text>(app, case_text),
     ]
 }
 
