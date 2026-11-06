@@ -48,10 +48,11 @@ pub(super) fn show_bill(
         transactions: *transactions,
         total: money.0 + transactions.net() + salary - rent,
     };
+    // Make the bill visible to EndDay observers triggered by dialogue cleanup.
+    commands.spawn_scene(ui::bill_scene(bill));
     for root in &roots {
         commands.entity(root).despawn();
     }
-    commands.spawn_scene(ui::bill_scene(bill));
     commute.set(CommuteState::Paused);
 }
 
