@@ -17,7 +17,9 @@ pub(super) fn road_app() -> App {
         );
     finish_app(&mut app);
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
-    crate::level::day::start_day(app.world_mut());
+    app.world_mut()
+        .run_system_cached(crate::level::day::start_day)
+        .unwrap();
     app.update();
     app
 }
