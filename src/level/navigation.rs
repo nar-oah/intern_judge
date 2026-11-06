@@ -5,17 +5,22 @@ use super::{
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
 use crate::{config::RoadGraph, game::CommuteState};
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use bevy::ui_widgets::Activate;
+
+#[derive(SystemParam)]
+pub(super) struct NavigationMap<'w> {
+    graph: Res<'w, RoadGraph>,
+    unlocks: Res<'w, RoadUnlocks>,
+    layout: Res<'w, MapLayout>,
+}
 
 pub(super) fn open_destinations(
     request: On<RunningInteractRequested>,
     mut commands: Commands,
     roots: Query<&RoadId, With<SceneRoot>>,
     parents: Query<&ChildOf>,
-    graph: Res<RoadGraph>,
-    unlocks: Res<RoadUnlocks>,
-    layout: Res<MapLayout>,
+    map: NavigationMap,
     mut commute: ResMut<NextState<CommuteState>>,
 ) {
     let Some(root) = parents
@@ -27,12 +32,12 @@ pub(super) fn open_destinations(
     let Ok(&road) = roots.get(root) else {
         return;
     };
-    let Some(choices) = graph.roads.get(&road) else {
+    let Some(choices) = map.graph.roads.get(&road) else {
         return;
     };
     let mut destinations = Vec::new();
     for &destination in choices {
-        if unlocks.0.get(&destination) == Some(&true) && !destinations.contains(&destination) {
+        if map.unlocks.0.get(&destination) == Some(&true) && !destinations.contains(&destination) {
             destinations.push(destination);
         }
     }
@@ -41,8 +46,8 @@ pub(super) fn open_destinations(
         commands.spawn_scene(ui::travel_ui_scene(
             Some(road),
             destinations,
-            &graph,
-            &layout,
+            &map.graph,
+            &map.layout,
         ));
         commute.set(CommuteState::Paused);
     }
@@ -55,13 +60,12 @@ pub(super) fn open_unlock_map(
     _: On<OpenUnlockMap>,
     mut commands: Commands,
     roots: Query<Entity, With<SceneRoot>>,
-    graph: Res<RoadGraph>,
-    unlocks: Res<RoadUnlocks>,
-    layout: Res<MapLayout>,
+    map: NavigationMap,
     mut commute: ResMut<NextState<CommuteState>>,
 ) {
-    let unlocks = &unlocks.0;
-    let mut destinations = graph
+    let unlocks = &map.unlocks.0;
+    let mut destinations = map
+        .graph
         .roads
         .iter()
         .filter(|(road, _)| unlocks.get(*road) == Some(&true))
@@ -73,7 +77,12 @@ pub(super) fn open_unlock_map(
     for root in &roots {
         commands.entity(root).despawn();
     }
-    commands.spawn_scene(ui::travel_ui_scene(None, destinations, &graph, &layout));
+    commands.spawn_scene(ui::travel_ui_scene(
+        None,
+        destinations,
+        &map.graph,
+        &map.layout,
+    ));
     commute.set(CommuteState::Paused);
 }
 
