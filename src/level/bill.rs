@@ -46,11 +46,10 @@ pub(super) fn show_bill(
     if calendar.is_finished() || !bills.is_empty() {
         return;
     }
-    let (salary, rent) = if calendar.weekday() == 5 {
-        (settings.weekly_salary, settings.weekly_rent)
-    } else {
-        (0, 0)
-    };
+    let salary = settings.weekly_salary;
+    let rent = settings.weekly_rent;
+    let is_payday = calendar.weekday() == 5;
+    let (salary, rent) = if is_payday { (salary, rent) } else { (0, 0) };
     let bill = DailyBill {
         balance: money.0,
         salary,
