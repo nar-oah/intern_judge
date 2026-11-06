@@ -10,16 +10,12 @@ use crate::{
 };
 use bevy::{camera::visibility::VisibilitySystems, prelude::*, ui::UiSystems};
 use bevy_replique::prelude::DialogueSystem;
-use calendar::CalendarHud;
-use case::CaseHud;
-use commute::CommuteHud;
 
 pub(super) fn setup(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::Playing),
         setup_hud.after(super::calendar::initialize_calendar),
     )
-    .add_systems(OnExit(GameState::Playing), cleanup_hud)
     .add_systems(
         Update,
         (
@@ -47,20 +43,17 @@ pub(super) fn setup(app: &mut App) {
 }
 
 fn setup_hud(mut commands: Commands, current_case: Option<Res<CurrentCase>>) {
-    commands.spawn_scene(commute::commute_hud_scene());
-    commands.spawn_scene(calendar::calendar_hud_scene());
+    commands
+        .spawn_scene(commute::commute_hud_scene())
+        .insert(DespawnOnExit(GameState::Playing));
+    commands
+        .spawn_scene(calendar::calendar_hud_scene())
+        .insert(DespawnOnExit(GameState::Playing));
     let road = current_case
         .as_deref()
         .and_then(|current| current.0.as_ref())
         .map(|selected| selected.road);
-    commands.spawn_scene(case::case_hud_scene(road));
-}
-
-fn cleanup_hud(
-    mut commands: Commands,
-    roots: Query<Entity, Or<(With<CommuteHud>, With<CalendarHud>, With<CaseHud>)>>,
-) {
-    for root in &roots {
-        commands.entity(root).despawn();
-    }
+    commands
+        .spawn_scene(case::case_hud_scene(road))
+        .insert(DespawnOnExit(GameState::Playing));
 }
