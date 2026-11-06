@@ -31,7 +31,7 @@ pub(super) fn configured_day_app(total_days: u32, configure: impl FnOnce(&mut Ap
 pub(super) fn weekday_app(total_days: u32) -> App {
     let mut app = day_app(total_days);
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
-    start_day(app.world_mut());
+    app.world_mut().run_system_cached(start_day).unwrap();
     app.update();
     app
 }

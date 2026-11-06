@@ -8,6 +8,10 @@ fn new_game_uses_configured_money_and_starts_with_full_stamina_and_running_time(
         app.world().resource::<GameSettings>().initial_money
     );
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
+    assert_eq!(
+        *app.world().resource::<DailyTransactions>(),
+        DailyTransactions::default()
+    );
     let calendar = app.world().resource::<GameCalendar>();
     assert_eq!(
         calendar.total_days,
@@ -33,6 +37,13 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     let mut app = game();
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
     app.world_mut().resource_mut::<Money>().0 = 1;
+    app.insert_resource(DailyTransactions {
+        convenience_store_cost: 10,
+        tool_store_cost: 20,
+        cat_reward: 30,
+        lottery_cost: 40,
+        lottery_reward: 50,
+    });
     app.world_mut().resource_mut::<Stamina>().0 = 12.0;
     app.world_mut().resource_mut::<HasHelmet>().0 = true;
     app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.5;
@@ -54,6 +65,10 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     advance(&mut app, 2);
 
     assert_eq!(app.world().resource::<Money>().0, 91);
+    assert_eq!(
+        *app.world().resource::<DailyTransactions>(),
+        DailyTransactions::default()
+    );
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
     assert!(!app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);

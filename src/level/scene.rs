@@ -8,17 +8,6 @@ use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, TodayRoads,
 use crate::config::CaseDefs;
 use bevy::prelude::*;
 
-pub(super) fn replace_scene(
-    world: &mut World,
-    roots: impl IntoIterator<Item = Entity>,
-    next: impl Scene,
-) {
-    for root in roots {
-        world.despawn(root);
-    }
-    world.spawn_scene(next).unwrap();
-}
-
 #[derive(Event)]
 pub(super) struct EnterRoad(pub RoadId);
 

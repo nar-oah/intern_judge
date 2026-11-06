@@ -3,7 +3,7 @@ pub(super) mod case;
 pub(super) mod commute;
 mod update;
 
-use super::{CommuteTime, Money, Stamina, calendar::GameCalendar};
+use super::{CommuteTime, DailyTransactions, Money, Stamina, calendar::GameCalendar};
 use crate::{
     config::{GameSettings, GameState},
     level::CurrentCase,
@@ -22,6 +22,7 @@ pub(super) fn setup(app: &mut App) {
             update::update_commute_hud.run_if(
                 resource_exists_and_changed::<CommuteTime>
                     .or_eager(resource_exists_and_changed::<Money>)
+                    .or_eager(resource_exists_and_changed::<DailyTransactions>)
                     .or_eager(resource_exists_and_changed::<Stamina>)
                     .or_eager(resource_exists_and_changed::<GameSettings>),
             ),

@@ -1,14 +1,25 @@
-use super::WeeklyBill;
+use super::DailyBill;
 use crate::level::{SceneRoot, ui::confirm_input_scene};
 use bevy::{prelude::*, text::FontSourceTemplate};
 
-pub(super) fn bill_scene(balance: i32, salary: i32, rent: i32, bill: WeeklyBill) -> impl Scene {
+pub(super) fn bill_scene(bill: DailyBill) -> impl Scene {
+    let DailyBill {
+        balance,
+        salary,
+        rent,
+        transactions,
+        total,
+    } = &bill;
     let summary = format!(
-        "周五账单\n当前余额：{balance}\n本周工资：{salary}\n房租：{rent}\n结算后余额：{}\n按 E 确认",
-        bill.total,
+        "每日账单\n当前余额：{balance}\n本周工资：{salary}\n房租：{rent}\n便利店付款：{}\n工具店付款：{}\n救助猫咪收益：{}\n彩票店付款：{}\n彩票中奖收益：{}\n结算后余额：{total}\n按 E 确认",
+        transactions.convenience_store_cost,
+        transactions.tool_store_cost,
+        transactions.cat_reward,
+        transactions.lottery_cost,
+        transactions.lottery_reward,
     );
     bsn! {
-        #WeeklyBill
+        #DailyBill
         SceneRoot
         bill
         @confirm_input_scene()

@@ -1,6 +1,6 @@
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::BuildingValues;
-use crate::game::Money;
+use crate::game::DailyTransactions;
 use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
@@ -20,9 +20,9 @@ pub(in crate::level::scene) fn cat_scene(position: Vec2, size: Vec2) -> impl Sce
 fn interact(
     request: On<RunningInteractRequested>,
     mut commands: Commands,
-    mut money: ResMut<Money>,
+    mut transactions: ResMut<DailyTransactions>,
     values: Res<BuildingValues>,
 ) {
-    money.0 += values.cat_reward;
+    transactions.cat_reward += values.cat_reward;
     commands.entity(request.entity).despawn();
 }

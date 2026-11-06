@@ -4,7 +4,7 @@ mod tests;
 pub(super) mod ui;
 use super::{
     CurrentCase, RoadEffects,
-    day::DayEndRequested,
+    day::EndDay,
     ui::{ConfirmArmed, UiAction},
 };
 use bevy::prelude::*;
@@ -113,6 +113,7 @@ fn cleanup_dialogue(
 #[replique_command]
 fn verdict(
     In(is_guilty): In<bool>,
+    call: DialogueCall,
     mut current: ResMut<CurrentCase>,
     mut effects: ResMut<RoadEffects>,
     mut commands: Commands,
@@ -123,5 +124,9 @@ fn verdict(
     let effect = if is_guilty { guilty } else { not_guilty };
     let effects = effects.0.entry(selected.road).or_default();
     effects.push(effect);
-    commands.insert_resource(DayEndRequested);
+    commands.entity(call.runner()).observe(
+        |_: On<Remove<DialogueRunner>>, mut commands: Commands| {
+            commands.trigger(EndDay);
+        },
+    );
 }

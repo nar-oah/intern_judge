@@ -10,7 +10,9 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
                 RoadEffect::PlaceholderA,
                 RoadEffect::PlaceholderB,
             )]));
-        crate::level::day::start_day(app.world_mut());
+        app.world_mut()
+            .run_system_cached(crate::level::day::start_day)
+            .unwrap();
         let (player, bench) = enter_court(&mut app);
         let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
         assert_eq!(selected.road, RoadId::MarketRoad);
@@ -57,6 +59,16 @@ fn each_court_button_runs_its_branch_and_closes_the_dialogue() {
         assert_eq!(app.world().resource::<RoadEffects>().0, expected_effects);
         advance(&mut app, 4);
         assert_closed(&mut app, player);
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            elapsed_days
+        );
+        if expected.is_some() {
+            single::<DailyBill>(&mut app);
+            assert_absent::<Player>(&mut app);
+            press_e(&mut app);
+            app.update();
+        }
         assert_eq!(
             app.world().resource::<GameCalendar>().elapsed_days,
             elapsed_days + u32::from(expected.is_some())

@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     config::ConvenienceKind,
-    game::{CommuteState, HasHelmet, Money, Stamina},
+    game::{CommuteState, DailyTransactions, HasHelmet, Money, Stamina},
     level::{CurrentCase, RunningInteractRequested},
     test_support::{finish_app, level_app},
 };
@@ -14,6 +14,7 @@ fn building_app() -> App {
     let mut app = level_app();
     app.add_plugins(RepliquePlugin)
         .insert_resource(Money(100))
+        .init_resource::<DailyTransactions>()
         .init_resource::<CurrentCase>()
         .init_resource::<Stamina>()
         .init_resource::<HasHelmet>();

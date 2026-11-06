@@ -1,6 +1,6 @@
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, ConvenienceKind};
-use crate::game::{Money, Stamina};
+use crate::game::{DailyTransactions, Money, Stamina};
 use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
@@ -26,14 +26,15 @@ fn interact(
     request: On<RunningInteractRequested>,
     stores: Query<&ConvenienceKind>,
     values: Res<BuildingValues>,
-    mut money: ResMut<Money>,
+    money: Res<Money>,
+    mut transactions: ResMut<DailyTransactions>,
     mut stamina: ResMut<Stamina>,
 ) {
     let kind = stores.get(request.entity).unwrap();
     let store = &values.convenience_stores[kind];
-    if stamina.0 >= Stamina::MAX || money.0 < store.price {
+    if stamina.0 >= Stamina::MAX || money.0 + transactions.net() < store.price {
         return;
     }
-    money.0 -= store.price;
+    transactions.convenience_store_cost += store.price;
     stamina.0 = (stamina.0 + store.stamina_recovery).min(Stamina::MAX);
 }

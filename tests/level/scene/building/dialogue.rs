@@ -34,6 +34,11 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
             Vec2::new(0.0, 7.0)
         );
         assert_eq!(app.world().resource::<Money>().0, 100, "{building:?}");
+        assert_eq!(
+            *app.world().resource::<DailyTransactions>(),
+            DailyTransactions::default(),
+            "{building:?}"
+        );
         assert_eq!(app.world().resource::<Stamina>().0, 35.0, "{building:?}");
         assert!(!app.world().resource::<HasHelmet>().0, "{building:?}");
         assert!(app.world().get_entity(entity).is_ok(), "{building:?}");
@@ -241,6 +246,10 @@ fn every_building_dialogue_option_is_information_only() {
             assert!(selected);
             assert_eq!(line_count, if choice == 0 { 2 } else { 1 });
             assert_eq!(app.world().resource::<Money>().0, 100);
+            assert_eq!(
+                *app.world().resource::<DailyTransactions>(),
+                DailyTransactions::default()
+            );
             assert_eq!(app.world().resource::<Stamina>().0, 35.0);
             assert!(!app.world().resource::<HasHelmet>().0);
             assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);

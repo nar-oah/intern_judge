@@ -26,7 +26,6 @@ fn collide(event: On<CollisionStart>, mut commands: Commands) {
     let object = event.collider1;
     let target = event.collider2;
     commands.queue(move |world: &mut World| {
-        // A single physics step can report several contacts for the same object.
         if world.get::<FallingObject>(object).is_none() {
             return;
         }

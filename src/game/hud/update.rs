@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     config::GameSettings,
-    game::{CommuteTime, Money, Stamina, calendar::GameCalendar},
+    game::{CommuteTime, DailyTransactions, Money, Stamina, calendar::GameCalendar},
     level::CurrentCase,
 };
 use bevy::prelude::*;
@@ -14,6 +14,7 @@ pub(super) fn update_commute_hud(
     settings: Res<GameSettings>,
     commute: Res<CommuteTime>,
     money: Res<Money>,
+    transactions: Res<DailyTransactions>,
     stamina: Res<Stamina>,
     mut hud: Query<&mut Text, With<CommuteHudText>>,
     mut bars: Query<&mut Node, With<StaminaBar>>,
@@ -22,7 +23,7 @@ pub(super) fn update_commute_hud(
         text.0 = format!(
             "Time: {:.1}s\nMoney: {}\nStamina: {:.0}/{:.0}",
             commute.remaining(settings.commute_limit),
-            money.0,
+            money.0 + transactions.net(),
             stamina.0,
             Stamina::MAX,
         );

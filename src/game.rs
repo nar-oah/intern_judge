@@ -22,6 +22,24 @@ impl CommuteTime {
 #[derive(Resource, Debug)]
 pub struct Money(pub i32);
 
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DailyTransactions {
+    pub convenience_store_cost: i32,
+    pub tool_store_cost: i32,
+    pub cat_reward: i32,
+    pub lottery_cost: i32,
+    pub lottery_reward: i32,
+}
+
+impl DailyTransactions {
+    pub fn net(&self) -> i32 {
+        self.cat_reward + self.lottery_reward
+            - self.convenience_store_cost
+            - self.tool_store_cost
+            - self.lottery_cost
+    }
+}
+
 impl FromWorld for Money {
     fn from_world(world: &mut World) -> Self {
         Self(world.resource::<GameSettings>().initial_money)
