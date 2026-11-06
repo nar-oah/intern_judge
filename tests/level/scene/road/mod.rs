@@ -29,7 +29,7 @@ fn each_road_composes_only_its_requested_effects() {
         for effects in effect_sets {
             let mut app = scene_app();
             app.world_mut()
-                .spawn_scene(road_scene(road, effects, "loose_sign", RoadId::ExampleRoad))
+                .spawn_scene(road_scene(road, effects))
                 .unwrap();
             assert_eq!(
                 count::<FallingObject>(&mut app),
@@ -62,8 +62,6 @@ fn empty_roads_share_a_scene_with_only_a_player_ground_and_switch_point() {
             .spawn_scene(road_scene(
                 road,
                 &[RoadEffect::FallingObject, RoadEffect::ConstructionDetour],
-                "",
-                road,
             ))
             .unwrap()
             .id();
@@ -107,8 +105,6 @@ fn entering_example_road_spawns_one_object_at_a_layout_candidate() {
             .spawn_scene(road_scene(
                 RoadId::ExampleRoad,
                 &[RoadEffect::FallingObject],
-                "",
-                RoadId::ExampleRoad,
             ))
             .unwrap()
             .id();
@@ -131,8 +127,6 @@ fn market_detour_stands_on_ground_between_the_stores() {
         .spawn_scene(road_scene(
             RoadId::MarketRoad,
             &[RoadEffect::ConstructionDetour],
-            "",
-            RoadId::MarketRoad,
         ))
         .unwrap();
     let (transform, sprite) = world
