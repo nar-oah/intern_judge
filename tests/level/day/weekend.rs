@@ -4,8 +4,8 @@ use crate::{
     game::{CommuteState, CommuteTime, GamePlugin, Money, calendar::GameCalendar},
     level::{
         LevelPlugin, PausedInteractRequested, RoadId, RoadUnlocks, SwitchPoint,
-        bill::WeeklyBill,
-        day::DayEndRequested,
+        bill::DailyBill,
+        day::EndDay,
         scene::ending::InternshipEnded,
         tests::support::{
             assert_commute, assert_road, assert_today_roads, configured_day_app, destination_button,
@@ -142,6 +142,10 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
 
     assert!(app.world().get_entity(player).is_err());
     assert_absent::<Player>(&mut app);
+    single::<DailyBill>(&mut app);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 0);
+    press_e(&mut app);
+    advance(&mut app, 2);
     let map = single::<TravelUiRoot>(&mut app);
     assert_today_roads(&app, &[]);
     assert_eq!(
@@ -170,6 +174,10 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
     advance(&mut app, 2);
 
     assert!(app.world().get_entity(player).is_err());
+    single::<DailyBill>(&mut app);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 1);
+    press_e(&mut app);
+    advance(&mut app, 2);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
     assert_eq!(app.world().resource::<RoadUnlocks>().0, unlocks);
     assert_day_scene(&mut app);
@@ -177,7 +185,7 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
 }
 
 #[test]
-fn shipped_month_unlocks_eight_roads_settles_each_friday_once_and_finishes() {
+fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays() {
     let mut app = shipped_road_app();
     let mut weekend_roads = Vec::new();
     let mut balance = app.world().resource::<Money>().0;
@@ -219,23 +227,23 @@ fn shipped_month_unlocks_eight_roads_settles_each_friday_once_and_finishes() {
                 player,
             });
         } else {
-            app.world_mut().insert_resource(DayEndRequested);
+            app.world_mut().trigger(EndDay);
         }
         app.update();
         assert!(app.world().get_entity(player).is_err());
+        single::<DailyBill>(&mut app);
+        assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
+        assert_eq!(app.world().resource::<Money>().0, balance);
+        press_e(&mut app);
+        KeyCode::KeyE.release(app.world_mut());
         if friday {
-            single::<WeeklyBill>(&mut app);
-            assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
-            assert_eq!(app.world().resource::<Money>().0, balance);
-            press_e(&mut app);
-            KeyCode::KeyE.release(app.world_mut());
             let settings = app.world().resource::<GameSettings>();
             balance += settings.weekly_salary - settings.weekly_rent;
         }
         advance(&mut app, 2);
         assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day + 1);
         assert_eq!(app.world().resource::<RoadUnlocks>().0, unlocks);
-        assert_absent::<WeeklyBill>(&mut app);
+        assert_absent::<DailyBill>(&mut app);
         assert_eq!(app.world().resource::<Money>().0, balance);
     }
 
@@ -245,9 +253,9 @@ fn shipped_month_unlocks_eight_roads_settles_each_friday_once_and_finishes() {
     weekend_roads.dedup();
     assert_eq!(weekend_roads.len(), 8);
     single::<InternshipEnded>(&mut app);
-    app.world_mut().insert_resource(DayEndRequested);
+    app.world_mut().trigger(EndDay);
     advance(&mut app, 3);
-    assert_absent::<WeeklyBill>(&mut app);
+    assert_absent::<DailyBill>(&mut app);
     assert_eq!(app.world().resource::<Money>().0, balance);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
 }
