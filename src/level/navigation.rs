@@ -8,6 +8,7 @@ use crate::{config::RoadGraph, game::CommuteState, player::Player};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
+#[expect(clippy::too_many_arguments, reason = "Navigation reads ECS data through system parameters")]
 pub(super) fn open_destinations(
     request: On<RunningInteractRequested>,
     mut commands: Commands,
