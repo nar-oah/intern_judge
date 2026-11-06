@@ -97,10 +97,7 @@ fn interaction_requires_overlap_at_the_time_of_a_fresh_press() {
     frame(&mut app);
     interact(&mut app, player, true);
     frame(&mut app);
-    assert_eq!(
-        app.world().resource::<Requests>().running,
-        [target, target]
-    );
+    assert_eq!(app.world().resource::<Requests>().running, [target, target]);
 }
 
 #[test]
