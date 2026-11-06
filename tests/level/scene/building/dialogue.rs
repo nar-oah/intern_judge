@@ -1,5 +1,9 @@
 use super::*;
-use crate::{game::calendar::GameCalendar, level::PausedInteractRequested, test_support::single};
+use crate::{
+    game::calendar::GameCalendar,
+    level::{CurrentCase, PausedInteractRequested, RoadEffect, RoadId, SelectedCase},
+    test_support::{assert_absent, case_def, named, single},
+};
 use bevy_replique::prelude::{
     DialogueChoices, DialogueCommand, DialogueFinished, DialogueLine, ResumeDialogue, ResumeInput,
 };
@@ -52,20 +56,19 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
         ("Defense", "dialogue/defense.rep", "loose_sign"),
     ] {
         let mut app = building_app();
-        app.world_mut().resource_mut::<crate::level::CurrentCase>().0 =
-            Some(crate::level::SelectedCase {
-                road: crate::level::RoadId::ExampleRoad,
-                case: crate::test_support::case_def(
-                    "loose_sign",
-                    crate::level::RoadEffect::FallingObject,
-                    crate::level::RoadEffect::ConstructionDetour,
-                ),
-            });
+        app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
+            road: RoadId::ExampleRoad,
+            case: case_def(
+                "loose_sign",
+                RoadEffect::FallingObject,
+                RoadEffect::ConstructionDetour,
+            ),
+        });
         app.world_mut()
             .spawn_scene(crate::level::scene::road::court_scene(&[]))
             .unwrap();
         let player = single::<Player>(&mut app);
-        let entity = crate::test_support::named(&mut app, name);
+        let entity = named(&mut app, name);
         let world = app.world_mut();
         assert_eq!(world.get::<BuildingDialogue>(entity).unwrap().asset, asset);
         world.trigger(RunningInteractRequested { entity, player });
@@ -105,18 +108,17 @@ fn court_participants_resolve_the_current_case_when_interacted_with() {
             .spawn_scene(crate::level::scene::road::court_scene(&[]))
             .unwrap();
         let player = single::<Player>(&mut app);
-        let entity = crate::test_support::named(&mut app, name);
+        let entity = named(&mut app, name);
         assert_eq!(app.world().get::<BuildingDialogue>(entity).unwrap().node, None);
 
-        app.world_mut().resource_mut::<crate::level::CurrentCase>().0 =
-            Some(crate::level::SelectedCase {
-                road: crate::level::RoadId::MarketRoad,
-                case: crate::test_support::case_def(
-                    "balcony_planter",
-                    crate::level::RoadEffect::FallingObject,
-                    crate::level::RoadEffect::ConstructionDetour,
-                ),
-            });
+        app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
+            road: RoadId::MarketRoad,
+            case: case_def(
+                "balcony_planter",
+                RoadEffect::FallingObject,
+                RoadEffect::ConstructionDetour,
+            ),
+        });
         app.world_mut()
             .trigger(PausedInteractRequested { entity, player });
         app.world_mut().flush();
@@ -140,7 +142,7 @@ fn court_participants_without_a_case_leave_velocity_and_ui_unchanged() {
             .spawn_scene(crate::level::scene::road::court_scene(&[]))
             .unwrap();
         let player = single::<Player>(&mut app);
-        let entity = crate::test_support::named(&mut app, name);
+        let entity = named(&mut app, name);
         app.world_mut().get_mut::<LinearVelocity>(player).unwrap().0 = Vec2::new(42.0, 7.0);
         app.world_mut()
             .trigger(PausedInteractRequested { entity, player });
@@ -156,7 +158,7 @@ fn court_participants_without_a_case_leave_velocity_and_ui_unchanged() {
             app.world().resource::<Messages<StartDialogue>>().is_empty(),
             "{name}",
         );
-        crate::test_support::assert_absent::<crate::level::dialogue::DialogueBox>(&mut app);
+        assert_absent::<Node>(&mut app);
     }
 }
 
