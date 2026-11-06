@@ -123,6 +123,10 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
     assert_eq!(app.world().resource::<Money>().0, 48);
+    assert_eq!(
+        *app.world().resource::<DailyTransactions>(),
+        DailyTransactions::default()
+    );
     assert!(app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<RoadEffects>().0, effects);
     assert!(app.world().get_entity(camera).is_ok());
