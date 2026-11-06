@@ -33,7 +33,6 @@ pub(super) fn show_bill(
     _: On<EndDay>,
     mut commands: Commands,
     roots: Query<Entity, With<SceneRoot>>,
-    bills: Query<(), With<DailyBill>>,
     resources: BillResources,
     mut commute: ResMut<NextState<CommuteState>>,
 ) {
@@ -43,9 +42,6 @@ pub(super) fn show_bill(
         money,
         transactions,
     } = resources;
-    if calendar.is_finished() || !bills.is_empty() {
-        return;
-    }
     let salary = settings.weekly_salary;
     let rent = settings.weekly_rent;
     let is_payday = calendar.weekday() == 5;

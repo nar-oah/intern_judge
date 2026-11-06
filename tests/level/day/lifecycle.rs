@@ -153,7 +153,7 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
 }
 
 #[test]
-fn end_day_immediately_replaces_the_scene_and_repeated_events_keep_the_same_bill() {
+fn end_day_immediately_replaces_the_scene_and_repeated_events_replace_the_bill() {
     let mut app = weekday_app(28);
     let (root, player) = assert_road(&mut app, RoadId::ExampleRoad);
     app.world_mut()
@@ -168,7 +168,11 @@ fn end_day_immediately_replaces_the_scene_and_repeated_events_keep_the_same_bill
     assert_absent::<DialogueRunner>(&mut app);
     assert_absent::<Player>(&mut app);
     let bill = single::<DailyBill>(&mut app);
-    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    let bill_entities = scene_entities(app.world(), bill);
+    assert_removed(&app, &bill_entities);
+    let new_bill = single::<DailyBill>(&mut app);
+    assert_ne!(new_bill, bill);
+    assert_eq!(single::<SceneRoot>(&mut app), new_bill);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
 
     app.world_mut()
@@ -334,8 +338,10 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
         app.world_mut().trigger(EndDay);
         advance(&mut app, 4);
 
-        assert_eq!(single::<SceneRoot>(&mut app), root);
-        assert_absent::<DailyBill>(&mut app);
+        assert!(app.world().get_entity(root).is_err());
+        assert_absent::<InternshipEnded>(&mut app);
+        let bill = single::<DailyBill>(&mut app);
+        assert_eq!(single::<SceneRoot>(&mut app), bill);
         assert_absent::<Player>(&mut app);
         assert_absent::<RoadId>(&mut app);
         assert_eq!(
@@ -343,6 +349,19 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
             total_days
         );
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+        assert_eq!(app.world().resource::<Money>().0, balance + 3);
+        assert_commute(&app, CommuteState::Paused);
+
+        press_e(&mut app);
+        app.update();
+
+        single::<InternshipEnded>(&mut app);
+        assert_absent::<DailyBill>(&mut app);
+        assert_absent::<Player>(&mut app);
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            total_days + 1
+        );
         assert_eq!(app.world().resource::<Money>().0, balance + 3);
         assert_commute(&app, CommuteState::Paused);
     }

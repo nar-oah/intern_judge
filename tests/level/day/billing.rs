@@ -78,10 +78,6 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
         assert!(summary.contains(expected), "missing {expected}: {summary}");
     }
 
-    app.world_mut().trigger(EndDay);
-    app.update();
-    assert_eq!(single::<DailyBill>(&mut app), bill);
-    assert_eq!(app.world().resource::<Money>().0, 12);
     {
         let mut settings = app.world_mut().resource_mut::<GameSettings>();
         settings.weekly_salary = 103;
@@ -114,8 +110,8 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
 }
 
 #[test]
-fn every_day_shows_a_bill_even_without_transactions_and_only_friday_charges_weekly_items() {
-    for elapsed_days in 0..7 {
+fn bills_show_before_and_after_the_last_day_without_transactions_and_only_friday_charges_weekly_items() {
+    for elapsed_days in (0..7).chain([28, 29, 34, 35]) {
         let mut app = weekday_app(28);
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
         app.world_mut().resource_mut::<Money>().0 = 19;

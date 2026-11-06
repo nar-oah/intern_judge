@@ -255,7 +255,8 @@ fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays
     single::<InternshipEnded>(&mut app);
     app.world_mut().trigger(EndDay);
     advance(&mut app, 3);
-    assert_absent::<DailyBill>(&mut app);
+    single::<DailyBill>(&mut app);
+    assert_absent::<InternshipEnded>(&mut app);
     assert_eq!(app.world().resource::<Money>().0, balance);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
 }
