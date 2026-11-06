@@ -3,7 +3,7 @@
 mod tests;
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::config::{BuildingValues, LotteryValues};
-use crate::game::Money;
+use crate::game::{DailyTransactions, Money};
 use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
@@ -23,15 +23,16 @@ pub(in crate::level::scene) fn lottery_store_scene(position: Vec2, size: Vec2) -
 fn interact(
     _: On<RunningInteractRequested>,
     values: Res<BuildingValues>,
-    mut money: ResMut<Money>,
+    money: Res<Money>,
+    mut transactions: ResMut<DailyTransactions>,
 ) {
     let lottery = &values.lottery;
-    if money.0 < lottery.price {
+    if money.0 + transactions.net() < lottery.price {
         return;
     }
     let total_weight = lottery.prizes.iter().map(|prize| prize.weight).sum();
-    money.0 -= lottery.price;
-    money.0 += prize(lottery, rand::random_range(0..total_weight));
+    transactions.lottery_cost += lottery.price;
+    transactions.lottery_reward += prize(lottery, rand::random_range(0..total_weight));
 }
 
 fn prize(lottery: &LotteryValues, mut roll: u32) -> i32 {

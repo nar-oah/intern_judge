@@ -1,5 +1,5 @@
 use super::{BuildingDialogue, dialogue_building_scene};
-use crate::game::{HasHelmet, Money};
+use crate::game::{DailyTransactions, HasHelmet, Money};
 use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
@@ -20,12 +20,13 @@ pub(in crate::level::scene) fn tool_store_scene(position: Vec2, size: Vec2) -> i
 
 fn interact(
     _: On<RunningInteractRequested>,
-    mut money: ResMut<Money>,
+    money: Res<Money>,
+    mut transactions: ResMut<DailyTransactions>,
     mut helmet: ResMut<HasHelmet>,
 ) {
-    if helmet.0 || money.0 < COST {
+    if helmet.0 || money.0 + transactions.net() < COST {
         return;
     }
-    money.0 -= COST;
+    transactions.tool_store_cost += COST;
     helmet.0 = true;
 }
