@@ -1,12 +1,12 @@
 use super::support::assert_day_scene;
 use crate::{
     config::{CaseDefs, GameState},
-    game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina, calendar::GameCalendar},
+    game::{CommuteState, CommuteTime, DailyTransactions, HasHelmet, Money, Stamina, calendar::GameCalendar},
     level::{
         CurrentCase, InitialRoad, RoadEffect, RoadEffects, RoadId, SceneRoot, SelectedCase,
         SwitchPoint, TodayRoads,
-        bill::{WeeklyBill, show_bill},
-        day::{DayEndRequested, begin_next_day, start_day},
+        bill::{DailyBill, confirm_bill},
+        day::{EndDay, start_day},
         scene::{
             effect::{ConstructionDetour, FallingObject},
             ending::InternshipEnded,
@@ -15,11 +15,11 @@ use crate::{
         ui::TravelUiRoot,
     },
     player::{Player, PlayerAction, Stunned},
-    test_support::{advance, assert_absent, assert_removed, named, scene_entities, single},
+    test_support::{advance, assert_absent, assert_removed, named, press_e, scene_entities, single},
 };
 use avian2d::prelude::{LinearVelocity, Position};
 use bevy::prelude::*;
-use bevy_replique::prelude::{DialogueFinished, DialogueRunner};
+use bevy_replique::prelude::DialogueRunner;
 use leafwing_input_manager::prelude::ActionState;
 
 #[test]
@@ -35,7 +35,7 @@ fn starting_any_day_resets_the_previous_roads_and_case_before_choosing_its_scene
             case,
         });
 
-        start_day(app.world_mut());
+        app.world_mut().run_system_cached(start_day).unwrap();
 
         assert!(app.world().resource::<CurrentCase>().0.is_none());
         if elapsed_days == 2 {
@@ -92,7 +92,10 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
         .unwrap()
         .press(&PlayerAction::Right);
 
-    begin_next_day(app.world_mut());
+    app.world_mut().resource_mut::<DailyTransactions>().cat_reward = 7;
+    app.world_mut().trigger(EndDay);
+    app.update();
+    press_e(&mut app);
 
     assert_removed(&app, &old_scene);
     let (root, player) = assert_road(&mut app, RoadId::MarketRoad);
@@ -119,7 +122,7 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
-    assert_eq!(app.world().resource::<Money>().0, 41);
+    assert_eq!(app.world().resource::<Money>().0, 48);
     assert!(app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<RoadEffects>().0, effects);
     assert!(app.world().get_entity(camera).is_ok());
@@ -133,39 +136,40 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_commute(&app, CommuteState::Running);
     assert!(app.world().resource::<CommuteTime>().elapsed > 0.0);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
-    assert_eq!(app.world().resource::<Money>().0, 41);
+    assert_eq!(app.world().resource::<Money>().0, 48);
     assert!(app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<RoadEffects>().0, effects);
 }
 
 #[test]
-fn requested_day_end_waits_for_dialogue_cleanup_and_runs_only_once() {
+fn end_day_immediately_replaces_the_scene_and_repeated_events_keep_the_same_bill() {
     let mut app = weekday_app(28);
     let (root, player) = assert_road(&mut app, RoadId::ExampleRoad);
     app.world_mut()
         .entity_mut(player)
         .insert(DialogueRunner::new(Handle::default()));
-    app.world_mut().insert_resource(DayEndRequested);
 
-    advance(&mut app, 2);
-
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
-    assert_eq!(single::<SceneRoot>(&mut app), root);
-    assert!(app.world().get::<DialogueRunner>(player).is_some());
-    assert!(app.world().contains_resource::<DayEndRequested>());
-
-    app.world_mut()
-        .write_message(DialogueFinished { runner: player });
-    app.update();
+    app.world_mut().trigger(EndDay);
 
     assert!(app.world().get_entity(root).is_err());
     assert!(app.world().get_entity(player).is_err());
     assert_absent::<DialogueRunner>(&mut app);
-    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
-    assert!(!app.world().contains_resource::<DayEndRequested>());
-    let (new_root, _) = assert_road(&mut app, RoadId::ExampleRoad);
+    assert_absent::<Player>(&mut app);
+    let bill = single::<DailyBill>(&mut app);
+    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
+
+    app.world_mut().trigger(EndDay);
     advance(&mut app, 3);
-    assert_eq!(single::<SceneRoot>(&mut app), new_root);
+
+    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
+
+    press_e(&mut app);
+    advance(&mut app, 3);
+
+    assert_absent::<DailyBill>(&mut app);
+    assert_road(&mut app, RoadId::ExampleRoad);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
 }
 
@@ -191,16 +195,16 @@ fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
                 previous.extend([root, child]);
             }
 
-            if billing {
-                show_bill(app.world_mut());
-            } else {
-                begin_next_day(app.world_mut());
+            app.world_mut().trigger(EndDay);
+            if !billing {
+                app.update();
+                press_e(&mut app);
             }
 
             assert_removed(&app, &previous);
             let root = single::<SceneRoot>(&mut app);
             if billing {
-                assert_eq!(single::<WeeklyBill>(&mut app), root);
+                assert_eq!(single::<DailyBill>(&mut app), root);
                 assert_absent::<Player>(&mut app);
                 assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
             } else {
@@ -220,14 +224,23 @@ fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
 }
 
 #[test]
-fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
+fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
     for total_days in [1, 3, 28] {
         let mut app = day_app(total_days);
         app.world_mut().resource_mut::<Money>().0 = 59;
         app.world_mut().resource_mut::<HasHelmet>().0 = true;
+        let mut balance = 59;
         for elapsed_days in 1..total_days {
             let root = single::<SceneRoot>(&mut app);
-            begin_next_day(app.world_mut());
+            let calendar = app.world().resource::<GameCalendar>();
+            if calendar.weekday() == 5 {
+                let settings = app.world().resource::<crate::config::GameSettings>();
+                balance += settings.weekly_salary - settings.weekly_rent;
+            }
+            app.world_mut().trigger(EndDay);
+            app.update();
+            single::<DailyBill>(&mut app);
+            press_e(&mut app);
             app.update();
             assert!(app.world().get_entity(root).is_err());
             assert_day_scene(&mut app);
@@ -239,18 +252,35 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
                 app.world().resource::<GameCalendar>().remaining_days(),
                 total_days - elapsed_days
             );
+            assert_eq!(app.world().resource::<Money>().0, balance);
         }
         let old_root = single::<SceneRoot>(&mut app);
         let old_scene = scene_entities(app.world(), old_root);
         app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
         app.world_mut().resource_mut::<Stamina>().0 = 2.0;
+        app.world_mut().resource_mut::<DailyTransactions>().cat_reward = 3;
+        if app.world().resource::<GameCalendar>().weekday() == 5 {
+            let settings = app.world().resource::<crate::config::GameSettings>();
+            balance += settings.weekly_salary - settings.weekly_rent;
+        }
 
-        begin_next_day(app.world_mut());
-        app.update();
+        app.world_mut().trigger(EndDay);
+        advance(&mut app, 3);
 
         assert_removed(&app, &old_scene);
+        single::<DailyBill>(&mut app);
+        assert_absent::<InternshipEnded>(&mut app);
+        assert_eq!(
+            app.world().resource::<GameCalendar>().elapsed_days,
+            total_days - 1
+        );
+        assert_eq!(app.world().resource::<DailyTransactions>().cat_reward, 3);
+        press_e(&mut app);
+        app.update();
+
         let root = single::<SceneRoot>(&mut app);
         assert_eq!(single::<InternshipEnded>(&mut app), root);
+        assert_absent::<DailyBill>(&mut app);
         assert_absent::<Player>(&mut app);
         assert_absent::<RoadId>(&mut app);
         assert_absent::<SwitchPoint>(&mut app);
@@ -259,7 +289,11 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
         assert_eq!(calendar.remaining_days(), 0);
         assert!(calendar.is_finished());
         assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
-        assert_eq!(app.world().resource::<Money>().0, 59);
+        assert_eq!(app.world().resource::<Money>().0, balance + 3);
+        assert_eq!(
+            *app.world().resource::<DailyTransactions>(),
+            DailyTransactions::default()
+        );
         assert!(app.world().resource::<HasHelmet>().0);
         assert_commute(&app, CommuteState::Paused);
         assert_eq!(
@@ -276,11 +310,12 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
         assert_eq!(world.get::<Node>(root).unwrap().width, percent(100));
         assert_eq!(world.get::<Node>(root).unwrap().height, percent(100));
 
-        begin_next_day(app.world_mut());
-        app.world_mut().insert_resource(DayEndRequested);
+        app.world_mut().run_system_cached(confirm_bill).unwrap();
+        app.world_mut().trigger(EndDay);
         advance(&mut app, 4);
 
         assert_eq!(single::<SceneRoot>(&mut app), root);
+        assert_absent::<DailyBill>(&mut app);
         assert_absent::<Player>(&mut app);
         assert_absent::<RoadId>(&mut app);
         assert_eq!(
@@ -288,7 +323,7 @@ fn ending_the_last_day_shows_the_end_screen_and_cannot_restart_the_commute() {
             total_days
         );
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
+        assert_eq!(app.world().resource::<Money>().0, balance + 3);
         assert_commute(&app, CommuteState::Paused);
-        assert!(!app.world().contains_resource::<DayEndRequested>());
     }
 }
