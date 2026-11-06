@@ -194,7 +194,7 @@ fn starting_a_day_hides_the_existing_case_hud() {
     enter_court(&mut app);
     let hud = assert_case_hud(&mut app, Some(RoadId::ExampleRoad));
 
-    start_day(app.world_mut());
+    app.world_mut().run_system_cached(start_day).unwrap();
     app.update();
 
     assert_road(&mut app, RoadId::ExampleRoad);
