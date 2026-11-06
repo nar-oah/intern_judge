@@ -2,7 +2,7 @@ use crate::{
     config::{BuildingValues, CaseDefs, ConvenienceKind, GameSettings},
     game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina},
     level::{
-        BuildingType, CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
+        CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
         TodayRoads,
         tests::support::{
             activate, assert_commute, assert_map, assert_road, assert_today_roads, weekday_app,
@@ -50,9 +50,9 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
     let shop = {
         let world = app.world_mut();
         world
-            .query::<(Entity, &BuildingType)>()
+            .query::<(Entity, &Name)>()
             .iter(world)
-            .find_map(|(entity, kind)| (*kind == BuildingType::ConvenienceStore).then_some(entity))
+            .find_map(|(entity, name)| (name.as_str() == "ConvenienceStore").then_some(entity))
             .unwrap()
     };
     let price =

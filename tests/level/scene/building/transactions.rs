@@ -30,7 +30,7 @@ fn convenience_stores_charge_the_selected_offer_and_cap_recovery() {
 #[test]
 fn convenience_store_rejects_full_stamina_or_insufficient_money() {
     let mut app = building_app();
-    let store = spawn_building(&mut app, BuildingType::ConvenienceStore);
+    let store = spawn_building(&mut app, "ConvenienceStore");
 
     for (money, stamina) in [(100, Stamina::MAX), (6, 40.0)] {
         app.world_mut().resource_mut::<Money>().0 = money;
@@ -46,7 +46,7 @@ fn convenience_store_rejects_full_stamina_or_insufficient_money() {
 #[test]
 fn tool_store_charges_only_for_the_first_affordable_helmet() {
     let mut app = building_app();
-    let store = spawn_building(&mut app, BuildingType::ToolStore);
+    let store = spawn_building(&mut app, "ToolStore");
 
     app.world_mut().resource_mut::<Money>().0 = 19;
     interact(&mut app, store);
@@ -67,7 +67,7 @@ fn tool_store_charges_only_for_the_first_affordable_helmet() {
 #[test]
 fn lottery_requires_payment_before_awarding_the_prize() {
     let mut app = building_app();
-    let store = spawn_building(&mut app, BuildingType::LotteryStore);
+    let store = spawn_building(&mut app, "LotteryStore");
 
     app.world_mut().resource_mut::<Money>().0 = 6;
     interact(&mut app, store);
@@ -81,8 +81,8 @@ fn lottery_requires_payment_before_awarding_the_prize() {
 #[test]
 fn rescuing_a_cat_pays_the_reward_and_removes_only_that_cat() {
     let mut app = building_app();
-    let cat = spawn_building(&mut app, BuildingType::Cat);
-    let other_cat = spawn_building(&mut app, BuildingType::Cat);
+    let cat = spawn_building(&mut app, "Cat");
+    let other_cat = spawn_building(&mut app, "Cat");
 
     interact(&mut app, cat);
 

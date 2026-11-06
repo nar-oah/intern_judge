@@ -72,15 +72,6 @@ pub struct Platform {
     pub size: Vec2,
 }
 
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum BuildingType {
-    #[default]
-    ConvenienceStore,
-    ToolStore,
-    LotteryStore,
-    Cat,
-}
-
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct SwitchPoint;
 

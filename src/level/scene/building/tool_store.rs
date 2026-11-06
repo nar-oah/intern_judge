@@ -1,6 +1,6 @@
 use super::{BuildingDialogue, dialogue_building_scene};
 use crate::game::{HasHelmet, Money};
-use crate::level::{BuildingType, RunningInteractRequested};
+use crate::level::RunningInteractRequested;
 use bevy::prelude::*;
 
 const COST: i32 = 20;
@@ -13,7 +13,7 @@ pub(in crate::level::scene) fn tool_store_scene(position: Vec2, size: Vec2) -> i
             Color::srgb(0.9, 0.65, 0.3),
             BuildingDialogue::new("dialogue/buildings.rep", "tool_store"),
         )
-        BuildingType::ToolStore
+        #ToolStore
         on(interact)
     }
 }

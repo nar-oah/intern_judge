@@ -7,16 +7,17 @@ use std::time::{Duration, Instant};
 
 #[test]
 fn paused_buildings_start_dialogue_without_running_their_effects() {
-    for building in [
-        BuildingType::ConvenienceStore,
-        BuildingType::ToolStore,
-        BuildingType::LotteryStore,
-        BuildingType::Cat,
+    for (building, node) in [
+        ("ConvenienceStore", "convenience_store"),
+        ("ToolStore", "tool_store"),
+        ("LotteryStore", "lottery_store"),
+        ("Cat", "cat"),
     ] {
         let mut app = building_app();
         app.insert_resource(State::new(CommuteState::Paused));
         app.world_mut().resource_mut::<Stamina>().0 = 35.0;
         let entity = spawn_building(&mut app, building);
+        assert_eq!(app.world().get::<Name>(entity).unwrap().as_str(), building);
         let player = spawn_player(&mut app, Vec2::new(42.0, 7.0));
 
         app.world_mut()
@@ -39,15 +40,7 @@ fn paused_buildings_start_dialogue_without_running_their_effects() {
             .collect::<Vec<_>>();
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].runner, player);
-        assert_eq!(
-            requests[0].node.as_str(),
-            match building {
-                BuildingType::ConvenienceStore => "convenience_store",
-                BuildingType::ToolStore => "tool_store",
-                BuildingType::LotteryStore => "lottery_store",
-                BuildingType::Cat => "cat",
-            }
-        );
+        assert_eq!(requests[0].node.as_str(), node);
     }
 }
 
@@ -102,10 +95,10 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
 #[test]
 fn every_building_dialogue_option_is_information_only() {
     for building in [
-        BuildingType::ConvenienceStore,
-        BuildingType::ToolStore,
-        BuildingType::LotteryStore,
-        BuildingType::Cat,
+        "ConvenienceStore",
+        "ToolStore",
+        "LotteryStore",
+        "Cat",
     ] {
         for choice in 0..2 {
             let mut app = building_app();
