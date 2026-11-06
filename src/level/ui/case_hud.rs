@@ -67,7 +67,7 @@ fn case_hud_scene(road: Option<RoadId>) -> impl Scene {
             width: percent(100),
             height: percent(100),
         }
-        {visibility}
+        visibility
         Pickable::IGNORE
         Children [
             #CaseHud
