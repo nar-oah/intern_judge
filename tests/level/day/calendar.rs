@@ -16,9 +16,8 @@ use crate::{
 fn calendar_hud_survives_road_travel_and_refreshes_after_the_next_day() {
     let mut app = weekday_app(28);
     let (hud, text, initial_date) = calendar_hud(&mut app);
-    let player = single::<Player>(&mut app);
     let point = single::<SwitchPoint>(&mut app);
-    open_destinations(app.world_mut(), point, player);
+    open_destinations(app.world_mut(), point);
     assert_absent::<Player>(&mut app);
     assert_eq!(calendar_hud(&mut app), (hud, text, initial_date.clone()));
     let button = destination_button(&mut app, RoadId::MarketRoad);

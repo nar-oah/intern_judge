@@ -47,9 +47,8 @@ fn assert_case_hud(app: &mut App, case_road: Option<RoadId>) -> Vec<Entity> {
 }
 
 fn enter_court(app: &mut App) -> Entity {
-    let player = single::<Player>(app);
     let point = single::<SwitchPoint>(app);
-    open_destinations(app.world_mut(), point, player);
+    open_destinations(app.world_mut(), point);
     assert_case_hud(app, None);
     assert!(app.world().resource::<CurrentCase>().0.is_none());
     activate(app, RoadId::Court);
@@ -63,9 +62,8 @@ fn case_hud_shows_the_selected_road_and_survives_road_and_map_replacement() {
         let mut app = navigation_app();
         let hud = assert_case_hud(&mut app, None);
         if case_road == RoadId::MarketRoad {
-            let player = single::<Player>(&mut app);
             let point = single::<SwitchPoint>(&mut app);
-            open_destinations(app.world_mut(), point, player);
+            open_destinations(app.world_mut(), point);
             assert_eq!(assert_case_hud(&mut app, None), hud);
             activate(&mut app, RoadId::MarketRoad);
             assert_road(&mut app, RoadId::MarketRoad);
@@ -88,9 +86,8 @@ fn case_hud_shows_the_selected_road_and_survives_road_and_map_replacement() {
         assert_road(&mut app, RoadId::ExampleRoad);
         assert_eq!(assert_case_hud(&mut app, Some(case_road)), hud);
 
-        let player = single::<Player>(&mut app);
         let point = single::<SwitchPoint>(&mut app);
-        open_destinations(app.world_mut(), point, player);
+        open_destinations(app.world_mut(), point);
         app.update();
         assert_eq!(assert_case_hud(&mut app, Some(case_road)), hud);
     }

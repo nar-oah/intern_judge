@@ -71,7 +71,7 @@ fn court_characters_start_dialogue_only_for_paused_interactions() {
         let entity = named(&mut app, name);
         let world = app.world_mut();
         assert_eq!(world.get::<BuildingDialogue>(entity).unwrap().asset, asset);
-        world.trigger(RunningInteractRequested { entity, player });
+        world.trigger(RunningInteractRequested { entity });
         world.flush();
 
         assert!(world.get::<DialogueRunner>(player).is_none(), "{node}");

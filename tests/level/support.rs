@@ -100,11 +100,8 @@ pub(super) fn navigation_app() -> App {
     app
 }
 
-pub(in crate::level) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
-    world.trigger(RunningInteractRequested {
-        entity: point,
-        player,
-    });
+pub(in crate::level) fn open_destinations(world: &mut World, point: Entity) {
+    world.trigger(RunningInteractRequested { entity: point });
     world.flush();
 }
 

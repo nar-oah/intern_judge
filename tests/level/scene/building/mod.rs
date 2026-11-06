@@ -30,7 +30,7 @@ fn spawn_player(app: &mut App, velocity: Vec2) -> Entity {
 fn interact(app: &mut App, entity: Entity) {
     let player = spawn_player(app, Vec2::new(42.0, 7.0));
     app.world_mut()
-        .trigger(RunningInteractRequested { entity, player });
+        .trigger(RunningInteractRequested { entity });
     app.world_mut().flush();
 
     assert!(app.world().get::<DialogueRunner>(player).is_none());
