@@ -21,6 +21,7 @@ pub(super) struct DailyBill {
     total: i32,
 }
 
+#[expect(clippy::too_many_arguments, reason = "Keep ECS dependencies explicit")]
 pub(super) fn show_bill(
     _: On<EndDay>,
     mut commands: Commands,
