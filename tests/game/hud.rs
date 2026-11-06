@@ -113,6 +113,69 @@ fn hud_refreshes_when_each_displayed_resource_changes_while_paused() {
     }
 }
 
+#[test]
+fn commute_hud_shows_pending_income_and_costs_without_settling_money() {
+    let mut app = game();
+    app.world_mut()
+        .resource_mut::<NextState<CommuteState>>()
+        .set(CommuteState::Paused);
+    app.world_mut().resource_mut::<Money>().0 = 100;
+    app.update();
+
+    for (transactions, balance) in [
+        (
+            DailyTransactions {
+                convenience_store_cost: 10,
+                ..default()
+            },
+            90,
+        ),
+        (
+            DailyTransactions {
+                tool_store_cost: 20,
+                ..default()
+            },
+            80,
+        ),
+        (
+            DailyTransactions {
+                cat_reward: 40,
+                ..default()
+            },
+            140,
+        ),
+        (
+            DailyTransactions {
+                lottery_cost: 5,
+                ..default()
+            },
+            95,
+        ),
+        (
+            DailyTransactions {
+                lottery_reward: 30,
+                ..default()
+            },
+            130,
+        ),
+        (
+            DailyTransactions {
+                convenience_store_cost: 10,
+                tool_store_cost: 20,
+                cat_reward: 40,
+                lottery_cost: 5,
+                lottery_reward: 30,
+            },
+            135,
+        ),
+    ] {
+        app.insert_resource(transactions);
+        app.update();
+        assert!(text::<CommuteHudText>(&mut app).contains(&format!("Money: {balance}\n")));
+        assert_eq!(app.world().resource::<Money>().0, 100);
+    }
+}
+
 fn last_changed<C: Component>(app: &App, entity: Entity) -> u32 {
     app.world()
         .entity(entity)
