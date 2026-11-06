@@ -73,13 +73,19 @@ fn tool_store_charges_only_for_the_first_affordable_helmet() {
     app.world_mut().resource_mut::<Money>().0 = 20;
     interact(&mut app, store);
     assert_eq!(app.world().resource::<Money>().0, 20);
-    assert_eq!(app.world().resource::<DailyTransactions>().tool_store_cost, 20);
+    assert_eq!(
+        app.world().resource::<DailyTransactions>().tool_store_cost,
+        20
+    );
     assert!(app.world().resource::<HasHelmet>().0);
 
     app.world_mut().resource_mut::<Money>().0 = 100;
     interact(&mut app, store);
     assert_eq!(app.world().resource::<Money>().0, 100);
-    assert_eq!(app.world().resource::<DailyTransactions>().tool_store_cost, 20);
+    assert_eq!(
+        app.world().resource::<DailyTransactions>().tool_store_cost,
+        20
+    );
     assert!(app.world().resource::<HasHelmet>().0);
 }
 

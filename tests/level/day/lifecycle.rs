@@ -1,7 +1,10 @@
 use super::support::assert_day_scene;
 use crate::{
     config::{CaseDefs, GameState},
-    game::{CommuteState, CommuteTime, DailyTransactions, HasHelmet, Money, Stamina, calendar::GameCalendar},
+    game::{
+        CommuteState, CommuteTime, DailyTransactions, HasHelmet, Money, Stamina,
+        calendar::GameCalendar,
+    },
     level::{
         CurrentCase, InitialRoad, RoadEffect, RoadEffects, RoadId, SceneRoot, SelectedCase,
         SwitchPoint, TodayRoads,
@@ -15,7 +18,9 @@ use crate::{
         ui::TravelUiRoot,
     },
     player::{Player, PlayerAction, Stunned},
-    test_support::{advance, assert_absent, assert_removed, named, press_e, scene_entities, single},
+    test_support::{
+        advance, assert_absent, assert_removed, named, press_e, scene_entities, single,
+    },
 };
 use avian2d::prelude::{LinearVelocity, Position};
 use bevy::prelude::*;
@@ -92,7 +97,9 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
         .unwrap()
         .press(&PlayerAction::Right);
 
-    app.world_mut().resource_mut::<DailyTransactions>().cat_reward = 7;
+    app.world_mut()
+        .resource_mut::<DailyTransactions>()
+        .cat_reward = 7;
     app.world_mut().trigger(EndDay);
     app.update();
     press_e(&mut app);
@@ -262,7 +269,9 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
         let old_scene = scene_entities(app.world(), old_root);
         app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
         app.world_mut().resource_mut::<Stamina>().0 = 2.0;
-        app.world_mut().resource_mut::<DailyTransactions>().cat_reward = 3;
+        app.world_mut()
+            .resource_mut::<DailyTransactions>()
+            .cat_reward = 3;
         if app.world().resource::<GameCalendar>().weekday() == 5 {
             let settings = app.world().resource::<crate::config::GameSettings>();
             balance += settings.weekly_salary - settings.weekly_rent;
