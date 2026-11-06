@@ -4,7 +4,6 @@ pub(super) mod ending;
 mod platform;
 mod road;
 mod switch_point;
-
 use super::{CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, TodayRoads, case};
 use crate::config::CaseDefs;
 use bevy::prelude::*;
@@ -33,13 +32,9 @@ pub(super) fn enter_road(
     mut current: ResMut<CurrentCase>,
 ) {
     let road = request.0;
+    let rng = &mut rand::rng();
     if road == RoadId::Court {
-        current.0 = Some(case::select_case(
-            &today,
-            &effects,
-            &cases,
-            &mut rand::rng(),
-        ));
+        current.0 = Some(case::select_case(&today, &effects, &cases, rng));
     } else {
         today.0.insert(road);
     }
