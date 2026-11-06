@@ -16,6 +16,8 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
 ---
 ";
         start_fixture(&mut app, player, source);
+        let hud = named(&mut app, "CaseHudRoot");
+        assert_eq!(app.world().get::<Visibility>(hud), Some(&Visibility::Hidden));
         advance(&mut app, 4);
 
         assert_prompt(&mut app, "判决后的对话");

@@ -2,7 +2,10 @@ use crate::{
     config::GameState,
     level::{CurrentCase, RoadId},
 };
-use bevy::{prelude::*, text::FontSourceTemplate};
+use bevy::{
+    camera::visibility::VisibilitySystems, prelude::*, text::FontSourceTemplate, ui::UiSystems,
+};
+use bevy_replique::prelude::DialogueSystem;
 
 #[derive(Component, Clone, Default)]
 struct CaseHud;
@@ -14,8 +17,11 @@ pub(super) fn setup(app: &mut App) {
     app.add_systems(OnEnter(GameState::Playing), setup_case_hud)
         .add_systems(OnExit(GameState::Playing), cleanup_case_hud)
         .add_systems(
-            Update,
+            PostUpdate,
             update_case_hud
+                .after(DialogueSystem::Commands)
+                .before(UiSystems::Prepare)
+                .before(VisibilitySystems::VisibilityPropagate)
                 .run_if(resource_exists_and_changed::<CurrentCase>)
                 .run_if(in_state(GameState::Playing)),
         );
