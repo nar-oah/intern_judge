@@ -106,7 +106,7 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     }
     let prefixes = cases
         .iter()
-        .map(|case| &case.dialogue_prefix)
+        .map(|case| &case.dialogue_node)
         .collect::<HashSet<_>>();
     assert_eq!(prefixes.len(), cases.len());
     let dialogue = world
@@ -118,7 +118,7 @@ fn shipped_ron_assets_load_into_main_menu_before_gameplay_initializes() {
     for case in cases {
         assert_ne!(case.guilty, case.not_guilty);
         for side in ["prosecution", "defense"] {
-            let node = format!("{}_{side}", case.dialogue_prefix);
+            let node = format!("{}_{side}", case.dialogue_node);
             assert!(dialogue.get_node(&node.as_str().into()).is_some(), "{node}");
         }
     }

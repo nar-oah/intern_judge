@@ -50,7 +50,7 @@ fn unrelated_effects_leave_the_case_available_and_selection_owns_its_definition(
     let mut rng = StdRng::seed_from_u64(23);
 
     let selected = select_case(&today, &effects, &cases, &mut rng);
-    cases.0[0].dialogue_prefix = "changed_after_selection".into();
+    cases.0[0].dialogue_node = "changed_after_selection".into();
 
     assert_eq!(
         selected,

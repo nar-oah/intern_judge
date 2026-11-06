@@ -83,7 +83,7 @@ pub(crate) fn building_values() -> BuildingValues {
 
 pub(crate) fn case_def(prefix: &str, guilty: RoadEffect, not_guilty: RoadEffect) -> CaseDef {
     CaseDef {
-        dialogue_prefix: prefix.into(),
+        dialogue_node: prefix.into(),
         guilty,
         not_guilty,
     }
