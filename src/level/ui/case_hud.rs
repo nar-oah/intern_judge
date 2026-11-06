@@ -54,6 +54,11 @@ fn update_case_hud(
 }
 
 fn case_hud_scene(road: Option<RoadId>) -> impl Scene {
+    let visibility = if road.is_some() {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
     bsn! {
         #CaseHudRoot
         CaseHud
@@ -62,7 +67,7 @@ fn case_hud_scene(road: Option<RoadId>) -> impl Scene {
             width: percent(100),
             height: percent(100),
         }
-        {if road.is_some() { Visibility::Visible } else { Visibility::Hidden }}
+        {visibility}
         Pickable::IGNORE
         Children [
             #CaseHud
