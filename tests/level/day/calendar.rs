@@ -3,13 +3,13 @@ use crate::{
     game::calendar::GameCalendar,
     level::{
         RoadId, SwitchPoint,
-        day::begin_next_day,
+        day::EndDay,
         tests::support::{
             assert_road, destination_button, open_destinations, select_destination, weekday_app,
         },
     },
     player::Player,
-    test_support::{assert_absent, single},
+    test_support::{assert_absent, press_e, single},
 };
 
 #[test]
@@ -26,7 +26,9 @@ fn calendar_hud_survives_road_travel_and_refreshes_after_the_next_day() {
     assert_road(&mut app, RoadId::MarketRoad);
     assert_eq!(calendar_hud(&mut app), (hud, text, initial_date.clone()));
 
-    begin_next_day(app.world_mut());
+    app.world_mut().trigger(EndDay);
+    app.update();
+    press_e(&mut app);
     app.update();
 
     let (new_hud, new_text, next_date) = calendar_hud(&mut app);
