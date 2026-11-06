@@ -9,7 +9,7 @@ use crate::{
     config::GameSettings,
     game::{CommuteState, CommuteTime, DailyTransactions, Money, Stamina, calendar::GameCalendar},
 };
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemParam, prelude::*};
 use leafwing_input_manager::prelude::ActionState;
 
 #[derive(Component, Clone, Default)]
@@ -21,18 +21,28 @@ pub(super) struct DailyBill {
     total: i32,
 }
 
-#[expect(clippy::too_many_arguments, reason = "Keep ECS dependencies explicit")]
+#[derive(SystemParam)]
+pub(super) struct BillResources<'w> {
+    calendar: Res<'w, GameCalendar>,
+    settings: Res<'w, GameSettings>,
+    money: Res<'w, Money>,
+    transactions: Res<'w, DailyTransactions>,
+}
+
 pub(super) fn show_bill(
     _: On<EndDay>,
     mut commands: Commands,
     roots: Query<Entity, With<SceneRoot>>,
     bills: Query<(), With<DailyBill>>,
-    calendar: Res<GameCalendar>,
-    settings: Res<GameSettings>,
-    money: Res<Money>,
-    transactions: Res<DailyTransactions>,
+    resources: BillResources,
     mut commute: ResMut<NextState<CommuteState>>,
 ) {
+    let BillResources {
+        calendar,
+        settings,
+        money,
+        transactions,
+    } = resources;
     if calendar.is_finished() || !bills.is_empty() {
         return;
     }
@@ -48,7 +58,6 @@ pub(super) fn show_bill(
         transactions: *transactions,
         total: money.0 + transactions.net() + salary - rent,
     };
-    // Make the bill visible to EndDay observers triggered by dialogue cleanup.
     commands.spawn_scene(ui::bill_scene(bill));
     for root in &roots {
         commands.entity(root).despawn();
