@@ -66,4 +66,5 @@ fn entering_playing_resets_session_data_and_resumes_commute() {
     );
     assert_eq!(count::<CalendarHud>(&mut app), 1);
     assert_eq!(count::<CommuteHud>(&mut app), 1);
+    assert_eq!(count::<CaseHud>(&mut app), 1);
 }
