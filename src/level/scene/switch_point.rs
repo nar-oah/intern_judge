@@ -1,5 +1,5 @@
 use crate::level::{
-    Interactable, PausedInteractRequested, SwitchPoint, day::DayEndRequested, navigation,
+    Interactable, PausedInteractRequested, SwitchPoint, day::EndDay, navigation,
 };
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -23,5 +23,5 @@ pub(super) fn switch_point_scene(position: Vec2) -> impl Scene {
 }
 
 fn end_day(_: On<PausedInteractRequested>, mut commands: Commands) {
-    commands.insert_resource(DayEndRequested);
+    commands.trigger(EndDay);
 }

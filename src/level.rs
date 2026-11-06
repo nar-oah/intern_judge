@@ -13,7 +13,7 @@ mod tests;
 mod ui;
 use crate::config::{CaseDef, GameState, RoadGraph};
 use bevy::prelude::*;
-use bevy_replique::prelude::{DialogueRunner, DialogueSystem};
+use bevy_replique::prelude::DialogueSystem;
 use leafwing_input_manager::prelude::InputManagerPlugin;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -97,33 +97,20 @@ impl Plugin for LevelPlugin {
         app.add_plugins(InputManagerPlugin::<ui::UiAction>::default())
             .add_observer(scene::enter_road)
             .add_observer(navigation::open_unlock_map)
+            .add_observer(bill::show_bill)
             .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
             .add_systems(
                 OnEnter(GameState::Playing),
-                (|world: &mut World| {
-                    world.remove_resource::<day::DayEndRequested>();
-                    world.insert_resource(RoadEffects::default());
-                    let unlocks = world.resource::<RoadGraph>().initial_unlocks.clone();
-                    world.insert_resource(RoadUnlocks(unlocks));
-                    let layout = map::MapLayout::from_graph(world.resource::<RoadGraph>());
-                    world.insert_resource(layout);
-                    day::start_day(world);
-                })
-                .after(crate::game::calendar::initialize_calendar),
-            )
-            .add_systems(
-                Last,
-                day::finish_day
-                    .run_if(resource_exists::<day::DayEndRequested>)
-                    .run_if(not(any_with_component::<DialogueRunner>))
-                    .run_if(in_state(GameState::Playing)),
+                (initialize_level, day::start_day)
+                    .chain()
+                    .after(crate::game::calendar::initialize_calendar),
             )
             .add_systems(
                 Update,
                 bill::confirm_bill
-                    .run_if(any_with_component::<bill::WeeklyBill>)
+                    .run_if(any_with_component::<bill::DailyBill>)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(
@@ -133,4 +120,10 @@ impl Plugin for LevelPlugin {
                     .run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+fn initialize_level(mut commands: Commands, graph: Res<RoadGraph>) {
+    commands.insert_resource(RoadEffects::default());
+    commands.insert_resource(RoadUnlocks(graph.initial_unlocks.clone()));
+    commands.insert_resource(map::MapLayout::from_graph(&graph));
 }
