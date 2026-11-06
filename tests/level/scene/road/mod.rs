@@ -138,10 +138,7 @@ fn market_detour_stands_on_ground_between_the_stores() {
 
     assert_eq!(size, Vec2::splat(60.0));
     assert_eq!(position.y - size.y / 2.0, -162.5);
-    for (building, transform, sprite) in world
-        .query::<(&Name, &Transform, &Sprite)>()
-        .iter(world)
-    {
+    for (building, transform, sprite) in world.query::<(&Name, &Transform, &Sprite)>().iter(world) {
         let store_half_width = sprite.custom_size.unwrap().x / 2.0;
         match building.as_str() {
             "ToolStore" => {

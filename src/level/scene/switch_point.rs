@@ -1,6 +1,5 @@
 use crate::level::{
-    Interactable, PausedInteractRequested, SwitchPoint,
-    day::DayEndRequested, navigation,
+    Interactable, PausedInteractRequested, SwitchPoint, day::DayEndRequested, navigation,
 };
 use avian2d::prelude::*;
 use bevy::prelude::*;

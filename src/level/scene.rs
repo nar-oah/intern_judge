@@ -34,14 +34,22 @@ pub(super) fn enter_road(
 ) {
     let road = request.0;
     if road == RoadId::Court {
-        current.0 = Some(case::select_case(&today, &effects, &cases, &mut rand::rng()));
+        current.0 = Some(case::select_case(
+            &today,
+            &effects,
+            &cases,
+            &mut rand::rng(),
+        ));
     } else {
         today.0.insert(road);
     }
     for root in &roots {
         commands.entity(root).despawn();
     }
-    commands.spawn_scene(road_scene(road, effects.0.get(&road).map_or(&[], Vec::as_slice)));
+    commands.spawn_scene(road_scene(
+        road,
+        effects.0.get(&road).map_or(&[], Vec::as_slice),
+    ));
 }
 
 pub(super) fn road_scene(road: RoadId, effects: &[RoadEffect]) -> Box<dyn Scene> {

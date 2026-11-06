@@ -2,8 +2,7 @@ use crate::{
     config::{BuildingValues, CaseDefs, ConvenienceKind, GameSettings},
     game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina},
     level::{
-        CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint,
-        TodayRoads,
+        CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint, TodayRoads,
         tests::support::{
             activate, assert_commute, assert_map, assert_road, assert_today_roads, weekday_app,
         },

@@ -6,10 +6,7 @@ use crate::{
     config::RoadGraph,
     level::{RoadId, SceneRoot, map::MapLayout, navigation},
 };
-use bevy::{
-    prelude::*,
-    ui_widgets::Button,
-};
+use bevy::{prelude::*, ui_widgets::Button};
 
 #[derive(Component, Clone, Default)]
 pub(in crate::level) struct TravelUiRoot(
@@ -249,4 +246,3 @@ fn connection_scene(
         Pickable::IGNORE
     }
 }
-

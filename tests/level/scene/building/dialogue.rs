@@ -109,7 +109,10 @@ fn court_participants_resolve_the_current_case_when_interacted_with() {
             .unwrap();
         let player = single::<Player>(&mut app);
         let entity = named(&mut app, name);
-        assert_eq!(app.world().get::<BuildingDialogue>(entity).unwrap().node, None);
+        assert_eq!(
+            app.world().get::<BuildingDialogue>(entity).unwrap().node,
+            None
+        );
 
         app.world_mut().resource_mut::<CurrentCase>().0 = Some(SelectedCase {
             road: RoadId::MarketRoad,
@@ -148,7 +151,10 @@ fn court_participants_without_a_case_leave_velocity_and_ui_unchanged() {
             .trigger(PausedInteractRequested { entity, player });
         app.world_mut().flush();
 
-        assert!(app.world().get::<DialogueRunner>(player).is_none(), "{name}");
+        assert!(
+            app.world().get::<DialogueRunner>(player).is_none(),
+            "{name}"
+        );
         assert_eq!(
             app.world().get::<LinearVelocity>(player).unwrap().0,
             Vec2::new(42.0, 7.0),
@@ -164,12 +170,7 @@ fn court_participants_without_a_case_leave_velocity_and_ui_unchanged() {
 
 #[test]
 fn every_building_dialogue_option_is_information_only() {
-    for building in [
-        "ConvenienceStore",
-        "ToolStore",
-        "LotteryStore",
-        "Cat",
-    ] {
+    for building in ["ConvenienceStore", "ToolStore", "LotteryStore", "Cat"] {
         for choice in 0..2 {
             let mut app = building_app();
             app.insert_resource(State::new(CommuteState::Paused));

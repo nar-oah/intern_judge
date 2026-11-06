@@ -2,7 +2,8 @@ use crate::{
     config::{GameSettings, RoadGraph},
     game::{CommuteState, GamePlugin, calendar::GameCalendar},
     level::{
-        CurrentCase, LevelPlugin, RoadEffects, RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot, TodayRoads,
+        CurrentCase, LevelPlugin, RoadEffects, RoadId, RoadUnlocks, RunningInteractRequested,
+        SceneRoot, TodayRoads,
         day::start_day,
         map::MapLayout,
         navigation,
@@ -92,13 +93,17 @@ pub(super) fn navigation_app() -> App {
         .init_resource::<CurrentCase>();
     crate::level::ui::setup(&mut app);
     finish_app(&mut app);
-    app.world_mut().trigger(scene::EnterRoad(RoadId::ExampleRoad));
+    app.world_mut()
+        .trigger(scene::EnterRoad(RoadId::ExampleRoad));
     app.world_mut().flush();
     app
 }
 
 pub(in crate::level) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
-    world.trigger(RunningInteractRequested { entity: point, player });
+    world.trigger(RunningInteractRequested {
+        entity: point,
+        player,
+    });
     world.flush();
 }
 

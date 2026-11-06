@@ -6,11 +6,11 @@ use crate::{
         LevelPlugin, PausedInteractRequested, RoadId, RoadUnlocks, SwitchPoint,
         bill::WeeklyBill,
         day::DayEndRequested,
-        tests::support::{open_destinations, select_destination},
         scene::ending::InternshipEnded,
         tests::support::{
             assert_commute, assert_road, assert_today_roads, configured_day_app, destination_button,
         },
+        tests::support::{open_destinations, select_destination},
         ui::{TravelButtonAction, TravelUiRoot},
     },
     player::{Player, PlayerPlugin},

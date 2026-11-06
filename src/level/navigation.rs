@@ -8,7 +8,10 @@ use crate::{config::RoadGraph, game::CommuteState, player::Player};
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 
-#[expect(clippy::too_many_arguments, reason = "Navigation reads ECS data through system parameters")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Navigation reads ECS data through system parameters"
+)]
 pub(super) fn open_destinations(
     request: On<RunningInteractRequested>,
     mut commands: Commands,
@@ -21,14 +24,20 @@ pub(super) fn open_destinations(
     layout: Res<MapLayout>,
     mut commute: ResMut<NextState<CommuteState>>,
 ) {
-    let Some(root) = parents.iter_ancestors(request.entity).find(|&entity| roots.contains(entity)) else {
+    let Some(root) = parents
+        .iter_ancestors(request.entity)
+        .find(|&entity| roots.contains(entity))
+    else {
         return;
     };
     let Ok(&road) = roots.get(root) else {
         return;
     };
     if !players.contains(request.player)
-        || parents.iter_ancestors(request.player).find(|&entity| roots.contains(entity)) != Some(root)
+        || parents
+            .iter_ancestors(request.player)
+            .find(|&entity| roots.contains(entity))
+            != Some(root)
         || !points.contains(request.entity)
     {
         return;
@@ -38,15 +47,18 @@ pub(super) fn open_destinations(
     };
     let mut destinations = Vec::new();
     for &destination in choices {
-        if unlocks.0.get(&destination) == Some(&true)
-            && !destinations.contains(&destination)
-        {
+        if unlocks.0.get(&destination) == Some(&true) && !destinations.contains(&destination) {
             destinations.push(destination);
         }
     }
     if !destinations.is_empty() {
         commands.entity(root).despawn();
-        commands.spawn_scene(ui::travel_ui_scene(Some(road), destinations, &graph, &layout));
+        commands.spawn_scene(ui::travel_ui_scene(
+            Some(road),
+            destinations,
+            &graph,
+            &layout,
+        ));
         commute.set(CommuteState::Paused);
     }
 }
@@ -92,13 +104,14 @@ pub(super) fn select_destination(
     let Ok(&TravelButtonAction(destination)) = buttons.get(activate.entity) else {
         return;
     };
-    let Some(choices) = parents.iter_ancestors(activate.entity).find_map(|entity| maps.get(entity).ok()) else {
+    let Some(choices) = parents
+        .iter_ancestors(activate.entity)
+        .find_map(|entity| maps.get(entity).ok())
+    else {
         return;
     };
     let unlocking = choices.1;
-    if choices.0.contains(&destination)
-        && unlocks.0.get(&destination) == Some(&!unlocking)
-    {
+    if choices.0.contains(&destination) && unlocks.0.get(&destination) == Some(&!unlocking) {
         if unlocking {
             unlocks.0.insert(destination, true);
         }

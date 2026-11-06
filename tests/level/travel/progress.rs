@@ -8,7 +8,9 @@ use crate::{
             self,
             effect::{ConstructionDetour, FallingObject},
         },
-        tests::support::{activate, assert_commute, assert_road, assert_today_roads, open_destinations},
+        tests::support::{
+            activate, assert_commute, assert_road, assert_today_roads, open_destinations,
+        },
     },
     player::Player,
     test_support::{assert_absent, assert_removed, finish_app, level_app, scene_entities, single},
