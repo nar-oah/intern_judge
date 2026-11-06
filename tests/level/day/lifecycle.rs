@@ -169,10 +169,7 @@ fn end_day_immediately_replaces_the_scene_and_repeated_events_replace_the_bill()
     assert_absent::<Player>(&mut app);
     let bill = single::<DailyBill>(&mut app);
     let bill_entities = scene_entities(app.world(), bill);
-    assert_removed(&app, &bill_entities);
-    let new_bill = single::<DailyBill>(&mut app);
-    assert_ne!(new_bill, bill);
-    assert_eq!(single::<SceneRoot>(&mut app), new_bill);
+    assert_eq!(single::<SceneRoot>(&mut app), bill);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
 
     app.world_mut()
@@ -183,7 +180,10 @@ fn end_day_immediately_replaces_the_scene_and_repeated_events_replace_the_bill()
         .unwrap();
     advance(&mut app, 3);
 
-    assert_eq!(single::<SceneRoot>(&mut app), bill);
+    assert_removed(&app, &bill_entities);
+    let new_bill = single::<DailyBill>(&mut app);
+    assert_ne!(new_bill, bill);
+    assert_eq!(single::<SceneRoot>(&mut app), new_bill);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 2);
 
     press_e(&mut app);

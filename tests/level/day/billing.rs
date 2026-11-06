@@ -110,7 +110,7 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
 }
 
 #[test]
-fn bills_show_before_and_after_the_last_day_without_transactions_and_only_friday_charges_weekly_items() {
+fn bills_always_show_without_transactions_and_only_friday_charges_weekly_items() {
     for elapsed_days in (0..7).chain([28, 29, 34, 35]) {
         let mut app = weekday_app(28);
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
