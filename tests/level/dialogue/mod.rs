@@ -5,7 +5,7 @@ use crate::{
     level::{
         CurrentCase, InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect,
         RoadEffects, RoadId, SceneRoot, SelectedCase, SwitchPoint,
-        bill::WeeklyBill,
+        bill::DailyBill,
         scene::ending::InternshipEnded,
         tests::support::{open_destinations, select_destination},
     },
