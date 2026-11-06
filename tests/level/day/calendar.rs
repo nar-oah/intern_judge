@@ -4,8 +4,7 @@ use crate::{
     level::{
         RoadId, SwitchPoint,
         day::begin_next_day,
-        navigation::{open_destinations, select_destination},
-        tests::support::{assert_road, destination_button, weekday_app},
+        tests::support::{assert_road, destination_button, weekday_app, open_destinations, select_destination},
     },
     player::Player,
     test_support::{assert_absent, single},

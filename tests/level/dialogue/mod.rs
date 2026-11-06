@@ -6,7 +6,7 @@ use crate::{
         CurrentCase, InitialRoad, Interactable, LevelPlugin, PausedInteractRequested, RoadEffect,
         RoadEffects, RoadId, SceneRoot, SelectedCase, SwitchPoint,
         bill::WeeklyBill,
-        navigation::{open_destinations, select_destination},
+        tests::support::{open_destinations, select_destination},
         scene::ending::InternshipEnded,
     },
     player::{Player, PlayerPlugin},

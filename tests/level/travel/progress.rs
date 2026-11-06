@@ -4,12 +4,11 @@ use crate::{
     level::{
         CurrentCase, InitialRoad, LevelPlugin, RoadEffect, RoadEffects, RoadId, RoadUnlocks,
         SceneRoot, SwitchPoint, TodayRoads,
-        navigation::open_destinations,
         scene::{
             self,
             effect::{ConstructionDetour, FallingObject},
         },
-        tests::support::{activate, assert_commute, assert_road, assert_today_roads},
+        tests::support::{activate, assert_commute, assert_road, assert_today_roads, open_destinations},
     },
     player::Player,
     test_support::{assert_absent, assert_removed, finish_app, level_app, scene_entities, single},
@@ -88,8 +87,6 @@ fn road_effects_survive_travel_and_spawn_new_children_on_each_visit() {
         .spawn_scene(scene::road_scene(
             RoadId::ExampleRoad,
             &[RoadEffect::FallingObject],
-            "",
-            RoadId::ExampleRoad,
         ))
         .unwrap();
     // A test graph permits revisiting roads to check per-entry scene creation.
