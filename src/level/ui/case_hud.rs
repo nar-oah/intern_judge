@@ -4,10 +4,10 @@ use crate::{
 };
 use bevy::{prelude::*, text::FontSourceTemplate};
 
-#[derive(Component)]
+#[derive(Component, Clone, Default)]
 struct CaseHud;
 
-#[derive(Component)]
+#[derive(Component, Clone, Default)]
 struct CaseHudText;
 
 pub(super) fn setup(app: &mut App) {
