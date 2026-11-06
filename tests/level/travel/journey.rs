@@ -1,6 +1,6 @@
 use crate::{
     config::{BuildingValues, CaseDefs, ConvenienceKind, GameSettings},
-    game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina},
+    game::{CommuteState, CommuteTime, DailyTransactions, HasHelmet, Money, Stamina},
     level::{
         CurrentCase, RoadEffect, RoadEffects, RoadId, SceneRoot, SwitchPoint, TodayRoads,
         tests::support::{
@@ -79,12 +79,14 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         "entering while E is held does nothing"
     );
     press_e(&mut app);
-    let after_purchase = app.world().resource::<Money>().0;
-    assert!(after_purchase < balance);
+    let after_purchase = *app.world().resource::<DailyTransactions>();
+    assert_eq!(after_purchase.convenience_store_cost, price);
+    assert_eq!(app.world().resource::<Money>().0, balance);
+    assert_eq!(balance + after_purchase.net(), balance - price);
     assert!(app.world().resource::<Stamina>().0 > 1.0);
     advance(&mut app, 3);
     assert_eq!(
-        app.world().resource::<Money>().0,
+        *app.world().resource::<DailyTransactions>(),
         after_purchase,
         "holding E does not purchase again"
     );
@@ -169,6 +171,7 @@ fn commute_journey_replaces_scenes_and_preserves_global_progress() {
         assert!(app.world().get_entity(camera).is_ok());
         assert!(app.world().get_entity(unrelated).is_ok());
         assert_eq!(app.world().resource::<Money>().0, 37);
+        assert_eq!(*app.world().resource::<DailyTransactions>(), after_purchase);
         assert_eq!(app.world().resource::<Stamina>().0, 42.0);
         assert!(app.world().resource::<HasHelmet>().0);
         assert_eq!(app.world().resource::<GameSettings>().commute_limit, 123.0);
