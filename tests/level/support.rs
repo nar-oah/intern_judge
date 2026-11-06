@@ -2,9 +2,10 @@ use crate::{
     config::{GameSettings, RoadGraph},
     game::{CommuteState, GamePlugin, calendar::GameCalendar},
     level::{
-        CurrentCase, LevelPlugin, RoadEffects, RoadId, RoadUnlocks, SceneRoot, TodayRoads,
+        CurrentCase, LevelPlugin, RoadEffects, RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot, TodayRoads,
         day::start_day,
         map::MapLayout,
+        navigation,
         scene::{self, ending::InternshipEnded},
         ui::{TravelButtonAction, TravelUiRoot},
     },
@@ -83,12 +84,30 @@ pub(super) fn navigation_app() -> App {
     let layout = MapLayout::from_graph(app.world().resource::<RoadGraph>());
     let unlocks = app.world().resource::<RoadGraph>().initial_unlocks.clone();
     app.insert_resource(layout)
+        .add_observer(scene::enter_road)
+        .add_observer(navigation::open_unlock_map)
         .insert_resource(RoadUnlocks(unlocks))
         .init_resource::<RoadEffects>()
         .init_resource::<TodayRoads>()
         .init_resource::<CurrentCase>();
+    crate::level::ui::setup(&mut app);
     finish_app(&mut app);
-    let initial = scene::enter_road(app.world_mut(), RoadId::ExampleRoad);
-    app.world_mut().spawn_scene(initial).unwrap();
+    app.world_mut().trigger(scene::EnterRoad(RoadId::ExampleRoad));
+    app.world_mut().flush();
     app
+}
+
+pub(in crate::level) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
+    world.trigger(RunningInteractRequested { entity: point, player });
+    world.flush();
+}
+
+pub(in crate::level) fn select_destination(world: &mut World, button: Entity) {
+    world.trigger(Activate { entity: button });
+    world.flush();
+}
+
+pub(in crate::level) fn open_unlock_map(world: &mut World) {
+    world.trigger(navigation::OpenUnlockMap);
+    world.flush();
 }

@@ -95,7 +95,10 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         dialogue::setup(app);
+        ui::setup(app);
         app.add_plugins(InputManagerPlugin::<ui::UiAction>::default())
+            .add_observer(scene::enter_road)
+            .add_observer(navigation::open_unlock_map)
             .init_resource::<InitialRoad>()
             .add_systems(OnEnter(GameState::MainMenu), menu::setup_menu)
             .add_systems(OnExit(GameState::MainMenu), menu::cleanup_menu)
