@@ -1,10 +1,10 @@
+use super::calendar::GameCalendar;
 use super::hud::{
     calendar::{CalendarHud, CalendarHudText},
     case::{CaseHud, CaseHudText},
     commute::{CommuteHud, CommuteHudText, StaminaBar},
 };
 use super::*;
-use super::calendar::GameCalendar;
 use crate::{
     level::CurrentCase,
     test_support::{advance, count, finish_app, insert_config, scene_app, single, text},
