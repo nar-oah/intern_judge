@@ -29,8 +29,7 @@ pub(super) fn setup(app: &mut App) {
                     .or_eager(resource_exists_and_changed::<Stamina>)
                     .or_eager(resource_exists_and_changed::<GameSettings>),
             ),
-            update::update_calendar_hud
-                .run_if(resource_exists_and_changed::<GameCalendar>),
+            update::update_calendar_hud.run_if(resource_exists_and_changed::<GameCalendar>),
         )
             .chain()
             .after(super::commute::tick_commute)
