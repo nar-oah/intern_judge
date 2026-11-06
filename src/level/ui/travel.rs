@@ -8,7 +8,7 @@ use crate::{
 };
 use bevy::{
     prelude::*,
-    ui_widgets::{Activate, Button},
+    ui_widgets::Button,
 };
 
 #[derive(Component, Clone, Default)]
@@ -184,7 +184,7 @@ fn road_node_scene(
         bsn! {
             Button
             TravelButtonAction(destination)
-            on(activate_button)
+            on(navigation::select_destination)
         }
     });
     let picking = if available {
@@ -250,7 +250,3 @@ fn connection_scene(
     }
 }
 
-fn activate_button(activate: On<Activate>, mut commands: Commands) {
-    let button = activate.entity;
-    commands.queue(move |world: &mut World| navigation::select_destination(world, button));
-}

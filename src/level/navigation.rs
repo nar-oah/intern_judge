@@ -1,53 +1,68 @@
 use super::{
-    RoadId, RoadUnlocks, SceneRoot, SwitchPoint,
+    RoadId, RoadUnlocks, RunningInteractRequested, SceneRoot, SwitchPoint,
     map::MapLayout,
     scene,
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
 use crate::{config::RoadGraph, game::CommuteState, player::Player};
 use bevy::prelude::*;
+use bevy::ui_widgets::Activate;
 
-pub(super) fn open_destinations(world: &mut World, point: Entity, player: Entity) {
-    let Some(root) = scene_root(world, point) else {
+pub(super) fn open_destinations(
+    request: On<RunningInteractRequested>,
+    mut commands: Commands,
+    roots: Query<&RoadId, With<SceneRoot>>,
+    parents: Query<&ChildOf>,
+    players: Query<(), With<Player>>,
+    points: Query<(), With<SwitchPoint>>,
+    graph: Res<RoadGraph>,
+    unlocks: Res<RoadUnlocks>,
+    layout: Res<MapLayout>,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let Some(root) = parents.iter_ancestors(request.entity).find(|&entity| roots.contains(entity)) else {
         return;
     };
-    let Some(&road) = world.get::<RoadId>(root) else {
+    let Ok(&road) = roots.get(root) else {
         return;
     };
-    if world.get::<Player>(player).is_none()
-        || scene_root(world, player) != Some(root)
-        || world.get::<SwitchPoint>(point).is_none()
+    if !players.contains(request.player)
+        || parents.iter_ancestors(request.player).find(|&entity| roots.contains(entity)) != Some(root)
+        || !points.contains(request.entity)
     {
         return;
     }
-    let Some(choices) = world.resource::<RoadGraph>().roads.get(&road) else {
+    let Some(choices) = graph.roads.get(&road) else {
         return;
     };
     let mut destinations = Vec::new();
     for &destination in choices {
-        if world.resource::<RoadUnlocks>().0.get(&destination) == Some(&true)
+        if unlocks.0.get(&destination) == Some(&true)
             && !destinations.contains(&destination)
         {
             destinations.push(destination);
         }
     }
     if !destinations.is_empty() {
-        let next = ui::travel_ui_scene(
-            Some(road),
-            destinations,
-            world.resource::<RoadGraph>(),
-            world.resource::<MapLayout>(),
-        );
-        scene::replace_scene(world, [root], next);
-        world
-            .resource_mut::<NextState<CommuteState>>()
-            .set(CommuteState::Paused);
+        commands.entity(root).despawn();
+        commands.spawn_scene(ui::travel_ui_scene(Some(road), destinations, &graph, &layout));
+        commute.set(CommuteState::Paused);
     }
 }
 
-pub(super) fn open_unlock_map(world: &mut World) {
-    let graph = world.resource::<RoadGraph>();
-    let unlocks = &world.resource::<RoadUnlocks>().0;
+#[derive(Event)]
+pub(super) struct OpenUnlockMap;
+
+pub(super) fn open_unlock_map(
+    _: On<OpenUnlockMap>,
+    mut commands: Commands,
+    roots: Query<Entity, With<SceneRoot>>,
+    graph: Res<RoadGraph>,
+    unlocks: Res<RoadUnlocks>,
+    layout: Res<MapLayout>,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let unlocks = &unlocks.0;
     let mut destinations = graph
         .roads
         .iter()
@@ -57,53 +72,41 @@ pub(super) fn open_unlock_map(world: &mut World) {
         .collect::<Vec<_>>();
     destinations.sort_unstable();
     destinations.dedup();
-    let next = ui::travel_ui_scene(None, destinations, graph, world.resource::<MapLayout>());
-    let roots = world
-        .query_filtered::<Entity, With<SceneRoot>>()
-        .iter(world)
-        .collect::<Vec<_>>();
-    scene::replace_scene(world, roots, next);
-    world
-        .resource_mut::<NextState<CommuteState>>()
-        .set(CommuteState::Paused);
+    for root in &roots {
+        commands.entity(root).despawn();
+    }
+    commands.spawn_scene(ui::travel_ui_scene(None, destinations, &graph, &layout));
+    commute.set(CommuteState::Paused);
 }
 
-pub(super) fn select_destination(world: &mut World, button: Entity) {
-    let Some(&TravelButtonAction(destination)) = world.get::<TravelButtonAction>(button) else {
+pub(super) fn select_destination(
+    activate: On<Activate>,
+    mut commands: Commands,
+    buttons: Query<&TravelButtonAction>,
+    parents: Query<&ChildOf>,
+    maps: Query<&TravelUiRoot, With<SceneRoot>>,
+    mut unlocks: ResMut<RoadUnlocks>,
+    mut commute: ResMut<NextState<CommuteState>>,
+) {
+    let Ok(&TravelButtonAction(destination)) = buttons.get(activate.entity) else {
         return;
     };
-    let Some(root) = scene_root(world, button) else {
-        return;
-    };
-    let Some(choices) = world.get::<TravelUiRoot>(root) else {
+    let Some(choices) = parents.iter_ancestors(activate.entity).find_map(|entity| maps.get(entity).ok()) else {
         return;
     };
     let unlocking = choices.1;
     if choices.0.contains(&destination)
-        && world.resource::<RoadUnlocks>().0.get(&destination) == Some(&!unlocking)
+        && unlocks.0.get(&destination) == Some(&!unlocking)
     {
         if unlocking {
-            world
-                .resource_mut::<RoadUnlocks>()
-                .0
-                .insert(destination, true);
+            unlocks.0.insert(destination, true);
         }
-        let next = scene::enter_road(world, destination);
-        scene::replace_scene(world, [root], next);
+        commands.trigger(scene::EnterRoad(destination));
         let state = if unlocking || destination == RoadId::Court {
             CommuteState::Paused
         } else {
             CommuteState::Running
         };
-        world.resource_mut::<NextState<CommuteState>>().set(state);
-    }
-}
-
-fn scene_root(world: &World, mut entity: Entity) -> Option<Entity> {
-    loop {
-        if world.get::<SceneRoot>(entity).is_some() {
-            return Some(entity);
-        }
-        entity = world.get::<ChildOf>(entity)?.parent();
+        commute.set(state);
     }
 }
