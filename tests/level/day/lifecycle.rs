@@ -1,4 +1,4 @@
-use super::support::{assert_day_scene, calendar_hud};
+use super::support::assert_day_scene;
 use crate::{
     config::{CaseDefs, GameState},
     game::{CommuteState, CommuteTime, HasHelmet, Money, Stamina, calendar::GameCalendar},
@@ -15,7 +15,7 @@ use crate::{
         ui::TravelUiRoot,
     },
     player::{Player, PlayerAction, Stunned},
-    test_support::{advance, assert_absent, assert_removed, scene_entities, single},
+    test_support::{advance, assert_absent, assert_removed, named, scene_entities, single},
 };
 use avian2d::prelude::{LinearVelocity, Position};
 use bevy::prelude::*;
@@ -178,7 +178,12 @@ fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
             app.world_mut().despawn(old_root);
             let camera = app.world_mut().spawn(Camera2d).id();
             let unrelated = app.world_mut().spawn_empty().id();
-            let (hud, text, _) = calendar_hud(&mut app);
+            let huds = ["CommuteHudRoot", "CalendarHudRoot", "CaseHudRoot"].map(|name| {
+                let root = named(&mut app, name);
+                assert!(app.world().get::<SceneRoot>(root).is_none());
+                assert!(app.world().get::<ChildOf>(root).is_none());
+                (root, scene_entities(app.world(), root))
+            });
             let mut previous = Vec::new();
             for _ in 0..root_count {
                 let root = app.world_mut().spawn(SceneRoot).id();
@@ -204,8 +209,12 @@ fn day_changes_and_bills_replace_all_scene_roots_and_keep_unrelated_entities() {
             }
             assert!(app.world().get_entity(camera).is_ok());
             assert!(app.world().get_entity(unrelated).is_ok());
-            let (new_hud, new_text, _) = calendar_hud(&mut app);
-            assert_eq!((new_hud, new_text), (hud, text));
+            for (hud, entities) in huds {
+                assert_eq!(scene_entities(app.world(), hud), entities);
+                for entity in entities {
+                    assert!(app.world().get_entity(entity).is_ok());
+                }
+            }
         }
     }
 }
