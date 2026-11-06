@@ -91,8 +91,9 @@ pub(super) fn navigation_app() -> App {
         .init_resource::<RoadEffects>()
         .init_resource::<TodayRoads>()
         .init_resource::<CurrentCase>();
-    crate::level::ui::setup(&mut app);
+    app.add_plugins(GamePlugin);
     finish_app(&mut app);
+    app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
     app.world_mut()
         .trigger(scene::EnterRoad(RoadId::ExampleRoad));
     app.world_mut().flush();

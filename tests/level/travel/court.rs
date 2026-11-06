@@ -1,13 +1,12 @@
 use crate::{
     config::{CaseDefs, GameState},
-    game::CommuteState,
+    game::{CommuteState, GamePlugin},
     level::{
         CurrentCase, InitialRoad, RoadEffect, RoadEffects, RoadId, SceneRoot, SelectedCase,
         SwitchPoint, TodayRoads,
         day::start_day,
         scene,
         tests::support::{activate, assert_road, navigation_app, open_destinations},
-        ui,
     },
     player::Player,
     test_support::{assert_removed, finish_app, level_app, named, scene_entities, single},
@@ -123,7 +122,7 @@ fn case_hud_refreshes_from_current_case_while_paused_and_hides_when_it_is_cleare
 #[test]
 fn case_hud_is_laid_out_at_the_top_center_without_moving_world_entities() {
     let mut app = level_app();
-    ui::setup(&mut app);
+    app.add_plugins(GamePlugin);
     app.add_observer(scene::enter_road)
         .add_plugins((
             HierarchyPropagatePlugin::<ComputedUiTargetCamera>::new(PostUpdate),
