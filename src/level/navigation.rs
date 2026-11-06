@@ -5,8 +5,8 @@ use super::{
     ui::{self, TravelButtonAction, TravelUiRoot},
 };
 use crate::{config::RoadGraph, game::CommuteState};
-use bevy::{ecs::system::SystemParam, prelude::*};
 use bevy::ui_widgets::Activate;
+use bevy::{ecs::system::SystemParam, prelude::*};
 
 #[derive(SystemParam)]
 pub(super) struct NavigationMap<'w> {
