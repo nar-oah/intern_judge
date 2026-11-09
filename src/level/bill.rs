@@ -42,10 +42,9 @@ pub(super) fn show_bill(
         money,
         transactions,
     } = resources;
-    let salary = settings.weekly_salary;
+    let salary = 0;
     let rent = settings.weekly_rent;
-    let is_payday = calendar.weekday() == 5;
-    let (salary, rent) = if is_payday { (salary, rent) } else { (0, 0) };
+    let rent = if calendar.weekday() == 5 { rent } else { 0 };
     let bill = DailyBill {
         balance: money.0,
         salary,
