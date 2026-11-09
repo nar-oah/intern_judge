@@ -35,7 +35,7 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
     };
     let transactions = *app.world().resource::<DailyTransactions>();
     app.world_mut().resource_mut::<HasHelmet>().0 = true;
-    app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.0;
     app.world_mut().resource_mut::<Stamina>().0 = 4.0;
     KeyCode::KeyE.press(app.world_mut());
     app.world_mut().trigger(EndDay);
@@ -51,7 +51,7 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
     assert_eq!(app.world().resource::<Money>().0, 12);
     assert_eq!(*app.world().resource::<DailyTransactions>(), transactions);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 6);
-    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 17.0);
+    assert_eq!(app.world().resource::<CommuteTime>().elapsed, 4.0);
     assert_eq!(app.world().resource::<Stamina>().0, 4.0);
     let (new_hud, new_text, date) = calendar_hud(&mut app);
     assert_eq!((new_hud, new_text), (hud, text));
@@ -66,7 +66,7 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
     for expected in [
         "每日账单",
         "当前余额：12",
-        "本周工资：31",
+        "工资：31",
         "房租：47",
         "便利店付款：3",
         "工具店付款：4",
@@ -75,14 +75,20 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
         "彩票中奖收益：7",
         "结算后余额：-5",
     ] {
-        assert!(summary.contains(expected), "missing {expected}: {summary}");
+        assert!(
+            summary.lines().any(|line| line == expected),
+            "missing {expected}: {summary}"
+        );
     }
 
     {
         let mut settings = app.world_mut().resource_mut::<GameSettings>();
-        settings.weekly_salary = 103;
+        settings.base_salary = 103;
+        settings.work_time = 0.5;
+        settings.commute_limit = 100.0;
         settings.weekly_rent = 7;
     }
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 0.0;
     app.world_mut().resource_mut::<Money>().0 = 500;
     app.world_mut()
         .resource_mut::<DailyTransactions>()
@@ -110,18 +116,16 @@ fn friday_bill_snapshots_all_income_and_expenses_and_waits_for_a_fresh_confirm()
 }
 
 #[test]
-fn bills_always_show_without_transactions_and_only_friday_charges_weekly_items() {
+fn bills_pay_daily_salary_without_transactions_and_only_friday_charges_rent() {
     for elapsed_days in (0..7).chain([28, 29, 34, 35]) {
         let mut app = weekday_app(28);
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
         app.world_mut().resource_mut::<Money>().0 = 19;
+        app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.0;
         let friday = app.world().resource::<GameCalendar>().weekday() == 5;
         let settings = app.world().resource::<GameSettings>();
-        let (salary, rent) = if friday {
-            (settings.weekly_salary, settings.weekly_rent)
-        } else {
-            (0, 0)
-        };
+        let salary = 31;
+        let rent = if friday { settings.weekly_rent } else { 0 };
 
         app.world_mut().trigger(EndDay);
         advance(&mut app, 3);
@@ -133,7 +137,7 @@ fn bills_always_show_without_transactions_and_only_friday_charges_weekly_items()
             .unwrap()
             .0
             .clone();
-        assert!(summary.contains(&format!("本周工资：{salary}")));
+        assert!(summary.lines().any(|line| line == format!("工资：{salary}")));
         assert!(summary.contains(&format!("房租：{rent}")));
         for label in [
             "便利店付款",
@@ -158,5 +162,57 @@ fn bills_always_show_without_transactions_and_only_friday_charges_weekly_items()
             app.world().resource::<GameCalendar>().elapsed_days,
             elapsed_days + 1
         );
+    }
+}
+
+#[test]
+fn daily_salary_scales_with_remaining_commute_time_and_rounds_positive_and_negative_values() {
+    let mut app = weekday_app(28);
+    {
+        let mut settings = app.world_mut().resource_mut::<GameSettings>();
+        settings.base_salary = 10;
+        settings.work_time = 2.5;
+        settings.commute_limit = 10.0;
+    }
+    for (elapsed, salary) in [
+        (0.0, 40),
+        (5.0, 20),
+        (7.5, 10),
+        (8.625, 6),
+        (8.875, 5),
+        (8.9375, 4),
+        (10.0, 0),
+        (10.3125, -1),
+        (10.375, -2),
+        (12.5, -10),
+    ] {
+        app.world_mut().resource_mut::<CommuteTime>().elapsed = elapsed;
+        app.world_mut().resource_mut::<Money>().0 = 19;
+
+        app.world_mut().trigger(EndDay);
+        advance(&mut app, 3);
+
+        let bill = single::<DailyBill>(&mut app);
+        let expected = format!("工资：{salary}");
+        assert!(
+            scene_entities(app.world(), bill).iter().any(|&entity| {
+                app.world()
+                    .get::<Text>(entity)
+                    .is_some_and(|text| text.0.lines().any(|line| line == expected))
+            }),
+            "elapsed {elapsed} should produce salary {salary}"
+        );
+        assert_eq!(app.world().resource::<Money>().0, 19);
+
+        press_e(&mut app);
+
+        assert_absent::<DailyBill>(&mut app);
+        assert_eq!(
+            app.world().resource::<Money>().0,
+            19 + salary,
+            "elapsed {elapsed} should settle salary {salary}"
+        );
+        // Keep each case on Monday so the table isolates salary from Friday rent.
+        app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 2;
     }
 }
