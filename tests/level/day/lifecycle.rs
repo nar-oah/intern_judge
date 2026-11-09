@@ -352,8 +352,7 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
             total_days
         );
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
-        // An explicit extra bill uses the reset commute time: 8 / 4 * 31 = 62.
-        assert_eq!(app.world().resource::<Money>().0, balance + 3 + 62);
+        assert_eq!(app.world().resource::<Money>().0, balance + 3);
         assert_commute(&app, CommuteState::Paused);
 
         press_e(&mut app);
@@ -366,7 +365,8 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
             app.world().resource::<GameCalendar>().elapsed_days,
             total_days + 1
         );
-        assert_eq!(app.world().resource::<Money>().0, balance + 3);
+        // An explicit extra bill uses the reset commute time: 8 / 4 * 31 = 62.
+        assert_eq!(app.world().resource::<Money>().0, balance + 3 + 62);
         assert_commute(&app, CommuteState::Paused);
     }
 }

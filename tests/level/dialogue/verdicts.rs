@@ -1,4 +1,5 @@
 use super::*;
+use crate::game::CommuteTime;
 
 #[test]
 fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
@@ -6,6 +7,7 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
         let (mut app, player, _) = court_app();
         let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
         app.world_mut().resource_mut::<GameCalendar>().elapsed_days = elapsed_days;
+        app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.0;
         let balance = app.world().resource::<Money>().0;
         let root = single::<SceneRoot>(&mut app);
         let source = "\
@@ -57,6 +59,9 @@ fn verdict_applies_effects_then_waits_for_dialogue_cleanup_before_resetting() {
             app.world().resource::<State<GameState>>().get(),
             &GameState::Playing
         );
+        // Four remaining seconds pay 31; Friday also charges 47 in rent.
+        let payment = if elapsed_days == 6 { -16 } else { 31 };
+        assert_eq!(app.world().resource::<Money>().0, balance + payment);
     }
 }
 
@@ -113,6 +118,7 @@ fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship(
     let (mut app, player, bench) = court_app();
     let selected = app.world().resource::<CurrentCase>().0.clone().unwrap();
     app.world_mut().resource_mut::<GameCalendar>().elapsed_days = 27;
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.0;
     approach(&mut app, player, bench);
     press_e(&mut app);
     wait_for_dialogue(&mut app, false);
@@ -123,14 +129,13 @@ fn final_friday_verdict_requires_bill_confirmation_before_ending_the_internship(
     assert_closed(&mut app, player);
     assert!(app.world().get_entity(player).is_err());
     let balance = app.world().resource::<Money>().0;
-    let settings = app.world().resource::<crate::config::GameSettings>();
-    let payment = settings.weekly_salary - settings.weekly_rent;
     let bill = single::<DailyBill>(&mut app);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 27);
     press_e(&mut app);
     advance(&mut app, 4);
     assert!(app.world().get_entity(bill).is_err());
-    assert_eq!(app.world().resource::<Money>().0, balance + payment);
+    // Daily salary 31 minus Friday rent 47 is applied on confirmation.
+    assert_eq!(app.world().resource::<Money>().0, balance - 16);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 28);
     single::<InternshipEnded>(&mut app);
     assert_eq!(
