@@ -26,6 +26,7 @@ fn shipped_road_app() -> App {
     let mut app = headless_app(Vec2::ZERO);
     app.insert_state(GameState::MainMenu).add_plugins((
         RonAssetPlugin::<RoadGraph>::new(&["graph.ron"]),
+        RonAssetPlugin::<GameSettings>::new(&["settings.ron"]),
         GamePlugin,
         PlayerPlugin,
         LevelPlugin,
@@ -34,17 +35,29 @@ fn shipped_road_app() -> App {
         .world()
         .resource::<AssetServer>()
         .load::<RoadGraph>("roads.graph.ron");
+    let settings_handle = app
+        .world()
+        .resource::<AssetServer>()
+        .load::<GameSettings>("game.settings.ron");
     finish_app(&mut app);
     let deadline = Instant::now() + Duration::from_secs(10);
-    let graph = loop {
-        if let Some(graph) = app.world().resource::<Assets<RoadGraph>>().get(&handle) {
-            break graph.clone();
+    let (graph, settings) = loop {
+        if let (Some(graph), Some(settings)) = (
+            app.world().resource::<Assets<RoadGraph>>().get(&handle),
+            app.world()
+                .resource::<Assets<GameSettings>>()
+                .get(&settings_handle),
+        ) {
+            break (graph.clone(), settings.clone());
         }
-        assert!(Instant::now() < deadline, "shipped road graph did not load");
+        assert!(
+            Instant::now() < deadline,
+            "shipped road graph and settings did not load"
+        );
         app.update();
         std::thread::sleep(Duration::from_millis(1));
     };
-    app.insert_resource(graph);
+    app.insert_resource(graph).insert_resource(settings);
     app.world_mut()
         .resource_mut::<NextState<GameState>>()
         .set(GameState::Playing);
@@ -185,15 +198,17 @@ fn weekend_unlock_allows_movement_and_ends_into_the_next_days_map_then_workday()
 }
 
 #[test]
-fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays() {
+fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() {
     let mut app = shipped_road_app();
     let mut weekend_roads = Vec::new();
     let mut balance = app.world().resource::<Money>().0;
+    assert_eq!(balance, 100);
 
     for day in 0..28 {
         assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day);
         let weekend = app.world().resource::<GameCalendar>().is_weekend();
-        let friday = app.world().resource::<GameCalendar>().weekday() == 5;
+        // Day zero is Saturday, so rent is due on days 6, 13, 20 and 27.
+        let friday = day % 7 == 6;
         let destination = if weekend {
             let map = single::<TravelUiRoot>(&mut app);
             let choices = &app.world().get::<TravelUiRoot>(map).unwrap().0;
@@ -218,6 +233,9 @@ fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
         advance(&mut app, 2);
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
+        if !weekend {
+            app.world_mut().resource_mut::<CommuteTime>().elapsed = 50.0;
+        }
 
         let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
         if weekend {
@@ -236,9 +254,10 @@ fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays
         assert_eq!(app.world().resource::<Money>().0, balance);
         press_e(&mut app);
         KeyCode::KeyE.release(app.world_mut());
+        // Paused weekends round to 30; 50 seconds commuting pays 25.
+        balance += if weekend { 30 } else { 25 };
         if friday {
-            let settings = app.world().resource::<GameSettings>();
-            balance += settings.weekly_salary - settings.weekly_rent;
+            balance -= 80;
         }
         advance(&mut app, 2);
         assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, day + 1);
@@ -252,6 +271,7 @@ fn shipped_month_unlocks_eight_roads_confirms_every_day_and_charges_only_fridays
     weekend_roads.sort_unstable();
     weekend_roads.dedup();
     assert_eq!(weekend_roads.len(), 8);
+    assert_eq!(balance, 520);
     single::<InternshipEnded>(&mut app);
     app.world_mut().trigger(EndDay);
     advance(&mut app, 3);

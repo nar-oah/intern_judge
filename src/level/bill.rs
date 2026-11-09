@@ -24,6 +24,7 @@ pub(super) struct DailyBill {
 #[derive(SystemParam)]
 pub(super) struct BillResources<'w> {
     calendar: Res<'w, GameCalendar>,
+    time: Res<'w, CommuteTime>,
     settings: Res<'w, GameSettings>,
     money: Res<'w, Money>,
     transactions: Res<'w, DailyTransactions>,
@@ -38,14 +39,15 @@ pub(super) fn show_bill(
 ) {
     let BillResources {
         calendar,
+        time,
         settings,
         money,
         transactions,
     } = resources;
-    let salary = settings.weekly_salary;
+    let multiplier = time.remaining(settings.commute_limit) / settings.work_time;
+    let salary = (settings.base_salary as f32 * multiplier).round() as i32;
     let rent = settings.weekly_rent;
-    let is_payday = calendar.weekday() == 5;
-    let (salary, rent) = if is_payday { (salary, rent) } else { (0, 0) };
+    let rent = if calendar.weekday() == 5 { rent } else { 0 };
     let bill = DailyBill {
         balance: money.0,
         salary,

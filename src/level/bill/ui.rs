@@ -11,7 +11,7 @@ pub(super) fn bill_scene(bill: DailyBill) -> impl Scene {
         total,
     } = &bill;
     let summary = format!(
-        "每日账单\n当前余额：{balance}\n本周工资：{salary}\n房租：{rent}\n便利店付款：{}\n工具店付款：{}\n救助猫咪收益：{}\n彩票店付款：{}\n彩票中奖收益：{}\n结算后余额：{total}\n按 E 确认",
+        "每日账单\n当前余额：{balance}\n工资：{salary}\n房租：{rent}\n便利店付款：{}\n工具店付款：{}\n救助猫咪收益：{}\n彩票店付款：{}\n彩票中奖收益：{}\n结算后余额：{total}\n按 E 确认",
         transactions.convenience_store_cost,
         transactions.tool_store_cost,
         transactions.cat_reward,

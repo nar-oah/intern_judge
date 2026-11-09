@@ -83,7 +83,7 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
         .set(CommuteState::Paused);
     app.update();
     app.world_mut().resource_mut::<Stamina>().0 = 3.0;
-    app.world_mut().resource_mut::<CommuteTime>().elapsed = 51.0;
+    app.world_mut().resource_mut::<CommuteTime>().elapsed = 2.0;
     app.world_mut()
         .get_mut::<LinearVelocity>(old_player)
         .unwrap()
@@ -129,7 +129,8 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
     assert_eq!(app.world().resource::<CommuteTime>().elapsed, 0.0);
     assert_eq!(app.world().resource::<Stamina>().0, Stamina::MAX);
-    assert_eq!(app.world().resource::<Money>().0, 48);
+    // Six remaining seconds pay round(6 / 4 * 31) = 47, plus the cat reward.
+    assert_eq!(app.world().resource::<Money>().0, 95);
     assert_eq!(
         *app.world().resource::<DailyTransactions>(),
         DailyTransactions::default()
@@ -147,7 +148,7 @@ fn next_day_resets_the_scene_and_daily_values_while_preserving_session_progress(
     assert_commute(&app, CommuteState::Running);
     assert!(app.world().resource::<CommuteTime>().elapsed > 0.0);
     assert_eq!(app.world().resource::<GameCalendar>().elapsed_days, 3);
-    assert_eq!(app.world().resource::<Money>().0, 48);
+    assert_eq!(app.world().resource::<Money>().0, 95);
     assert!(app.world().resource::<HasHelmet>().0);
     assert_eq!(app.world().resource::<RoadEffects>().0, effects);
 }
@@ -254,10 +255,11 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
         let mut balance = 59;
         for elapsed_days in 1..total_days {
             let root = single::<SceneRoot>(&mut app);
-            let calendar = app.world().resource::<GameCalendar>();
-            if calendar.weekday() == 5 {
-                let settings = app.world().resource::<crate::config::GameSettings>();
-                balance += settings.weekly_salary - settings.weekly_rent;
+            // Four remaining seconds earn 31 each day, including weekends.
+            app.world_mut().resource_mut::<CommuteTime>().elapsed = 4.0;
+            balance += 31;
+            if (elapsed_days - 1) % 7 == 6 {
+                balance -= 47;
             }
             app.world_mut().trigger(EndDay);
             app.update();
@@ -278,14 +280,15 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
         }
         let old_root = single::<SceneRoot>(&mut app);
         let old_scene = scene_entities(app.world(), old_root);
-        app.world_mut().resource_mut::<CommuteTime>().elapsed = 17.0;
+        app.world_mut().resource_mut::<CommuteTime>().elapsed = 6.0;
         app.world_mut().resource_mut::<Stamina>().0 = 2.0;
         app.world_mut()
             .resource_mut::<DailyTransactions>()
             .cat_reward = 3;
-        if app.world().resource::<GameCalendar>().weekday() == 5 {
-            let settings = app.world().resource::<crate::config::GameSettings>();
-            balance += settings.weekly_salary - settings.weekly_rent;
+        // The last day pays round(2 / 4 * 31) = 16 before any Friday rent.
+        balance += 16;
+        if (total_days - 1) % 7 == 6 {
+            balance -= 47;
         }
 
         app.world_mut().trigger(EndDay);
@@ -362,7 +365,8 @@ fn ending_the_last_day_waits_for_its_bill_and_cannot_restart_the_commute() {
             app.world().resource::<GameCalendar>().elapsed_days,
             total_days + 1
         );
-        assert_eq!(app.world().resource::<Money>().0, balance + 3);
+        // An explicit extra bill uses the reset commute time: 8 / 4 * 31 = 62.
+        assert_eq!(app.world().resource::<Money>().0, balance + 3 + 62);
         assert_commute(&app, CommuteState::Paused);
     }
 }
