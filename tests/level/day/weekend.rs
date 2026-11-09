@@ -233,8 +233,11 @@ fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() 
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
         advance(&mut app, 2);
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
-        // Shipped settings leave 250 seconds: 250 / 100 * 10 pays 25 daily.
-        app.world_mut().resource_mut::<CommuteTime>().elapsed = 50.0;
+        if weekend {
+            assert_eq!(paused_at, 0.0);
+        } else {
+            app.world_mut().resource_mut::<CommuteTime>().elapsed = 50.0;
+        }
 
         let unlocks = app.world().resource::<RoadUnlocks>().0.clone();
         if weekend {
@@ -253,7 +256,8 @@ fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() 
         assert_eq!(app.world().resource::<Money>().0, balance);
         press_e(&mut app);
         KeyCode::KeyE.release(app.world_mut());
-        balance += 25;
+        // Shipped settings pay 30 for a paused weekend and 25 after 50s commuting.
+        balance += if weekend { 30 } else { 25 };
         if friday {
             balance -= 80;
         }
@@ -269,7 +273,7 @@ fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() 
     weekend_roads.sort_unstable();
     weekend_roads.dedup();
     assert_eq!(weekend_roads.len(), 8);
-    assert_eq!(balance, 480);
+    assert_eq!(balance, 520);
     single::<InternshipEnded>(&mut app);
     app.world_mut().trigger(EndDay);
     advance(&mut app, 3);
