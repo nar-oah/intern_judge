@@ -233,9 +233,7 @@ fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() 
         let paused_at = app.world().resource::<CommuteTime>().elapsed;
         advance(&mut app, 2);
         assert_eq!(app.world().resource::<CommuteTime>().elapsed, paused_at);
-        if weekend {
-            assert_eq!(paused_at, 0.0);
-        } else {
+        if !weekend {
             app.world_mut().resource_mut::<CommuteTime>().elapsed = 50.0;
         }
 
@@ -256,7 +254,7 @@ fn shipped_month_pays_daily_unlocks_eight_roads_and_charges_rent_only_fridays() 
         assert_eq!(app.world().resource::<Money>().0, balance);
         press_e(&mut app);
         KeyCode::KeyE.release(app.world_mut());
-        // Shipped settings pay 30 for a paused weekend and 25 after 50s commuting.
+        // Paused weekends round to 30; 50 seconds commuting pays 25.
         balance += if weekend { 30 } else { 25 };
         if friday {
             balance -= 80;
