@@ -137,7 +137,11 @@ fn bills_pay_daily_salary_without_transactions_and_only_friday_charges_rent() {
             .unwrap()
             .0
             .clone();
-        assert!(summary.lines().any(|line| line == format!("工资：{salary}")));
+        assert!(
+            summary
+                .lines()
+                .any(|line| line == format!("工资：{salary}"))
+        );
         assert!(summary.contains(&format!("房租：{rent}")));
         for label in [
             "便利店付款",
